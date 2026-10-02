@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exhaustive Switch with Sealed Types in Java - java</title>
+    <meta name="description" content="Exhaustive switch evaluation in Java allows developers to process sealed classes and interfaces without relying on a defensive default clause. When a switch construct evaluates a sealed hierarchy, the Java compiler uses pattern matching to verify that ev">
+    <link rel="canonical" href="https://salivity.github.io/java/article/exhaustive-switch-with-sealed-types-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Exhaustive Switch with Sealed Types in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/exhaustive-switch-with-sealed-types-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Exhaustive switch evaluation in Java allows developers to process sealed classes and interfaces without relying on a defensive default clause. When a switch construct evaluates a sealed hierarchy, the Java compiler uses pattern matching to verify that ev" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="exhaustive-switch-with-sealed-types-in-java">Exhaustive Switch
+with Sealed Types in Java</h1>
+<p>Exhaustive switch evaluation in Java allows developers to process
+sealed classes and interfaces without relying on a defensive
+<code>default</code> clause. When a switch construct evaluates a sealed
+hierarchy, the Java compiler uses pattern matching to verify that every
+permitted subclass is explicitly handled. If a developer omits a subtype
+or later adds a new implementation to the sealed hierarchy, the compiler
+emits an error, guaranteeing complete type safety at compile time.</p>
+<h2 id="understanding-sealed-types">Understanding Sealed Types</h2>
+<p>Sealed classes and interfaces, introduced permanently in Java 17,
+restrict which other classes or interfaces may extend or implement them.
+By explicitly defining allowed implementations via the
+<code>permits</code> keyword, the developer creates a closed, finite
+domain of types:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">sealed</span> <span class="kw">interface</span> <span class="bu">Shape</span> <span class="kw">permits</span> Circle<span class="op">,</span> <span class="bu">Rectangle</span><span class="op">,</span> Square <span class="op">{}</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">final</span> <span class="kw">class</span> Circle <span class="kw">implements</span> <span class="bu">Shape</span> <span class="op">{</span> <span class="co">/* ... */</span> <span class="op">}</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">final</span> <span class="kw">class</span> <span class="bu">Rectangle</span> <span class="kw">implements</span> <span class="bu">Shape</span> <span class="op">{</span> <span class="co">/* ... */</span> <span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">final</span> <span class="kw">class</span> Square <span class="kw">implements</span> <span class="bu">Shape</span> <span class="op">{</span> <span class="co">/* ... */</span> <span class="op">}</span></span></code></pre></div>
+<p>Because the compiler knows every possible implementation of
+<code>Shape</code>, this boundary sets the foundation for exhaustive
+evaluation in switch constructs.</p>
+<h2 id="how-the-compiler-evaluates-exhaustiveness">How the Compiler
+Evaluates Exhaustiveness</h2>
+<p>Prior to pattern matching for switch, switch expressions required
+either an exhaustive set of enum constants or a mandatory
+<code>default</code> clause to catch unhandled values. When switching
+over a sealed type, the compiler verifies that all direct permitted
+subtypes are matched by <code>case</code> labels.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">double</span> <span class="fu">calculateArea</span><span class="op">(</span><span class="bu">Shape</span> shape<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cf">switch</span> <span class="op">(</span>shape<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">case</span> Circle c    <span class="op">-&gt;</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">PI</span> <span class="op">*</span> c<span class="op">.</span><span class="fu">radius</span><span class="op">()</span> <span class="op">*</span> c<span class="op">.</span><span class="fu">radius</span><span class="op">();</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">case</span> <span class="bu">Rectangle</span> r <span class="op">-&gt;</span> r<span class="op">.</span><span class="fu">width</span><span class="op">()</span> <span class="op">*</span> r<span class="op">.</span><span class="fu">height</span><span class="op">();</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">case</span> Square s    <span class="op">-&gt;</span> s<span class="op">.</span><span class="fu">side</span><span class="op">()</span> <span class="op">*</span> s<span class="op">.</span><span class="fu">side</span><span class="op">();</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this switch expression, all permitted implementations of
+<code>Shape</code> are accounted for. The compiler validates the
+coverage by cross-referencing the <code>case</code> types against the
+<code>permits</code> declaration:</p>
+<ol type="1">
+<li><strong>Full Coverage:</strong> Every direct subtype
+(<code>Circle</code>, <code>Rectangle</code>, <code>Square</code>) has a
+corresponding pattern label.</li>
+<li><strong>No Default Clause Required:</strong> Because every possible
+case is represented, omitting <code>default:</code> is legal and
+preferred.</li>
+<li><strong>Compile-Time Error on Missing Cases:</strong> If
+<code>Square</code> is removed from the switch expression, compilation
+fails with an error stating that the switch expression does not cover
+all possible input values.</li>
+</ol>
+<h2 id="nuances-across-the-hierarchy">Nuances Across the Hierarchy</h2>
+<p>The exhaustiveness algorithm adapts depending on the modifier applied
+to the permitted subtypes (<code>final</code>, <code>sealed</code>, or
+<code>non-sealed</code>):</p>
+<ul>
+<li><strong>Final Subclasses:</strong> A <code>final</code> subclass
+terminates that branch of the hierarchy. Matching the final class
+satisfies that portion of the domain.</li>
+<li><strong>Sealed Subclasses:</strong> If a permitted subclass is also
+<code>sealed</code>, the switch can achieve exhaustiveness either by
+matching that subclass directly or by matching all of its own permitted
+descendants.</li>
+<li><strong>Non-Sealed Subclasses:</strong> If a subtype is marked
+<code>non-sealed</code>, it opens that branch to an infinite number of
+unknown implementations. To maintain exhaustiveness, the switch must
+include a <code>case</code> for the non-sealed type itself (or a broad
+fallback like an unconditional pattern), rather than attempting to match
+its arbitrary children.</li>
+</ul>
+<h2 id="advantages-over-the-default-clause">Advantages Over the Default
+Clause</h2>
+<p>In traditional switch logic, unhandled states are directed to a
+<code>default</code> label, often throwing an
+<code>IllegalArgumentException</code> or
+<code>IllegalStateException</code>. While this prevents silent runtime
+errors, it defers detection until execution time.</p>
+<p>Exhaustive switch evaluation shifts this detection entirely to
+compile time. If a new subclass—such as <code>Triangle</code>—is added
+to the <code>Shape</code> interface's <code>permits</code> clause, every
+switch expression operating on <code>Shape</code> across the entire
+codebase immediately breaks compilation. Developers are forced to
+implement logic for <code>Triangle</code> before the application can be
+built, preventing missing-branch bugs during maintenance and
+refactoring.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

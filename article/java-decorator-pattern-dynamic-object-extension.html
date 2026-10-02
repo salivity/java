@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Decorator Pattern: Dynamic Object Extension - java</title>
+    <meta name="description" content="The Decorator design pattern in Java provides a flexible alternative to subclassing by enabling developers to attach new behaviors to objects dynamically at runtime. This article examines the core mechanics of the Decorator pattern, demonstrates how it b">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-decorator-pattern-dynamic-object-extension">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Decorator Pattern: Dynamic Object Extension - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-decorator-pattern-dynamic-object-extension" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Decorator design pattern in Java provides a flexible alternative to subclassing by enabling developers to attach new behaviors to objects dynamically at runtime. This article examines the core mechanics of the Decorator pattern, demonstrates how it b" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-decorator-pattern-dynamic-object-extension">Java Decorator
+Pattern: Dynamic Object Extension</h1>
+<p>The Decorator design pattern in Java provides a flexible alternative
+to subclassing by enabling developers to attach new behaviors to objects
+dynamically at runtime. This article examines the core mechanics of the
+Decorator pattern, demonstrates how it bypasses the rigid constraints of
+traditional class inheritance through composition, and provides a
+concise code example illustrating how to layer object capabilities on
+demand.</p>
+<h3 id="the-problem-with-subclassing">The Problem with Subclassing</h3>
+<p>Inheritance binds behavior to a class statically at compile time.
+When you need to support multiple variations and combinations of
+features, inheritance quickly leads to an issue known as class
+explosion. For example, if you have a base notification service and want
+to support combinations of SMS, Email, and Slack alerts, subclassing
+requires dedicated classes for every possible permutation
+(<code>SmsNotification</code>, <code>EmailNotification</code>,
+<code>SmsAndSlackNotification</code>, etc.). Adding new features
+exponentially increases the number of required classes and prevents
+objects from changing their behavior while the application is
+running.</p>
+<h3 id="how-the-decorator-pattern-works">How the Decorator Pattern
+Works</h3>
+<p>The Decorator pattern resolves this limitation by utilizing
+<strong>object composition</strong> instead of class inheritance. It
+relies on four primary structural elements:</p>
+<ol type="1">
+<li><strong>Component Interface:</strong> Defines the common contract
+for both the core object and the decorators.</li>
+<li><strong>Concrete Component:</strong> Implements the component
+interface and provides the fundamental, baseline behavior.</li>
+<li><strong>Base Decorator:</strong> Implements the component interface
+and maintains a reference to a wrapped <code>Component</code>
+instance.</li>
+<li><strong>Concrete Decorators:</strong> Extend the base decorator to
+add specific state or behavior before or after delegating work to the
+wrapped component.</li>
+</ol>
+<p>Because decorators implement the same interface as the object they
+wrap, they can substitute for the target transparently. When a client
+invokes a method on the decorator, the decorator executes its own custom
+logic and forwards the call to the encapsulated object. Decorators can
+be nested arbitrarily, creating a pipeline of runtime enhancements.</p>
+<h3 id="implementation-in-java">Implementation in Java</h3>
+<p>Consider a basic coffee order system where an order can be
+dynamically customized with various condiments:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 1. Component Interface</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> Coffee <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">double</span> <span class="fu">getCost</span><span class="op">();</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">String</span> <span class="fu">getDescription</span><span class="op">();</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">// 2. Concrete Component</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> SimpleCoffee <span class="kw">implements</span> Coffee <span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">double</span> <span class="fu">getCost</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="fl">2.0</span><span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">String</span> <span class="fu">getDescription</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">&quot;Simple Coffee&quot;</span><span class="op">;</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">// 3. Base Decorator</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> CoffeeDecorator <span class="kw">implements</span> Coffee <span class="op">{</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="kw">protected</span> <span class="dt">final</span> Coffee decoratedCoffee<span class="op">;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">CoffeeDecorator</span><span class="op">(</span>Coffee coffee<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">decoratedCoffee</span> <span class="op">=</span> coffee<span class="op">;</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">double</span> <span class="fu">getCost</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> decoratedCoffee<span class="op">.</span><span class="fu">getCost</span><span class="op">();</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">String</span> <span class="fu">getDescription</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> decoratedCoffee<span class="op">.</span><span class="fu">getDescription</span><span class="op">();</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">// 4. Concrete Decorators</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MilkDecorator <span class="kw">extends</span> CoffeeDecorator <span class="op">{</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">MilkDecorator</span><span class="op">(</span>Coffee coffee<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>        <span class="kw">super</span><span class="op">(</span>coffee<span class="op">);</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">double</span> <span class="fu">getCost</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">super</span><span class="op">.</span><span class="fu">getCost</span><span class="op">()</span> <span class="op">+</span> <span class="fl">0.5</span><span class="op">;</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">String</span> <span class="fu">getDescription</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">super</span><span class="op">.</span><span class="fu">getDescription</span><span class="op">()</span> <span class="op">+</span> <span class="st">&quot;, Milk&quot;</span><span class="op">;</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> SugarDecorator <span class="kw">extends</span> CoffeeDecorator <span class="op">{</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">SugarDecorator</span><span class="op">(</span>Coffee coffee<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>        <span class="kw">super</span><span class="op">(</span>coffee<span class="op">);</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">double</span> <span class="fu">getCost</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">super</span><span class="op">.</span><span class="fu">getCost</span><span class="op">()</span> <span class="op">+</span> <span class="fl">0.2</span><span class="op">;</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">String</span> <span class="fu">getDescription</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">super</span><span class="op">.</span><span class="fu">getDescription</span><span class="op">()</span> <span class="op">+</span> <span class="st">&quot;, Sugar&quot;</span><span class="op">;</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="dynamic-assembly-at-runtime">Dynamic Assembly at Runtime</h3>
+<p>Because decorators and components share the same type, components can
+be assembled on the fly based on configuration, user input, or business
+logic:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Main <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Base object</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        Coffee coffee <span class="op">=</span> <span class="kw">new</span> <span class="fu">SimpleCoffee</span><span class="op">();</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Dynamically add Milk</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        coffee <span class="op">=</span> <span class="kw">new</span> <span class="fu">MilkDecorator</span><span class="op">(</span>coffee<span class="op">);</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Dynamically add Sugar</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        coffee <span class="op">=</span> <span class="kw">new</span> <span class="fu">SugarDecorator</span><span class="op">(</span>coffee<span class="op">);</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>coffee<span class="op">.</span><span class="fu">getDescription</span><span class="op">());</span> <span class="co">// Simple Coffee, Milk, Sugar</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;$&quot;</span> <span class="op">+</span> coffee<span class="op">.</span><span class="fu">getCost</span><span class="op">());</span>       <span class="co">// $2.7</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>This design adheres to the <strong>Open/Closed Principle</strong>:
+new functionality can be introduced by writing new concrete decorators
+without altering existing code or disrupting existing classes. Java's
+standard library uses this design extensively in its I/O system, such as
+wrapping a <code>FileInputStream</code> within a
+<code>BufferedInputStream</code> and a <code>DataInputStream</code>.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

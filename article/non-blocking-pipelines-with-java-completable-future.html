@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Non-Blocking Pipelines with Java CompletableFuture - java</title>
+    <meta name="description" content="Java's CompletableFuture class enables non-blocking asynchronous pipeline processing by combining event-driven architecture with functional programming paradigms. Introduced in Java 8, it implements both the Future and CompletionStage interfaces, allowin">
+    <link rel="canonical" href="https://salivity.github.io/java/article/non-blocking-pipelines-with-java-completable-future">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Non-Blocking Pipelines with Java CompletableFuture - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/non-blocking-pipelines-with-java-completable-future" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's CompletableFuture class enables non-blocking asynchronous pipeline processing by combining event-driven architecture with functional programming paradigms. Introduced in Java 8, it implements both the Future and CompletionStage interfaces, allowin" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="non-blocking-pipelines-with-java-completablefuture">Non-Blocking
+Pipelines with Java CompletableFuture</h1>
+<p>Java's <code>CompletableFuture</code> class enables non-blocking
+asynchronous pipeline processing by combining event-driven architecture
+with functional programming paradigms. Introduced in Java 8, it
+implements both the <code>Future</code> and <code>CompletionStage</code>
+interfaces, allowing developers to orchestrate complex sequences of
+background tasks without stalling caller threads. This article explains
+the mechanics behind <code>CompletableFuture</code>, focusing on how it
+executes tasks in the background, registers non-blocking callbacks,
+chains dependent operations, and coordinates multiple concurrent
+computations cleanly and efficiently.</p>
+<h3 id="moving-beyond-blocking-futures">Moving Beyond Blocking
+Futures</h3>
+<p>The traditional <code>java.util.concurrent.Future</code> interface
+required calling <code>get()</code> to retrieve the result of an
+asynchronous task. This call blocks the calling thread until the
+computation completes, effectively eliminating the benefits of
+asynchronous execution if results are needed sequentially.</p>
+<p><code>CompletableFuture</code> solves this by introducing a
+push-based model. Instead of having a thread wait idle for a result, you
+register reactive callbacks that automatically execute as soon as the
+previous stage finishes, keeping worker threads active and caller
+threads unblocked.</p>
+<h3 id="asynchronous-task-initiation">Asynchronous Task Initiation</h3>
+<p>A pipeline begins by offloading computation to another thread,
+typically using static factory methods like
+<code>CompletableFuture.supplyAsync()</code> or
+<code>runAsync()</code>.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>CompletableFuture<span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> initialStage <span class="op">=</span> CompletableFuture<span class="op">.</span><span class="fu">supplyAsync</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Runs in the background (ForkJoinPool.commonPool by default)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="fu">fetchUserData</span><span class="op">(</span>userId<span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">});</span></span></code></pre></div>
+<p>By default, these tasks run within the common
+<code>ForkJoinPool</code>, though custom <code>Executor</code> instances
+can be supplied to prevent resource starvation on specific workloads.
+Crucially, calling <code>supplyAsync()</code> returns immediately,
+handing control back to the caller while the background task
+proceeds.</p>
+<h3 id="chaining-dependent-transformations">Chaining Dependent
+Transformations</h3>
+<p><code>CompletableFuture</code> models pipelines via the
+<code>CompletionStage</code> interface. Each stage represents a step in
+a processing pipeline that transitions to a completed state when its
+computation finishes, immediately triggering subsequent stages.</p>
+<ul>
+<li><strong><code>thenApply()</code></strong>: Transforms the result of
+the previous stage synchronously on whichever thread completed it (or
+the calling thread if it is already complete). It functions similarly to
+<code>map()</code> in streams.</li>
+<li><strong><code>thenApplyAsync()</code></strong>: Dispatches the
+transformation to an <code>Executor</code> pool, ensuring it runs on a
+separate worker thread rather than the thread that completed the
+upstream stage.</li>
+<li><strong><code>thenAccept()</code></strong>: Serves as a pipeline
+terminal stage that consumes the final result without returning a new
+value.</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>CompletableFuture<span class="op">.</span><span class="fu">supplyAsync</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="fu">fetchUserData</span><span class="op">(</span>userId<span class="op">))</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">thenApply</span><span class="op">(</span>user <span class="op">-&gt;</span> <span class="fu">parsePermissions</span><span class="op">(</span>user<span class="op">))</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">thenApply</span><span class="op">(</span>permissions <span class="op">-&gt;</span> <span class="fu">validateAccess</span><span class="op">(</span>permissions<span class="op">))</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">thenAccept</span><span class="op">(</span>isValid <span class="op">-&gt;</span> <span class="fu">notifyUser</span><span class="op">(</span>isValid<span class="op">));</span></span></code></pre></div>
+<p>None of these method calls block. Each method instantly returns a new
+<code>CompletableFuture</code> representing the eventual completion of
+that particular stage.</p>
+<h3 id="monadic-composition-with-thencompose">Monadic Composition with
+<code>thenCompose</code></h3>
+<p>When a pipeline stage itself returns another
+<code>CompletableFuture</code>—such as calling an asynchronous
+microservice or database client—using <code>thenApply()</code> results
+in nested futures
+(<code>CompletableFuture&lt;CompletableFuture&lt;T&gt;&gt;</code>).</p>
+<p><code>CompletableFuture.thenCompose()</code> solves this by
+flattening the nested futures into a single
+<code>CompletableFuture&lt;T&gt;</code>, mirroring the behavior of
+<code>flatMap()</code>. This maintains a single, cohesive asynchronous
+chain where the second asynchronous task begins automatically after the
+first completes.</p>
+<h3 id="combining-independent-asynchronous-paths">Combining Independent
+Asynchronous Paths</h3>
+<p>Pipelines often branch and join. <code>CompletableFuture</code>
+provides built-in mechanisms to coordinate multiple independent
+computations without manual thread coordination:</p>
+<ul>
+<li><strong><code>thenCombine()</code></strong>: Takes two independent
+futures running in parallel, waits for both to finish without blocking
+any threads, and merges their results using a provided
+<code>BiFunction</code>.</li>
+<li><strong><code>CompletableFuture.allOf()</code></strong>: Accepts an
+array of futures and completes only when all of them complete, enabling
+fan-out/fan-in patterns.</li>
+<li><strong><code>CompletableFuture.anyOf()</code></strong>: Completes
+as soon as the fastest future in a set completes, discarding or ignoring
+the subsequent results.</li>
+</ul>
+<h3 id="non-blocking-exception-handling">Non-Blocking Exception
+Handling</h3>
+<p>Traditional synchronous processing relies on <code>try-catch</code>
+blocks, which cannot span thread boundaries.
+<code>CompletableFuture</code> propagates exceptions down the pipeline
+until they reach an explicit handler:</p>
+<ul>
+<li><strong><code>exceptionally()</code></strong>: Intercepts an
+exception occurring anywhere upstream and provides a fallback
+value.</li>
+<li><strong><code>handle()</code></strong>: Evaluates both the result
+and the exception simultaneously, enabling recovery or cleanup
+regardless of whether upstream stages succeeded or failed.</li>
+</ul>
+<p>By treating results and errors as first-class asynchronous events,
+<code>CompletableFuture</code> allows high-throughput Java applications
+to construct end-to-end, resilient execution pipelines that maximize CPU
+utilization while keeping thread counts minimal.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

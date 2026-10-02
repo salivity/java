@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding the Java hs_err_pid Crash Log File - java</title>
+    <meta name="description" content="When the Java Virtual Machine (JVM) terminates abruptly due to a fatal, unrecoverable error, it writes a post-mortem diagnostic log named hserrpid<pid>.log into the working directory or temporary storage. This article provides a comprehensive overview of">
+    <link rel="canonical" href="https://salivity.github.io/java/article/understanding-the-java-hs-err-pid-crash-log-file">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Understanding the Java hs_err_pid Crash Log File - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/understanding-the-java-hs-err-pid-crash-log-file" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When the Java Virtual Machine (JVM) terminates abruptly due to a fatal, unrecoverable error, it writes a post-mortem diagnostic log named hserrpid<pid>.log into the working directory or temporary storage. This article provides a comprehensive overview of" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="understanding-the-java-hs_err_pid-crash-log-file">Understanding
+the Java hs_err_pid Crash Log File</h1>
+<p>When the Java Virtual Machine (JVM) terminates abruptly due to a
+fatal, unrecoverable error, it writes a post-mortem diagnostic log named
+<code>hs_err_pid&lt;pid&gt;.log</code> into the working directory or
+temporary storage. This article provides a comprehensive overview of the
+essential diagnostic data captured within this file. By learning what
+data the JVM records during a crash—such as the fatal signal, execution
+stack, register values, memory layout, and system state—engineers can
+rapidly isolate the root cause, whether it stems from native code (JNI),
+third-party drivers, hardware faults, or JVM bugs.</p>
+<h2 id="1-crash-summary-and-fatal-event">1. Crash Summary and Fatal
+Event</h2>
+<p>The top of the file provides the immediate context of the failure,
+allowing you to quickly identify why the process died.</p>
+<ul>
+<li><strong>Cause of Termination:</strong> The operating system signal
+or exception that triggered the crash, such as <code>SIGSEGV</code>
+(segmentation violation) on Linux or
+<code>EXCEPTION_ACCESS_VIOLATION</code> on Windows.</li>
+<li><strong>Crashing Thread Identification:</strong> The native thread
+ID and name of the thread that encountered the error.</li>
+<li><strong>Problematic Frame:</strong> The exact function and dynamic
+library where the execution halted (for example,
+<code>C  [libjvm.so+0x123456]</code> or a call inside a native JNI
+library).</li>
+</ul>
+<h2 id="2-current-thread-context">2. Current Thread Context</h2>
+<p>This section contains granular low-level debugging details for the
+thread that caused the crash.</p>
+<ul>
+<li><strong>Registers:</strong> The CPU register dump at the moment of
+failure (such as <code>RAX</code>, <code>RBX</code>, <code>RIP</code>,
+and <code>RSP</code> on x86_64 architectures), which reveals the memory
+addresses and values being manipulated.</li>
+<li><strong>Native and Java Stack Traces:</strong> The call sequence
+leading up to the crash. If the crash happened in native code, it prints
+the C/C++ call stack. Below that, it displays the corresponding Java
+stack trace, showing which Java method was invoking the native
+operation.</li>
+<li><strong>Stack Memory Dump:</strong> A raw hex dump of the memory
+surrounding the stack pointer, useful for identifying corrupted pointer
+references or stack overflows.</li>
+</ul>
+<h2 id="3-virtual-machine-vm-state">3. Virtual Machine (VM) State</h2>
+<p>The log records the internal condition of the JVM runtime at the
+point of failure.</p>
+<ul>
+<li><strong>VM Operation and Safepoint:</strong> Indicates whether the
+JVM was stopped at a global safepoint or running a specific operation,
+such as a full Garbage Collection or thread dump.</li>
+<li><strong>Heap Information:</strong> The state and memory utilization
+of every JVM memory pool, including the Eden, Survivor, and Tenured
+(Old) generations, as well as the Metaspace and CodeCache.</li>
+<li><strong>Active Compiler Tasks:</strong> Details on whether the
+Just-In-Time (JIT) compiler (C1 or C2) was actively compiling a method
+when the crash occurred, which helps detect JIT compiler bugs.</li>
+<li><strong>VM Arguments and Flags:</strong> All explicit command-line
+flags (<code>-Xmx</code>, <code>-XX:+UseG1GC</code>, etc.) and system
+properties configured for the JVM instance.</li>
+</ul>
+<h2 id="4-other-threads">4. Other Threads</h2>
+<p>The log lists all other running threads in the process, providing
+their native thread identifiers, thread states (e.g.,
+<code>_thread_in_native</code>, <code>_thread_blocked</code>,
+<code>_thread_in_Java</code>), and execution status. This helps identify
+whether a deadlocked thread or high thread contention contributed to the
+crash.</p>
+<h2 id="5-loaded-dynamic-libraries">5. Loaded Dynamic Libraries</h2>
+<p>A complete list of all dynamic libraries (<code>.so</code> or
+<code>.dll</code> files) loaded into the process space, along with their
+virtual memory address ranges. This helps identify third-party native
+libraries, database drivers, or profiling agents that may have loaded
+unexpected versions or conflicted with the JVM runtime.</p>
+<h2 id="6-system-and-environmental-data">6. System and Environmental
+Data</h2>
+<p>The final section records the physical host environment to help
+diagnose resource starvation or OS-level incompatibilities.</p>
+<ul>
+<li><strong>Operating System:</strong> Kernel version, OS distribution,
+and glibc release.</li>
+<li><strong>CPU Specifications:</strong> Processor model, clock speed,
+core count, and supported instruction sets (such as AVX or SSE).</li>
+<li><strong>System Memory:</strong> Total physical RAM, free memory, and
+available swap space at the time of the event.</li>
+<li><strong>Resource Limits (<code>ulimit</code>):</strong>
+Process-level constraints including file descriptor limits, stack size
+limits, and maximum user processes.</li>
+<li><strong>Environment Variables:</strong> Selected shell and
+application environment variables that were set when the JVM
+launched.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thread Pinning in Java Virtual Threads Explained - java</title>
+    <meta name="description" content="Java virtual threads significantly boost application throughput by decoupling lightweight threads from underlying operating system threads, but thread pinning presents a critical bottleneck to this model. Thread pinning occurs when a virtual thread becom">
+    <link rel="canonical" href="https://salivity.github.io/java/article/thread-pinning-in-java-virtual-threads-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Thread Pinning in Java Virtual Threads Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/thread-pinning-in-java-virtual-threads-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java virtual threads significantly boost application throughput by decoupling lightweight threads from underlying operating system threads, but thread pinning presents a critical bottleneck to this model. Thread pinning occurs when a virtual thread becom" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="thread-pinning-in-java-virtual-threads-explained">Thread Pinning
+in Java Virtual Threads Explained</h1>
+<p>Java virtual threads significantly boost application throughput by
+decoupling lightweight threads from underlying operating system threads,
+but thread pinning presents a critical bottleneck to this model. Thread
+pinning occurs when a virtual thread becomes locked to its underlying
+platform carrier thread and cannot unmount during a blocking operation.
+This behavior deprives the carrier thread pool of execution capacity,
+directly undermining the concurrency and scalability benefits that
+virtual threads are designed to provide.</p>
+<h3 id="how-virtual-threads-work">How Virtual Threads Work</h3>
+<p>Virtual threads operate using an M:N scheduling model managed by the
+Java Virtual Machine (JVM). Thousands or even millions of virtual
+threads are multiplexed across a small pool of carrier platform threads,
+typically sized to match the number of available CPU cores.</p>
+<p>When a virtual thread executes a blocking operation—such as socket
+I/O, file operations, or <code>Thread.sleep()</code>—the JVM unmounts
+the virtual thread from its carrier thread. The carrier thread is then
+free to execute other runnable virtual threads. Once the blocking
+operation completes, the runtime remounts the virtual thread onto an
+available carrier thread to resume execution.</p>
+<h3 id="how-thread-pinning-occurs">How Thread Pinning Occurs</h3>
+<p>Thread pinning happens when the JVM runtime is unable to unmount a
+virtual thread from its carrier thread during a blocking call. When a
+thread is pinned, both the virtual thread and its carrier thread remain
+blocked together.</p>
+<p>There are two primary causes of thread pinning in the Java
+runtime:</p>
+<ol type="1">
+<li><strong>Synchronized Blocks and Methods:</strong> When a virtual
+thread executes inside a <code>synchronized</code> block or method and
+encounters a blocking operation, the thread is pinned. The internal
+monitor implementation holds references on the native call stack, which
+prevents the virtual thread frame from being safely unmounted and parked
+into the Java heap.</li>
+<li><strong>Native Code and Foreign Functions:</strong> If a virtual
+thread invokes a native method via the Java Native Interface (JNI) or
+the Foreign Function &amp; Memory (FFM) API, and subsequently blocks,
+the virtual thread cannot unmount because the execution context resides
+partly outside the JVM’s control on the native OS stack.</li>
+</ol>
+<h3 id="why-pinning-impacts-scalability">Why Pinning Impacts
+Scalability</h3>
+<p>Thread pinning directly degrades the scalability of virtual
+thread-based applications in several ways:</p>
+<ul>
+<li><strong>Carrier Thread Starvation:</strong> The carrier pool is
+intentionally small, often equal to
+<code>Runtime.getRuntime().availableProcessors()</code>. If all carrier
+threads become pinned by blocking operations, the scheduler cannot run
+other virtual threads, even if millions of them are waiting in the
+queue.</li>
+<li><strong>Loss of High Concurrency:</strong> Under normal conditions,
+a system can handle hundreds of thousands of concurrent I/O operations
+because unmounted virtual threads consume minimal heap memory and zero
+CPU cycles. Pinning reduces the practical concurrency limit back down to
+the size of the carrier pool, reverting application behavior to the
+traditional thread-per-request model.</li>
+<li><strong>Latency Spikes and Deadlocks:</strong> When carrier threads
+are blocked by pinned operations, non-pinned tasks experience severe
+scheduling delays. In worse cases, if pinned threads are waiting for
+responses or events generated by other virtual threads that cannot get
+scheduled onto a carrier thread, the system can experience thread
+starvation deadlocks.</li>
+</ul>
+<h3 id="mitigating-thread-pinning">Mitigating Thread Pinning</h3>
+<p>To prevent thread pinning from undermining scalability:</p>
+<ul>
+<li><strong>Use ReentrantLock Instead of Synchronized:</strong> Replace
+<code>synchronized</code> blocks that guard blocking I/O with
+<code>java.util.concurrent.locks.ReentrantLock</code>. Unlike object
+monitors, the locks in <code>java.util.concurrent</code> are designed to
+allow virtual threads to unmount freely when waiting to acquire a lock
+or performing I/O.</li>
+<li><strong>Diagnose Pinning with System Properties:</strong> Identify
+pinning occurrences by running the JVM with the flag
+<code>-Djdk.tracePinnedThreads=full</code> or
+<code>-Djdk.tracePinnedThreads=short</code>. This generates stack traces
+whenever a virtual thread pins its carrier thread during a blocking
+operation.</li>
+<li><strong>Avoid Blocking Inside Native Calls:</strong> Ensure that
+native libraries and JNI wrappers do not perform long-running or
+blocking network/file operations while running on virtual threads.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

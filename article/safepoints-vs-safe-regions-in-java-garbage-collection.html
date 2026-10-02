@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safepoints vs Safe Regions in Java Garbage Collection - java</title>
+    <meta name="description" content="This article explores the core differences between safepoints and safe regions in the Java Virtual Machine (JVM), detailing how each mechanism functions during Garbage Collection (GC). Understanding both concepts is essential for diagnosing "Stop-the-Wor">
+    <link rel="canonical" href="https://salivity.github.io/java/article/safepoints-vs-safe-regions-in-java-garbage-collection">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Safepoints vs Safe Regions in Java Garbage Collection - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/safepoints-vs-safe-regions-in-java-garbage-collection" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the core differences between safepoints and safe regions in the Java Virtual Machine (JVM), detailing how each mechanism functions during Garbage Collection (GC). Understanding both concepts is essential for diagnosing "Stop-the-Wor" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="safepoints-vs-safe-regions-in-java-garbage-collection">Safepoints vs
+Safe Regions in Java Garbage Collection</h1>
+<p>This article explores the core differences between safepoints and
+safe regions in the Java Virtual Machine (JVM), detailing how each
+mechanism functions during Garbage Collection (GC). Understanding both
+concepts is essential for diagnosing "Stop-the-World" (STW) pauses,
+optimizing JVM performance, and understanding how the HotSpot JVM safely
+inspects and manipulates thread stacks without race conditions.</p>
+<hr />
+<h3 id="why-the-jvm-needs-threads-to-pause">Why the JVM Needs Threads to
+Pause</h3>
+<p>During garbage collection phases that modify object references or
+move objects (such as compaction), the JVM must ensure that running
+threads do not modify the object graph concurrently. To do this safely,
+the JVM requires all application threads to reach a state where their
+call stacks, registers, and memory references are completely consistent
+and known. This state is known as a global safepoint.</p>
+<p>The challenge arises from the fact that threads exist in different
+execution states: some actively execute Java bytecode on the CPU, while
+others are blocked, sleeping, or running native code via JNI. Safepoints
+and safe regions address these two distinct scenarios.</p>
+<hr />
+<h3 id="what-is-a-safepoint">What Is a Safepoint?</h3>
+<p>A <strong>Safepoint</strong> is a predetermined location in the
+compiled or interpreted code where the execution state of the thread is
+fully known and stable.</p>
+<p>When a thread reaches a safepoint:</p>
+<ul>
+<li>The JVM can accurately identify all active object references on the
+thread's stack (referred to as OOP maps or reference maps).</li>
+<li>The thread halts execution and waits until the JVM completes its
+maintenance work (such as GC, deoptimization, or thread dumping).</li>
+</ul>
+<h4 id="how-safepoints-work">How Safepoints Work</h4>
+<p>Because the JVM cannot arbitrarily stop a running thread without
+risking memory corruption, the JIT compiler inserts safepoint checks
+(polling instructions) into the generated machine code. These checks
+typically occur at:</p>
+<ul>
+<li>Method entries and exits</li>
+<li>Loop back edges (the end of non-counted or wide loop
+iterations)</li>
+<li>Specific runtime call boundaries</li>
+</ul>
+<p>When a GC pause is triggered, the JVM sets a global polling flag. As
+active threads hit these polling locations, they detect the request,
+suspend themselves, and signal that they have reached a safepoint.</p>
+<hr />
+<h3 id="what-is-a-safe-region">What Is a Safe Region?</h3>
+<p>A <strong>Safe Region</strong> is an extended section of execution
+where a thread does not modify the Java heap or alter object
+references.</p>
+<p>While safepoints work well for threads actively executing Java code,
+they fail when a thread is idle, waiting for I/O, sleeping
+(<code>Thread.sleep()</code>), or executing native code through the Java
+Native Interface (JNI). In these states, the thread is not executing
+bytecode and cannot reach a safepoint polling check, which would
+otherwise stall the entire JVM from reaching a Stop-the-World state.</p>
+<h4 id="how-safe-regions-work">How Safe Regions Work</h4>
+<p>When a thread enters an inactive state, it marks itself as operating
+within a "Safe Region."</p>
+<ul>
+<li><strong>During GC:</strong> If the JVM initiates a garbage
+collection pause, it skips threads that are marked in a safe region,
+knowing they cannot modify memory or interfere with GC operations.</li>
+<li><strong>Exiting the Region:</strong> When the thread finishes its
+native work or wakes up from sleep and attempts to return to executing
+Java bytecode, it checks if the GC cycle is still active. If the GC is
+running, the thread halts at the boundary of the safe region until the
+JVM signals that it is safe to resume.</li>
+</ul>
+<hr />
+<h3 id="key-differences-summary">Key Differences Summary</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Safepoint</th>
+<th style="text-align: left;">Safe Region</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Target Thread State</strong></td>
+<td style="text-align: left;">Actively executing Java bytecode or
+compiled code.</td>
+<td style="text-align: left;">Inactive, sleeping, blocked on I/O, or
+executing native JNI code.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Detection Mechanism</strong></td>
+<td style="text-align: left;">Threads poll a memory page/flag at
+specific code locations.</td>
+<td style="text-align: left;">Threads declare themselves "safe" before
+entering the region.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>JVM Interaction</strong></td>
+<td style="text-align: left;">The JVM waits for the thread to reach a
+checkpoint and stop.</td>
+<td style="text-align: left;">The JVM proceeds with GC without waiting
+for the thread.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Transition Cost</strong></td>
+<td style="text-align: left;">Low overhead polling during normal
+execution.</td>
+<td style="text-align: left;">State transition overhead when
+entering/exiting native or waiting states.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Boundary Behavior</strong></td>
+<td style="text-align: left;">The thread remains paused at the
+instruction until the safepoint is cleared.</td>
+<td style="text-align: left;">The thread runs freely inside the region,
+but blocks upon attempting to exit if a GC is in progress.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="conclusion">Conclusion</h3>
+<p>Safepoints and safe regions work together to facilitate safe and
+predictable memory management in the JVM. Safepoints force actively
+running threads to pause at predictable points, while safe regions allow
+dormant or native threads to continue their non-heap operations without
+holding up garbage collection.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

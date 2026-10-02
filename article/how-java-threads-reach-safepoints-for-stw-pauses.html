@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Threads Reach Safepoints for STW Pauses - java</title>
+    <meta name="description" content="This article explains the internal mechanics used by the Java Virtual Machine (JVM) to halt application threads during Stop-the-World (STW) operations. It details what safepoints are, how the JVM signals threads to stop, where safepoint checks are placed">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-threads-reach-safepoints-for-stw-pauses">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Threads Reach Safepoints for STW Pauses - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-threads-reach-safepoints-for-stw-pauses" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the internal mechanics used by the Java Virtual Machine (JVM) to halt application threads during Stop-the-World (STW) operations. It details what safepoints are, how the JVM signals threads to stop, where safepoint checks are placed" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-threads-reach-safepoints-for-stw-pauses">How Java
+Threads Reach Safepoints for STW Pauses</h1>
+<p>This article explains the internal mechanics used by the Java Virtual
+Machine (JVM) to halt application threads during Stop-the-World (STW)
+operations. It details what safepoints are, how the JVM signals threads
+to stop, where safepoint checks are placed in application code, and how
+threads in different states—such as executing compiled code, running
+native methods, or blocked on I/O—transition into a safe, suspended
+state.</p>
+<hr />
+<h3 id="what-is-a-safepoint">What Is a Safepoint?</h3>
+<p>A safepoint is a designated point in a thread's execution where its
+execution state, memory references, and registers are consistent and
+fully known to the JVM. During a Stop-the-World event—such as Garbage
+Collection (GC) phases, thread dumps, code deoptimization, or biased
+lock revocation—all application threads (mutators) must stop at a
+safepoint so the VM thread can safely inspect or modify heap memory
+without concurrent interference.</p>
+<h3 id="the-safepoint-polling-mechanism">The Safepoint Polling
+Mechanism</h3>
+<p>Instead of asynchronously interrupting threads via OS-level signals,
+the JVM relies on a cooperative polling mechanism. As threads execute
+Java code, they periodically check whether a safepoint has been
+requested.</p>
+<h4 id="1-in-compiled-code-jit">1. In Compiled Code (JIT)</h4>
+<p>The Just-In-Time (JIT) compiler (C1/C2) automatically inserts
+safepoint checks (polling instructions) into generated machine code.
+These checks are typically placed at:</p>
+<ul>
+<li><strong>Method exits (returns):</strong> Ensuring a thread checks
+the safepoint flag before returning from a function call.</li>
+<li><strong>Loop back-edges:</strong> Ensuring that long-running or
+infinite loops do not prevent the thread from reaching a safepoint.
+(Note: Counted loops with <code>int</code> indices are sometimes
+unrolled and may omit safepoint checks unless configured otherwise via
+flags like <code>-XX:+UseCountedLoopSafepoints</code>).</li>
+</ul>
+<h4 id="2-in-interpreted-code">2. In Interpreted Code</h4>
+<p>When running in bytecode interpretation mode, the interpreter
+dispatches instructions via a dispatch table. When a safepoint is
+requested, the JVM replaces the normal dispatch table with an alternate
+table that redirects bytecode execution to a safepoint handler, or
+checks a thread-state flag between bytecode instructions.</p>
+<h3 id="how-the-jvm-triggers-the-pause">How the JVM Triggers the
+Pause</h3>
+<p>Historically, HotSpot used a <strong>global safepoint page</strong>.
+When a STW operation was needed, the VM thread modified the memory
+protection of this dummy page using an OS call (such as
+<code>mprotect</code> on POSIX systems) to make it unreadable. Any
+thread attempting to read from this page would trigger a page fault
+(SIGSEGV), which the JVM's signal handler intercepted, interpreting it
+as an order to park the thread until the safepoint ended.</p>
+<p>In modern JVMs (Java 10+), HotSpot uses <strong>Thread-Local
+Handshakes</strong> (JEP 312). Rather than relying on page faults across
+all threads, each thread has its own individual polling page. This
+allows the JVM to initiate STW events by arming polling pages either
+globally or per-thread, greatly reducing overhead and improving pause
+coordination.</p>
+<h3 id="thread-behavior-by-execution-state">Thread Behavior by Execution
+State</h3>
+<p>Not all threads are actively executing Java bytecode when a safepoint
+is requested. The JVM handles different thread states as follows:</p>
+<ul>
+<li><strong>Running Java Code:</strong> Threads actively running
+interpreted or JIT-compiled code will execute until they hit the next
+injected poll instruction, acknowledge the armed safepoint, and block
+themselves on a synchronization lock held by the VM thread.</li>
+<li><strong>Executing Native Code (JNI):</strong> A thread in native
+code cannot directly manipulate Java heap references without invoking
+JNI functions. Because the heap is safe from native alterations, JNI
+threads are allowed to continue running during a safepoint. However, as
+soon as a native thread attempts to return to Java or access the Java
+heap via a JNI interface, it encounters a safepoint check and is blocked
+until the STW operation concludes.</li>
+<li><strong>Blocked or Waiting (System Calls, Locks, I/O):</strong>
+Threads that are blocked on operating system monitors, waiting on object
+monitors (<code>Object.wait()</code>), or blocked on network/disk I/O
+are already in a known, stable state. The JVM considers them to be at a
+safepoint implicitly. If they unblock while the safepoint is active,
+they will stall before transitioning back to active execution.</li>
+</ul>
+<h3 id="time-to-safepoint-ttsp">Time to Safepoint (TTSP)</h3>
+<p>The duration between the JVM requesting a safepoint and the final
+application thread successfully parking is known as <strong>Time to
+Safepoint (TTSP)</strong>.</p>
+<p>Because threads must reach an injected check cooperatively, delays
+can occur. Common causes of high TTSP include:</p>
+<ul>
+<li>Long-running, counted loops that lack loop-strip mining or uncounted
+back-edges.</li>
+<li>Lengthy JNI calls that do not interact with the JVM.</li>
+<li>Page-fault delays or high operating system scheduling latency.</li>
+</ul>
+<p>Once all mutator threads are confirmed to be parked or in safe
+native/blocked states, the VM thread executes the requested maintenance
+task.</p>
+<h3 id="resuming-application-threads">Resuming Application Threads</h3>
+<p>After completing the maintenance operation, the VM thread disarms the
+polling mechanism—restoring memory permissions or resetting the
+thread-local handshake flags. It then signals the conditional variables
+or locks that parked the application threads. The threads wake up,
+resume normal execution from their saved register states, and continue
+processing instructions.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

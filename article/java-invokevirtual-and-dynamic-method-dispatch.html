@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java invokevirtual and Dynamic Method Dispatch - java</title>
+    <meta name="description" content="Dynamic method dispatch in Java is the mechanism by which a call to an overridden method is resolved at runtime rather than compile time, forming the foundation of polymorphism. The Java Virtual Machine (JVM) achieves this primarily through the invokevir">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-invokevirtual-and-dynamic-method-dispatch">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java invokevirtual and Dynamic Method Dispatch - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-invokevirtual-and-dynamic-method-dispatch" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Dynamic method dispatch in Java is the mechanism by which a call to an overridden method is resolved at runtime rather than compile time, forming the foundation of polymorphism. The Java Virtual Machine (JVM) achieves this primarily through the invokevir" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-invokevirtual-and-dynamic-method-dispatch">Java
+invokevirtual and Dynamic Method Dispatch</h1>
+<p>Dynamic method dispatch in Java is the mechanism by which a call to
+an overridden method is resolved at runtime rather than compile time,
+forming the foundation of polymorphism. The Java Virtual Machine (JVM)
+achieves this primarily through the <code>invokevirtual</code> bytecode
+instruction. When executing <code>invokevirtual</code>, the JVM resolves
+symbolic method references, inspects the runtime class of the calling
+object receiver, and queries a virtual method table (vtable) using a
+fixed index offset to locate and execute the correct implementation.</p>
+<h3 id="1-symbolic-reference-resolution">1. Symbolic Reference
+Resolution</h3>
+<p>At compile time, the Java compiler emits the
+<code>invokevirtual</code> instruction followed by a two-byte index
+pointing to an entry in the class's constant pool. This entry is a
+symbolic reference (<code>CONSTANT_Methodref_info</code>) containing the
+method's name, descriptor (parameter and return types), and the declared
+class.</p>
+<p>During execution, the JVM resolves this symbolic reference to verify
+access permissions, ensure the method exists, and determine the method's
+unique signature and its assigned offset index within the inheritance
+hierarchy.</p>
+<h3 id="2-operand-stack-evaluation-and-null-checking">2. Operand Stack
+Evaluation and Null Checking</h3>
+<p>Before <code>invokevirtual</code> runs, the arguments and the target
+object reference (<code>objectref</code>, also known as the receiver)
+are pushed onto the current frame's operand stack.</p>
+<p>When <code>invokevirtual</code> executes:</p>
+<ol type="1">
+<li>It pops the method arguments and the <code>objectref</code> from the
+operand stack.</li>
+<li>It performs an implicit null check on <code>objectref</code>. If the
+reference is <code>null</code>, the JVM immediately halts execution and
+throws a <code>NullPointerException</code>.</li>
+</ol>
+<h3 id="3-locating-the-runtime-class">3. Locating the Runtime Class</h3>
+<p>Unlike static method invocation (<code>invokestatic</code>) or
+private/super invocation (<code>invokespecial</code>),
+<code>invokevirtual</code> relies on the actual instantiated type of
+<code>objectref</code> rather than the variable's compile-time type. The
+JVM inspects the object header of <code>objectref</code> to retrieve a
+direct pointer to the <code>Klass</code> structure representing the
+object's actual class in memory.</p>
+<h3 id="4-method-lookup-via-the-virtual-method-table-vtable">4. Method
+Lookup via the Virtual Method Table (vtable)</h3>
+<p>Traversing the class hierarchy tree at runtime to find overridden
+methods would be computationally expensive. Instead, JVM implementations
+like OpenJDK's HotSpot utilize an internal structure known as the
+<strong>virtual method table (vtable)</strong>:</p>
+<ul>
+<li>Every class with virtual methods has a vtable, which is an array of
+direct pointers to executable method code.</li>
+<li>A subclass inherits the vtable layout of its superclass. If a
+subclass overrides a superclass method, the pointer at that specific
+index in the subclass's vtable is replaced with the address of the
+overriding implementation.</li>
+<li>If a subclass does not override a method, the vtable entry points
+directly to the superclass implementation.</li>
+<li>New methods declared by the subclass are appended to the end of the
+vtable.</li>
+</ul>
+<p>Because the layout is standardized across an inheritance hierarchy, a
+method will always occupy the exact same array index (offset) in every
+subclass. The JVM uses the pre-resolved offset to perform an <span
+class="math inline">\(O(1)\)</span> array lookup in the runtime class's
+vtable:</p>
+<p><span class="math display">\[\text{Target Method Address} =
+\text{vtable}[\text{method\_offset}]\]</span></p>
+<h3 id="5-execution-and-jit-optimizations">5. Execution and JIT
+Optimizations</h3>
+<p>Once the method address is fetched from the vtable, the JVM sets up a
+new stack frame for the method and transfers control to its bytecode
+instructions.</p>
+<p>In performance-critical code paths, the Just-In-Time (JIT) compiler
+optimizes <code>invokevirtual</code> to avoid the overhead of repeated
+vtable lookups:</p>
+<ul>
+<li><strong>Monomorphic Inline Caching:</strong> If a call site
+consistently encounters only one receiver type, the JIT emits a direct
+call combined with a fast class check, often inlining the method body
+entirely.</li>
+<li><strong>Bimorphic Inline Caching:</strong> If two receiver types
+dominate the call site, the JIT uses conditional branching to execute
+direct calls for both types.</li>
+<li><strong>Megamorphic Fallback:</strong> If many different receiver
+types pass through the same call site, the system falls back to standard
+vtable lookups.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

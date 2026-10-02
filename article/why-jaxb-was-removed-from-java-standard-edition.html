@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why JAXB Was Removed from Java Standard Edition - java</title>
+    <meta name="description" content="The Java Architecture for XML Binding (JAXB) API was removed from the core Java Standard Edition (Java SE) platform to decouple enterprise technologies from the base runtime, reduce platform bloat, and support a modular architecture. Initially integrated">
+    <link rel="canonical" href="https://salivity.github.io/java/article/why-jaxb-was-removed-from-java-standard-edition">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why JAXB Was Removed from Java Standard Edition - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/why-jaxb-was-removed-from-java-standard-edition" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Architecture for XML Binding (JAXB) API was removed from the core Java Standard Edition (Java SE) platform to decouple enterprise technologies from the base runtime, reduce platform bloat, and support a modular architecture. Initially integrated" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-jaxb-was-removed-from-java-standard-edition">Why JAXB Was
+Removed from Java Standard Edition</h1>
+<p>The Java Architecture for XML Binding (JAXB) API was removed from the
+core Java Standard Edition (Java SE) platform to decouple enterprise
+technologies from the base runtime, reduce platform bloat, and support a
+modular architecture. Initially integrated to simplify XML processing,
+JAXB's presence in the core JDK became redundant and problematic as the
+Java ecosystem shifted toward lightweight, modular deployments. This
+article explains the history behind its inclusion, the technical reasons
+for its removal in Java 11, and how modern applications manage XML
+binding today.</p>
+<h3 id="the-historical-inclusion-of-java-ee-modules">The Historical
+Inclusion of Java EE Modules</h3>
+<p>JAXB was originally developed as part of Java Enterprise Edition
+(Java EE). In an effort to make Web Services and XML manipulation easier
+out of the box, Sun Microsystems bundled several enterprise-centric
+technologies into Java SE 6. Alongside JAXB, APIs such as JAX-WS (Web
+Services), JTA (Transactions), and CORBA were included in the standard
+distribution.</p>
+<p>While convenient at the time, bundling these specifications created
+an overlap between Java SE and Java EE. Developers using newer versions
+of these libraries often faced classpath conflicts, as the versions
+embedded within the JRE would clash with updated third-party versions
+bundled in enterprise application servers.</p>
+<h3 id="the-modular-shift-project-jigsaw-and-jep-320">The Modular Shift:
+Project Jigsaw and JEP 320</h3>
+<p>The decision to remove JAXB became formal with Project Jigsaw in Java
+9, which introduced the Java Platform Module System (JPMS). One of the
+primary goals of the module system was to create a smaller, configurable
+runtime capable of running on resource-constrained devices,
+microservices, and cloud containers.</p>
+<p>Carrying legacy Java EE modules within the core platform contradicted
+this goal. Consequently, Java 9 placed JAXB and related enterprise
+libraries into isolated, deprecated modules (specifically
+<code>java.xml.bind</code>) that were not resolved by default on the
+classpath.</p>
+<p>The complete elimination of the API took place in Java 11 via
+<strong>JEP 320 (Remove the Java EE and CORBA Modules)</strong>. JEP 320
+cited several clear justifications:</p>
+<ul>
+<li><strong>Independent Evolution:</strong> The Java EE technologies
+evolved at a different pace than Java SE. Maintaining them within the
+JDK made it difficult to release updates, security fixes, and
+performance improvements independently.</li>
+<li><strong>Maintenance Burden:</strong> Supporting legacy standards
+like CORBA and complex frameworks like JAXB imposed a high maintenance
+cost on the OpenJDK maintainers.</li>
+<li><strong>Platform Footprint:</strong> Removing non-essential
+enterprise APIs trimmed the size of the base JDK, allowing developers to
+build tailored runtimes via tools like <code>jlink</code>.</li>
+</ul>
+<h3 id="modern-replacement-and-migration">Modern Replacement and
+Migration</h3>
+<p>The removal from the core platform did not mean the death of JAXB; it
+merely shifted JAXB to where it originally belonged: an external
+third-party library.</p>
+<p>Following the transfer of Java EE to the Eclipse Foundation, the API
+was rebranded under the Jakarta EE umbrella. Modern Java applications
+that require XML binding continue to use the technology by adding
+external dependencies to their build configuration (such as Maven or
+Gradle). Applications targeting modern JDKs now declare dependencies on
+the Jakarta XML Binding API (<code>jakarta.xml.bind-api</code>)
+alongside a compatible implementation runtime (such as Eclipse GlassFish
+or Apache CXF).</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

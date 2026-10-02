@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java ByteBuffer: Direct vs Non-Direct Memory - java</title>
+    <meta name="description" content="Java's NIO framework provides two primary mechanisms for managing byte sequences: non-direct heap buffers and direct native memory buffers. This article explains the underlying allocation mechanisms, memory management behavior, and I/O performance trade-">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-byte-buffer-direct-vs-non-direct-memory">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java ByteBuffer: Direct vs Non-Direct Memory - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-byte-buffer-direct-vs-non-direct-memory" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's NIO framework provides two primary mechanisms for managing byte sequences: non-direct heap buffers and direct native memory buffers. This article explains the underlying allocation mechanisms, memory management behavior, and I/O performance trade-" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-bytebuffer-direct-vs-non-direct-memory">Java ByteBuffer:
+Direct vs Non-Direct Memory</h1>
+<p>Java's NIO framework provides two primary mechanisms for managing
+byte sequences: non-direct heap buffers and direct native memory
+buffers. This article explains the underlying allocation mechanisms,
+memory management behavior, and I/O performance trade-offs between
+<code>ByteBuffer.allocate()</code> and
+<code>ByteBuffer.allocateDirect()</code>.</p>
+<h2 id="non-direct-heap-memory-bytebufferallocate">Non-Direct Heap
+Memory: <code>ByteBuffer.allocate()</code></h2>
+<p>When you invoke <code>ByteBuffer.allocate(int capacity)</code>, Java
+allocates memory within the standard Java Virtual Machine (JVM)
+garbage-collected heap.</p>
+<h3 id="allocation-mechanism">Allocation Mechanism</h3>
+<p>Under the hood, this method instantiates a
+<code>HeapByteBuffer</code> backed by a standard Java primitive array
+(<code>byte[]</code>). Because the memory resides entirely in the JVM
+heap, allocation is extremely fast, requiring only standard heap memory
+allocation operations.</p>
+<h3 id="garbage-collection-and-lifecycle">Garbage Collection and
+Lifecycle</h3>
+<p>Non-direct buffers are fully managed by the standard garbage
+collector. When the <code>ByteBuffer</code> instance falls out of scope
+and becomes unreachable, the backing array is reclaimed during regular
+GC cycles. It does not require manual deallocation or specialized
+cleanup routines.</p>
+<h3 id="io-overhead">I/O Overhead</h3>
+<p>The primary drawback of heap-based buffers is the I/O penalty. Native
+operating system routines cannot reliably read directly from JVM heap
+memory because the garbage collector can move objects around during
+memory compaction. Consequently, whenever data from a
+<code>HeapByteBuffer</code> is passed to native I/O channels (such as
+sockets or files via JNI), the JVM must first create an intermediate
+native buffer, copy the data from the heap into native memory, and then
+execute the system call. This introduces an extra memory copy operation
+and CPU overhead.</p>
+<h2 id="direct-native-memory-bytebufferallocatedirect">Direct Native
+Memory: <code>ByteBuffer.allocateDirect()</code></h2>
+<p>When you invoke <code>ByteBuffer.allocateDirect(int capacity)</code>,
+Java bypasses the JVM heap to allocate memory directly in native
+operating system space (off-heap).</p>
+<h3 id="allocation-mechanism-1">Allocation Mechanism</h3>
+<p>This call instantiates a <code>DirectByteBuffer</code>. Internally,
+the JVM uses low-level native calls—typically via
+<code>sun.misc.Unsafe.allocateMemory()</code> or standard C runtime
+functions like <code>malloc()</code>—to secure a contiguous block of
+native memory outside the JVM's managed heap space. The Java object
+itself holds only the memory address (a 64-bit pointer) and capacity
+metadata.</p>
+<p>Because direct allocation involves native system calls and memory
+page mapping, creating a direct buffer is significantly slower and more
+resource-intensive than allocating a heap-based buffer.</p>
+<h3 id="zero-copy-io-operations">Zero-Copy I/O Operations</h3>
+<p>The major advantage of direct buffers is native I/O performance.
+Because direct memory resides in native address space and does not move
+during GC cycles, the operating system can perform channel operations
+(like <code>Channel.write()</code> or <code>Channel.read()</code>)
+directly to and from this memory block. This eliminates the intermediate
+copy required by heap buffers, leading to higher throughput and lower
+CPU utilization for high-volume network and disk I/O.</p>
+<h3 id="garbage-collection-and-deallocation">Garbage Collection and
+Deallocation</h3>
+<p>While direct memory is not stored on the heap, the wrapper object
+(<code>DirectByteBuffer</code>) is. When the wrapper is created, it
+registers a <code>java.lang.ref.Cleaner</code> (a specialized phantom
+reference). When the wrapper object becomes phantom reachable, the
+cleaner triggers an off-heap deallocation using
+<code>Unsafe.freeMemory()</code>.</p>
+<p>However, relying entirely on the GC for native memory cleanup can
+lead to latency spikes and potential exhaustion of native memory. If
+native memory fills up before a heap-level GC occurs, the JVM may be
+forced to run a full <code>System.gc()</code> cycle to reclaim off-heap
+addresses, or throw an
+<code>OutOfMemoryError: Direct buffer memory</code>.</p>
+<h2 id="summary-of-differences">Summary of Differences</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Non-Direct (<code>allocate</code>)</th>
+<th style="text-align: left;">Direct (<code>allocateDirect</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Location</strong></td>
+<td style="text-align: left;">JVM Heap Memory</td>
+<td style="text-align: left;">Native OS Memory (Off-Heap)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Allocation Cost</strong></td>
+<td style="text-align: left;">Very low (instant heap allocation)</td>
+<td style="text-align: left;">High (native OS system calls)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>I/O Performance</strong></td>
+<td style="text-align: left;">Slower (requires an extra native
+copy)</td>
+<td style="text-align: left;">Faster (direct OS access, zero-copy)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Memory Reclamation</strong></td>
+<td style="text-align: left;">Standard JVM Garbage Collection</td>
+<td style="text-align: left;">Native deallocation via
+<code>Cleaner</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Size Limit</strong></td>
+<td style="text-align: left;">Controlled by <code>-Xmx</code> (Max
+Heap)</td>
+<td style="text-align: left;">Controlled by
+<code>-XX:MaxDirectMemorySize</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Ideal Use Case</strong></td>
+<td style="text-align: left;">Short-lived, small, or frequent
+buffers</td>
+<td style="text-align: left;">Long-lived, large, or high-throughput I/O
+buffers</td>
+</tr>
+</tbody>
+</table></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

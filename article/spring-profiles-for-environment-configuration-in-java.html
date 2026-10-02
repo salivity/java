@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring Profiles for Environment Configuration in Java - java</title>
+    <meta name="description" content="Spring profiles provide a core mechanism within the Spring Framework to map application configurations to specific runtime environments, such as local development, staging, and production. This article explains what Spring profiles are, how they function">
+    <link rel="canonical" href="https://salivity.github.io/java/article/spring-profiles-for-environment-configuration-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Spring Profiles for Environment Configuration in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/spring-profiles-for-environment-configuration-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Spring profiles provide a core mechanism within the Spring Framework to map application configurations to specific runtime environments, such as local development, staging, and production. This article explains what Spring profiles are, how they function" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="spring-profiles-for-environment-configuration-in-java">Spring
+Profiles for Environment Configuration in Java</h1>
+<p>Spring profiles provide a core mechanism within the Spring Framework
+to map application configurations to specific runtime environments, such
+as local development, staging, and production. This article explains
+what Spring profiles are, how they function to segregate
+infrastructure-specific properties, and the standard methods used to
+activate them to achieve secure, predictable, and isolated Java
+deployments.</p>
+<h2 id="what-are-spring-profiles">What Are Spring Profiles?</h2>
+<p>Spring profiles are a configuration management feature that allows
+developers to conditionally register Spring beans and load specific
+configuration files based on the active runtime environment. Instead of
+maintaining separate codebases or manually editing configuration files
+before deploying to different servers, profiles enable a single build
+artifact (such as a JAR or WAR) to adapt dynamically to its deployment
+target.</p>
+<p>Profiles operate at two primary levels:</p>
+<ol type="1">
+<li><strong>Bean Level:</strong> Conditionally instantiating classes or
+services using the <code>@Profile</code> annotation.</li>
+<li><strong>Property Level:</strong> Loading environment-specific
+configuration values from files matching the naming pattern
+<code>application-{profile}.properties</code> or
+<code>application-{profile}.yml</code>.</li>
+</ol>
+<h2 id="how-spring-profiles-isolate-configurations">How Spring Profiles
+Isolate Configurations</h2>
+<p>In enterprise software, an application behaves differently depending
+on where it runs. For example, a local environment might use an
+in-memory H2 database with verbose debugging logs, while a production
+environment requires a connection pool to an encrypted PostgreSQL
+cluster and minimal error logging.</p>
+<p>Spring profiles solve this configuration divergence through property
+file separation and precedence.</p>
+<h3 id="1-dedicated-property-files">1. Dedicated Property Files</h3>
+<p>By default, Spring Boot loads <code>application.properties</code> (or
+<code>application.yml</code>) as the baseline configuration. When a
+specific profile is activated, Spring overlays profile-specific files on
+top of the base file:</p>
+<ul>
+<li><code>application.properties</code>: Contains global, default
+settings shared across all environments.</li>
+<li><code>application-dev.properties</code>: Overrides settings for
+local development (e.g., lower connection timeouts, mock external
+services).</li>
+<li><code>application-prod.properties</code>: Overrides settings for
+production (e.g., strict connection limits, production URLs).</li>
+</ul>
+<p>If a property is defined in both <code>application.properties</code>
+and <code>application-prod.properties</code>, the value in
+<code>application-prod.properties</code> takes precedence when the
+<code>prod</code> profile is active.</p>
+<h3 id="2-conditional-bean-registration">2. Conditional Bean
+Registration</h3>
+<p>Beyond properties, entire components can be swapped using the
+<code>@Profile</code> annotation. For example, you can implement an
+interface twice to mock external dependencies locally:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> PaymentGateway <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">processPayment</span><span class="op">(</span><span class="dt">double</span> amount<span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">@Component</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">@Profile</span><span class="op">(</span><span class="st">&quot;dev&quot;</span><span class="op">)</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MockPaymentGateway <span class="kw">implements</span> PaymentGateway <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">processPayment</span><span class="op">(</span><span class="dt">double</span> amount<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Log transaction locally without charging real accounts</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">@Component</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">@Profile</span><span class="op">(</span><span class="st">&quot;prod&quot;</span><span class="op">)</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> StripePaymentGateway <span class="kw">implements</span> PaymentGateway <span class="op">{</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">processPayment</span><span class="op">(</span><span class="dt">double</span> amount<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Execute real API calls to Stripe</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>When the application boots with the <code>prod</code> profile, Spring
+registers <code>StripePaymentGateway</code> into the ApplicationContext
+and ignores <code>MockPaymentGateway</code>.</p>
+<h2 id="activating-profiles-in-deployments">Activating Profiles in
+Deployments</h2>
+<p>To ensure that the compiled application artifact remains immutable
+across deployment pipelines, profiles are activated externally at
+startup rather than hardcoded in the application.</p>
+<h3 id="environment-variables">Environment Variables</h3>
+<p>In containerized environments such as Docker and Kubernetes,
+environment variables are the standard approach for runtime
+configuration. Spring automatically maps the
+<code>SPRING_PROFILES_ACTIVE</code> environment variable to its profile
+selector:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">SPRING_PROFILES_ACTIVE</span><span class="op">=</span>prod</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-jar</span> application.jar</span></code></pre></div>
+<p>In a Kubernetes deployment manifest, this is passed via the pod
+spec:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">env</span><span class="kw">:</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> SPRING_PROFILES_ACTIVE</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">value</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;prod&quot;</span></span></code></pre></div>
+<h3 id="jvm-system-properties">JVM System Properties</h3>
+<p>When running on bare metal or virtual machines, profiles are commonly
+passed directly to the Java Virtual Machine using the <code>-D</code>
+flag:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-Dspring.profiles.active</span><span class="op">=</span>prod <span class="at">-jar</span> application.jar</span></code></pre></div>
+<h3 id="command-line-arguments">Command-Line Arguments</h3>
+<p>Spring Boot also parses standard command-line parameters passed
+directly to the application:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-jar</span> application.jar <span class="at">--spring.profiles.active</span><span class="op">=</span>prod</span></code></pre></div>
+<h2 id="advantages-of-profile-isolation-in-cicd">Advantages of Profile
+Isolation in CI/CD</h2>
+<p>Using Spring profiles aligns Java applications with Twelve-Factor App
+principles, specifically the strict separation of config from code.</p>
+<ul>
+<li><strong>Artifact Immutability:</strong> The continuous integration
+(CI) pipeline builds and tests a single binary. That identical binary is
+then promoted through staging and production without recompilation.</li>
+<li><strong>Environment Integrity:</strong> Isolating parameters like
+database credentials, API endpoints, and caching layers prevents
+accidental crossover, eliminating the risk of a staging service writing
+to a production database.</li>
+<li><strong>Secret Decoupling:</strong> Sensitive values can be kept out
+of default property files and provided only within production profiles,
+often injected securely via container orchestration tools or cloud key
+management systems.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

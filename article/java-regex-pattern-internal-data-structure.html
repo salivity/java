@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Regex Pattern Internal Data Structure - java</title>
+    <meta name="description" content="In the Java standard library, the java.util.regex.Pattern class does not compile regular expressions into a traditional deterministic finite automaton (DFA) table, nor does it retain the raw expression string for runtime parsing. Instead, the Java Virtua">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-regex-pattern-internal-data-structure">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Regex Pattern Internal Data Structure - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-regex-pattern-internal-data-structure" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In the Java standard library, the java.util.regex.Pattern class does not compile regular expressions into a traditional deterministic finite automaton (DFA) table, nor does it retain the raw expression string for runtime parsing. Instead, the Java Virtua" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-regex-pattern-internal-data-structure">Java Regex Pattern
+Internal Data Structure</h1>
+<p>In the Java standard library, the
+<code>java.util.regex.Pattern</code> class does not compile regular
+expressions into a traditional deterministic finite automaton (DFA)
+table, nor does it retain the raw expression string for runtime parsing.
+Instead, the Java Virtual Machine compiles a regular expression into an
+in-memory directed graph of specialized <code>Node</code> objects that
+represent a backtracking Non-Deterministic Finite Automaton (NFA). This
+article breaks down the internal structural representation of a compiled
+<code>Pattern</code>, the hierarchy and roles of its underlying nodes,
+and how the compilation process builds this execution graph.</p>
+<h3 id="the-foundation-the-node-graph">The Foundation: The Node
+Graph</h3>
+<p>At the core of a compiled <code>Pattern</code> is an internal
+abstract class named <code>Pattern.Node</code>. Every element of a
+regular expression—such as character literals, wildcards, quantifiers,
+group delimiters, and anchors—is converted into a concrete subclass of
+<code>Node</code>.</p>
+<p>The compiled pattern maintains a reference to the entry point of this
+graph via an internal field called <code>root</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">transient</span> <span class="bu">Node</span> root<span class="op">;</span></span></code></pre></div>
+<p>Each <code>Node</code> instance holds a reference to the subsequent
+node in the execution path via its <code>next</code> field:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Node</span> next <span class="op">=</span> <span class="bu">Pattern</span><span class="op">.</span><span class="fu">accept</span><span class="op">;</span></span></code></pre></div>
+<p>The terminal boundary of a pattern chain is marked by
+<code>Pattern.accept</code>, a sentinel <code>Node</code> implementation
+that signifies a successful match when reached by the engine.</p>
+<h3 id="structural-node-specializations">Structural Node
+Specializations</h3>
+<p>Java does not use a single generic node with an opcode. Instead, it
+relies on polymorphism and custom node implementations to evaluate
+specific regex operations. Key subclasses include:</p>
+<ul>
+<li><strong>Literal Strings (<code>Slice</code>, <code>SliceS</code>,
+<code>SliceI</code>):</strong> Contiguous sequences of literal
+characters are coalesced into a single slice node rather than a chain of
+individual character nodes. <code>Slice</code> handles single-byte or
+standard character sequences, while variants like <code>SliceI</code>
+implement case-insensitive matching, and <code>SliceU</code> handles
+Unicode-aware case folding.</li>
+<li><strong>Character Predicates (<code>CharProperty</code>,
+<code>BmpCharProperty</code>):</strong> Represent individual character
+tests, character classes (such as <code>[a-z]</code>), and predefined
+classes (such as <code>\d</code> or <code>\w</code>). These nodes
+evaluate characters using bitmasks or functional predicates.</li>
+<li><strong>Alternation (<code>Branch</code>):</strong> Implements the
+pipe operator (<code>|</code>). A <code>Branch</code> node maintains an
+array of alternative paths (<code>Node[] atoms</code>) and a pointer to
+the convergence point (<code>Node conn</code>), representing the join
+point after any of the alternative branches complete.</li>
+<li><strong>Capturing Groups (<code>GroupHead</code> and
+<code>GroupTail</code>):</strong> Capturing groups are delimited by a
+pair of cooperating nodes. A <code>GroupHead</code> node stores the
+group index and saves the current character index; the matching flow
+then passes to the group's inner nodes. The <code>GroupTail</code> node
+completes the sequence, updates the group's match boundaries in the
+<code>Matcher</code>, and continues down <code>next</code>.</li>
+<li><strong>Quantifiers (<code>Curly</code>, <code>GroupCurly</code>,
+<code>Loop</code>, <code>Prolog</code>):</strong> Quantifiers
+(<code>*</code>, <code>+</code>, <code>?</code>, <code>{n,m}</code>)
+compile into complex loop constructs:
+<ul>
+<li><strong><code>Curly</code>:</strong> Manages greedy, reluctant, or
+possessive quantifiers applied to single-character nodes or fixed-length
+matches.</li>
+<li><strong><code>GroupCurly</code>:</strong> Handles quantifiers
+applied to multi-node structures or capturing groups.</li>
+<li><strong><code>Prolog</code> and <code>Loop</code>:</strong> Used for
+general greedy loops, separating the initialization of the quantifier
+from the repeated iteration and condition checking.</li>
+</ul></li>
+<li><strong>Anchors (<code>Start</code>, <code>End</code>,
+<code>Dollar</code>, <code>LastMatch</code>):</strong> Zero-width
+assertions that check boundary conditions without consuming input
+characters.</li>
+</ul>
+<h3 id="compilation-from-syntax-tree-to-linked-nodes">Compilation: From
+Syntax Tree to Linked Nodes</h3>
+<p>When <code>Pattern.compile(String regex, int flags)</code> is
+invoked, an internal compiler parses the regex string using recursive
+descent. Instead of generating an explicit Abstract Syntax Tree (AST)
+that is evaluated at runtime, the compilation directly constructs the
+linked <code>Node</code> execution structure:</p>
+<ol type="1">
+<li><strong>Tokenization and Parsing:</strong> The parser reads the
+pattern linearly.</li>
+<li><strong>Node Creation:</strong> Syntactic tokens are instantiated as
+their respective <code>Node</code> subclasses.</li>
+<li><strong>Pointers Assignment:</strong> As sub-expressions complete,
+the compiler links the <code>next</code> field of upstream nodes to
+downstream targets.</li>
+<li><strong>Optimization Passes:</strong> During compilation,
+consecutive character literals are merged into single <code>Slice</code>
+nodes, redundant loops are reduced, and prefix information (such as
+initial literal strings or required first characters) is extracted into
+pattern fields (<code>matchRoot</code>, <code>buffer</code>, or
+<code>predicate</code>) to enable fast-path checks before the full graph
+traversal begins.</li>
+</ol>
+<h3 id="runtime-interpretation-by-the-matcher">Runtime Interpretation by
+the Matcher</h3>
+<p>The <code>java.util.regex.Matcher</code> acts as the execution engine
+for the data structure assembled in <code>Pattern</code>. It maintains
+runtime state, including the input character sequence, group index
+arrays, and current offsets.</p>
+<p>Matching is executed via the <code>match</code> method defined on
+<code>Pattern.Node</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">boolean</span> <span class="fu">match</span><span class="op">(</span><span class="bu">Matcher</span> matcher<span class="op">,</span> <span class="dt">int</span> i<span class="op">,</span> <span class="bu">CharSequence</span> seq<span class="op">)</span></span></code></pre></div>
+<p>During execution:</p>
+<ul>
+<li>The <code>Matcher</code> passes its state along with the current
+input index <code>i</code> to the <code>root</code> node.</li>
+<li>Each node performs its condition test. If successful, it invokes
+<code>next.match(matcher, newIndex, seq)</code>.</li>
+<li>If a node fails to match, it returns <code>false</code>, causing the
+JVM call stack to unwind to the previous branch point
+(backtracking).</li>
+<li>If execution reaches the terminal <code>accept</code> node, the
+method returns <code>true</code>, and the engine records the end of the
+matching sequence.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

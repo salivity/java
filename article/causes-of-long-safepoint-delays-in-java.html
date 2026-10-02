@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Causes of Long Safepoint Delays in Java - java</title>
+    <meta name="description" content="In multithreaded Java applications, stop-the-world (STW) pauses require every application thread to reach a designated safepoint before operations like garbage collection, thread dumps, or code deoptimization can proceed. The duration between the initial">
+    <link rel="canonical" href="https://salivity.github.io/java/article/causes-of-long-safepoint-delays-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Causes of Long Safepoint Delays in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/causes-of-long-safepoint-delays-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In multithreaded Java applications, stop-the-world (STW) pauses require every application thread to reach a designated safepoint before operations like garbage collection, thread dumps, or code deoptimization can proceed. The duration between the initial" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="causes-of-long-safepoint-delays-in-java">Causes of Long
+Safepoint Delays in Java</h1>
+<p>In multithreaded Java applications, stop-the-world (STW) pauses
+require every application thread to reach a designated safepoint before
+operations like garbage collection, thread dumps, or code deoptimization
+can proceed. The duration between the initial safepoint request and the
+moment the final thread halts is known as Time-To-Safepoint (TTSP). When
+TTSP is elevated, overall application latency spikes regardless of the
+actual GC execution time. This article explores the primary mechanical
+causes of long TTSP delays in the HotSpot JVM and provides practical
+solutions to resolve them.</p>
+<h3 id="counted-loops-without-safepoint-polls">Counted Loops Without
+Safepoint Polls</h3>
+<p>The most common culprit behind extended TTSP delays is the execution
+of counted loops. During Just-In-Time (JIT) compilation, the HotSpot C2
+compiler applies an optimization that removes safepoint polling checks
+from counted loops (loops indexed by an integer, like
+<code>for (int i = 0; i &lt; limit; i++)</code>) to maximize raw
+iteration throughput.</p>
+<p>If a thread enters a long-running or computationally expensive
+counted loop, it cannot halt until the loop finishes entirely. Even if
+all other threads pause immediately, the JVM must wait for this single
+thread to complete its iterations, resulting in high TTSP pauses.</p>
+<ul>
+<li><strong>Mitigation:</strong> In Java 8, enable
+<code>-XX:+UseCountedLoopSafepoints</code> (which can occasionally cause
+minor optimization regressions). In Java 10 and newer, the C2 compiler
+introduces <em>Loop Strip Mining</em>, enabled by default, which
+preserves loop optimizations while breaking iterations into manageable
+blocks containing periodic safepoint checks.</li>
+</ul>
+<h3 id="thread-scheduling-and-cpu-contention">Thread Scheduling and CPU
+Contention</h3>
+<p>A thread cannot execute the instruction to reach a safepoint if the
+operating system does not grant it CPU time. In heavily multithreaded
+applications with high concurrency, OS-level thread preemption can stall
+a thread that needs to transition to a safepoint.</p>
+<p>If an application oversubscribes CPU cores or runs in a CPU-throttled
+container environment (such as Kubernetes with strict CFS quotas), a
+thread may be context-switched out just before acknowledging a safepoint
+poll. The JVM must then wait until the OS scheduler wakes the thread and
+gives it CPU time to execute the safepoint check.</p>
+<ul>
+<li><strong>Mitigation:</strong> Right-size thread pools, align the
+active thread count with available virtual cores, and inspect CPU
+throttling metrics in containerized deployments.</li>
+</ul>
+<h3 id="page-faults-and-disk-io-interruptions">Page Faults and Disk I/O
+Interruptions</h3>
+<p>While a thread executing pure native system calls or I/O is usually
+treated as being in a safe state, accessing memory mapped files
+(<code>MappedByteBuffer</code>) or encountering memory page faults can
+introduce hidden pauses.</p>
+<p>If a thread encounters a major page fault right before or during a
+safepoint transition, it must wait for the operating system to retrieve
+memory pages from disk or swap. The thread appears to be running
+user-space Java code from the JVM’s perspective, forcing the JVM to wait
+for the storage subsystem to resolve the fault before the safepoint
+completes.</p>
+<ul>
+<li><strong>Mitigation:</strong> Prevent the OS from swapping Java heap
+space (e.g., using <code>vm.swappiness=0</code> or
+<code>mlockall</code>), and ensure high-throughput, low-latency disk
+arrays when relying on memory-mapped files.</li>
+</ul>
+<h3 id="jni-and-native-method-transitions">JNI and Native Method
+Transitions</h3>
+<p>Threads executing native code through the Java Native Interface (JNI)
+are regarded as safe because they cannot modify the Java heap. However,
+issues emerge when a thread attempts to transition back from native code
+to Java bytecode.</p>
+<p>If a native method returns or needs to call back into Java while a
+safepoint is requested, it must wait. Conversely, operations involving
+JNI Critical Sections (such as <code>GetPrimitiveArrayCritical</code>)
+directly disable garbage collection. If a thread stays inside a critical
+region for an extended period, it blocks the JVM from completing the
+safepoint phase.</p>
+<ul>
+<li><strong>Mitigation:</strong> Minimize the execution time of code
+inside JNI critical sections and avoid extensive work or blocking
+operations between critical region acquire and release calls.</li>
+</ul>
+<h3 id="diagnosing-ttsp-issues">Diagnosing TTSP Issues</h3>
+<p>To identify whether latency spikes are caused by garbage collection
+work or TTSP delays, use Unified JVM Logging to output safepoint
+metrics:</p>
+<p><code>-Xlog:safepoint=info,safepoint+stats=debug:file=safepoints.log:time,uptime:filecount=5,filesize=50M</code></p>
+<p>Look specifically for the <strong>"Time to safepoint"</strong> and
+<strong>"Reaching safepoint"</strong> fields in the generated log files.
+If the time spent reaching the safepoint is significantly larger than
+the time spent inside the safepoint operations, inspect application code
+for uncounted or tight loops, container CPU throttling, and heavy native
+operations.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

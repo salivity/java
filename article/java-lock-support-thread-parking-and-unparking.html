@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java LockSupport: Thread Parking and Unparking - java</title>
+    <meta name="description" content="Java's java.util.concurrent.locks.LockSupport class provides foundational low-level primitives for creating custom locks and synchronization tools. This article explains how LockSupport uses a binary permit mechanism via park() and unpark() to suspend an">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-lock-support-thread-parking-and-unparking">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java LockSupport: Thread Parking and Unparking - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-lock-support-thread-parking-and-unparking" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's java.util.concurrent.locks.LockSupport class provides foundational low-level primitives for creating custom locks and synchronization tools. This article explains how LockSupport uses a binary permit mechanism via park() and unpark() to suspend an" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-locksupport-thread-parking-and-unparking">Java LockSupport:
+Thread Parking and Unparking</h1>
+<p>Java's <code>java.util.concurrent.locks.LockSupport</code> class
+provides foundational low-level primitives for creating custom locks and
+synchronization tools. This article explains how
+<code>LockSupport</code> uses a binary permit mechanism via
+<code>park()</code> and <code>unpark()</code> to suspend and resume
+threads safely, why it avoids common race conditions found in standard
+monitor methods, and how it is utilized across the Java Concurrency
+API.</p>
+<h3 id="the-binary-permit-mechanism">The Binary Permit Mechanism</h3>
+<p>At the core of <code>LockSupport</code> is the concept of an
+associated permit. Each thread that uses <code>LockSupport</code> has an
+internal permit that behaves like a binary semaphore: it can hold a
+value of either zero (unavailable) or one (available). The permit does
+not accumulate; calling <code>unpark()</code> multiple times will never
+increase the permit count beyond one.</p>
+<h3 id="how-park-works">How <code>park()</code> Works</h3>
+<p>The <code>LockSupport.park()</code> method halts the execution of the
+current calling thread:</p>
+<ul>
+<li><strong>Permit Available:</strong> If the thread's permit is
+available (value is 1), <code>park()</code> consumes the permit and
+returns immediately without blocking.</li>
+<li><strong>Permit Unavailable:</strong> If the permit is not available
+(value is 0), the operating system disables the thread for
+thread-scheduling purposes, putting it into a <code>WAITING</code> or
+<code>TIMED_WAITING</code> state.</li>
+</ul>
+<p><code>LockSupport</code> also provides overloaded variants such as
+<code>parkNanos(nanos)</code> and <code>parkUntil(deadline)</code> to
+allow timed waiting.</p>
+<p>Unlike <code>Thread.sleep()</code> or <code>Object.wait()</code>,
+calling <code>park()</code> does not throw an
+<code>InterruptedException</code> if the thread is interrupted. Instead,
+the method returns normally, leaving the thread's interrupted status
+set. Applications must manually inspect
+<code>Thread.interrupted()</code> or
+<code>Thread.currentThread().isInterrupted()</code> to determine if an
+interrupt caused the unparking.</p>
+<h3 id="how-unparkthread-thread-works">How
+<code>unpark(Thread thread)</code> Works</h3>
+<p>The <code>LockSupport.unpark(Thread thread)</code> method makes the
+permit available for the specified target thread:</p>
+<ul>
+<li><strong>Thread is Blocked:</strong> If the designated thread is
+currently blocked on a <code>park()</code> call, it consumes the granted
+permit and unblocks, transitioning back to the <code>RUNNABLE</code>
+state.</li>
+<li><strong>Thread is Not Blocked:</strong> If the thread is executing
+other code and not currently parked, its permit is set to 1. The very
+next time that specific thread invokes <code>park()</code>, it will
+immediately consume the permit and proceed without suspending.</li>
+</ul>
+<h3 id="advantages-over-objectwait-and-notify">Advantages Over
+<code>Object.wait()</code> and <code>notify()</code></h3>
+<p><code>LockSupport</code> resolves key architectural challenges
+inherent to Java's monitor-based synchronization:</p>
+<ol type="1">
+<li><strong>No Synchronization Block Required:</strong>
+<code>wait()</code> and <code>notify()</code> require the caller to hold
+the monitor lock of the target object (<code>synchronized</code> block),
+risking deadlocks and adding overhead. <code>LockSupport</code> methods
+can be invoked anywhere without holding a lock.</li>
+<li><strong>Prevention of Lost Wakeups:</strong> If
+<code>notify()</code> is invoked before <code>wait()</code>, the
+notification is lost, often causing a thread to hang indefinitely.
+Because <code>unpark()</code> grants a permit that persists until the
+next <code>park()</code> invocation, ordering issues between the parking
+and unparking calls are inherently prevented.</li>
+<li><strong>Targeted Thread Control:</strong> <code>notify()</code>
+selects an arbitrary waiting thread, while <code>notifyAll()</code>
+wakes all threads on a monitor. <code>unpark()</code> accepts a specific
+<code>Thread</code> reference, allowing deterministic thread
+management.</li>
+</ol>
+<h3 id="diagnostic-support-with-blockers">Diagnostic Support with
+Blockers</h3>
+<p><code>LockSupport</code> includes overloaded methods that accept a
+<code>blocker</code> object, such as
+<code>LockSupport.park(Object blocker)</code>. Passing the
+synchronization object responsible for parking the thread (typically
+<code>this</code>) allows monitoring utilities and thread dumps (such as
+<code>jstack</code>) to display the identity of the blocking object,
+significantly simplifying concurrency debugging and deadlock
+detection.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

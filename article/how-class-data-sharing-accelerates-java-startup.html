@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Class Data Sharing Accelerates Java Startup - java</title>
+    <meta name="description" content="Class Data Sharing (CDS) is a Java Virtual Machine (JVM) performance feature that significantly reduces application startup time and memory footprint. By pre-processing common classes into a shared archive during a build or preparation step, the JVM bypa">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-class-data-sharing-accelerates-java-startup">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Class Data Sharing Accelerates Java Startup - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-class-data-sharing-accelerates-java-startup" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Class Data Sharing (CDS) is a Java Virtual Machine (JVM) performance feature that significantly reduces application startup time and memory footprint. By pre-processing common classes into a shared archive during a build or preparation step, the JVM bypa" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-class-data-sharing-accelerates-java-startup">How Class Data
+Sharing Accelerates Java Startup</h1>
+<p>Class Data Sharing (CDS) is a Java Virtual Machine (JVM) performance
+feature that significantly reduces application startup time and memory
+footprint. By pre-processing common classes into a shared archive during
+a build or preparation step, the JVM bypasses the repetitive overhead of
+loading, parsing, and verifying bytecode every time the application
+boots. This article explains how the standard class loading process
+impacts startup performance, the mechanics behind CDS and Application
+Class Data Sharing (AppCDS), and how memory-mapped archives eliminate
+redundant work for faster initialization.</p>
+<h3 id="the-overhead-of-standard-java-class-loading">The Overhead of
+Standard Java Class Loading</h3>
+<p>Whenever a standard JVM starts, it must locate and load every class
+file required to run the application, including core JDK classes,
+framework dependencies, and application-specific code. This traditional
+startup lifecycle involves several resource-intensive stages:</p>
+<ol type="1">
+<li><strong>File I/O and Parsing:</strong> Reading <code>.class</code>
+files from disk or JAR archives and parsing the binary bytecode
+format.</li>
+<li><strong>Bytecode Verification:</strong> Validating the bytecode to
+ensure it adheres to JVM language specifications and does not compromise
+system security.</li>
+<li><strong>Linking and Preparation:</strong> Allocating static fields,
+initializing method tables, and preparing internal JVM data
+structures.</li>
+</ol>
+<p>For enterprise applications and microservices relying on large
+frameworks like Spring Boot or Quarkus, thousands of classes must
+undergo this process, adding substantial latency to the cold start.</p>
+<h3 id="how-class-data-sharing-bypasses-the-overhead">How Class Data
+Sharing Bypasses the Overhead</h3>
+<p>Class Data Sharing fundamentally changes this workflow by performing
+class loading and verification ahead of time. The acceleration happens
+through two primary mechanisms:</p>
+<h4 id="1-archive-generation-dumping">1. Archive Generation
+(Dumping)</h4>
+<p>During an offline step or initial execution, the JVM reads the target
+classes, parses them, verifies their bytecode, and converts them into an
+internal, platform-specific representation of metadata. It then dumps
+this memory representation into a single file known as a Shared Archive
+(typically with a <code>.jsa</code> extension).</p>
+<h4 id="2-memory-mapped-access-at-startup">2. Memory-Mapped Access at
+Startup</h4>
+<p>When the application starts with CDS enabled, the JVM does not
+re-read individual class files or run bytecode verification. Instead, it
+uses the operating system's <code>mmap</code> facility to map the
+<code>.jsa</code> archive directly into the JVM's memory space.</p>
+<p>Because the data in the archive is already formatted for immediate
+execution by the JVM, the class metadata becomes instantly accessible.
+The CPU-intensive tasks of file parsing, syntax verification, and
+linking are completely eliminated for all archived classes.</p>
+<h3 id="extending-to-application-classes-appcds">Extending to
+Application Classes: AppCDS</h3>
+<p>Originally restricted to internal JVM classes, the feature was
+expanded via Application Class Data Sharing (AppCDS) in Java 10. AppCDS
+extends the benefits of CDS to:</p>
+<ul>
+<li>Application classes packaged within your own JARs.</li>
+<li>Third-party libraries and framework dependencies.</li>
+<li>Custom class loaders.</li>
+</ul>
+<p>With Java 13, Dynamic CDS Archives further streamlined this process.
+Developers can generate a dynamic archive simply by adding the
+<code>-XX:ArchiveClassesAtExit</code> flag during a trial run,
+eliminating the need to manually list classes via class-list generation
+tools.</p>
+<h3 id="memory-optimization-across-multiple-jvms">Memory Optimization
+Across Multiple JVMs</h3>
+<p>Beyond faster startup times, CDS provides substantial memory savings
+in multi-instance environments such as containerized deployments on
+Kubernetes.</p>
+<p>Because the shared archive is mapped as read-only memory by default,
+the underlying operating system can share the same physical memory pages
+across multiple JVM processes running on the same host. This reduces the
+overall Resident Set Size (RSS) across concurrent containers, allowing
+higher application density on host nodes.</p>
+<h3 id="summary-of-startup-benefits">Summary of Startup Benefits</h3>
+<p>By replacing repetitive disk reads and runtime verification with a
+single memory-mapped data structure, Class Data Sharing typically shaves
+between 15% and 50% off Java application startup times. This makes CDS a
+critical optimization technique for microservices, command-line
+interfaces, and serverless architectures where rapid cold starts are
+essential.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

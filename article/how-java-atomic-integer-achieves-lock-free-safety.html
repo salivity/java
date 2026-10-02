@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java AtomicInteger Achieves Lock-Free Safety - java</title>
+    <meta name="description" content="This article explains how the Java AtomicInteger class achieves thread safety without using traditional synchronization locks. It covers the mechanics of hardware-level Compare-and-Swap (CAS) instructions, the role of memory visibility via the volatile k">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-atomic-integer-achieves-lock-free-safety">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java AtomicInteger Achieves Lock-Free Safety - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-atomic-integer-achieves-lock-free-safety" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how the Java AtomicInteger class achieves thread safety without using traditional synchronization locks. It covers the mechanics of hardware-level Compare-and-Swap (CAS) instructions, the role of memory visibility via the volatile k" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-atomicinteger-achieves-lock-free-safety">How Java
+AtomicInteger Achieves Lock-Free Safety</h1>
+<p>This article explains how the Java <code>AtomicInteger</code> class
+achieves thread safety without using traditional synchronization locks.
+It covers the mechanics of hardware-level Compare-and-Swap (CAS)
+instructions, the role of memory visibility via the
+<code>volatile</code> keyword, and how optimistic retry loops enable
+high-performance, non-blocking concurrent operations.</p>
+<h2 id="the-cost-of-traditional-locking">The Cost of Traditional
+Locking</h2>
+<p>In concurrent programming, ensuring that multiple threads safely
+modify a shared integer typically requires synchronization primitives
+like <code>synchronized</code> blocks or <code>ReentrantLock</code>.
+While effective, these mechanisms rely on pessimistic locking. When a
+thread encounters a locked resource, the operating system may suspend
+the thread, causing an expensive context switch. When the resource
+becomes available, the thread must be woken up and rescheduled. For
+high-throughput, low-latency applications, this overhead significantly
+degrades performance.</p>
+<h2 id="the-foundation-the-volatile-value">The Foundation: The Volatile
+Value</h2>
+<p>To provide lock-free thread safety, <code>AtomicInteger</code>
+maintains its underlying state using a single primitive integer
+variable:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span> <span class="kw">volatile</span> <span class="dt">int</span> value<span class="op">;</span></span></code></pre></div>
+<p>The <code>volatile</code> keyword ensures memory visibility across
+CPU caches. According to the Java Memory Model (JMM), writes to a
+<code>volatile</code> variable establish a happens-before relationship
+with subsequent reads. This guarantees that any thread reading
+<code>value</code> immediately observes the most recent update made by
+another thread, avoiding stale data caused by local CPU core
+caching.</p>
+<p>However, <code>volatile</code> alone does not make compound
+operations—such as read-modify-write (e.g.,
+<code>value++</code>)—atomic. That is where Compare-and-Swap comes into
+play.</p>
+<h2 id="hardware-level-compare-and-swap-cas">Hardware-Level
+Compare-and-Swap (CAS)</h2>
+<p>Compare-and-Swap (CAS) is an atomic CPU-level instruction (such as
+<code>CMPXCHG</code> on x86 architectures) supported directly by modern
+processors. It operates using three operands:</p>
+<ol type="1">
+<li><strong>Memory Location (<span
+class="math inline">\(V\)</span>):</strong> The address where the value
+is stored.</li>
+<li><strong>Expected Old Value (<span
+class="math inline">\(A\)</span>):</strong> The value the calling thread
+believes is currently at <span class="math inline">\(V\)</span>.</li>
+<li><strong>New Value (<span class="math inline">\(B\)</span>):</strong>
+The updated value to store at <span
+class="math inline">\(V\)</span>.</li>
+</ol>
+<p>The processor evaluates the memory location atomically: if the
+current value at <span class="math inline">\(V\)</span> equals the
+expected value <span class="math inline">\(A\)</span>, it updates <span
+class="math inline">\(V\)</span> with <span
+class="math inline">\(B\)</span> and signals success. If another thread
+has modified the value at <span class="math inline">\(V\)</span> in the
+interim, the comparison fails, the memory remains untouched, and the
+instruction signals failure. Because this check and update happen in a
+single, indivisible hardware step, no locks are required.</p>
+<h2 id="low-level-access-unsafe-and-varhandle">Low-Level Access: Unsafe
+and VarHandle</h2>
+<p>Java code running in the JVM cannot directly execute CPU
+instructions. Historically, <code>AtomicInteger</code> bridged this gap
+using <code>sun.misc.Unsafe</code>, which provides low-level,
+hardware-near operations. In modern Java versions (Java 9 and later),
+this functionality is managed internally through
+<code>java.lang.invoke.VarHandle</code>.</p>
+<p>The class calculates the exact memory offset of the
+<code>value</code> field within the <code>AtomicInteger</code> instance
+during initialization:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span> <span class="dt">static</span> <span class="dt">final</span> <span class="dt">long</span> VALUE <span class="op">=</span> U<span class="op">.</span><span class="fu">objectFieldOffset</span><span class="op">(</span><span class="bu">AtomicInteger</span><span class="op">.</span><span class="fu">class</span><span class="op">,</span> <span class="st">&quot;value&quot;</span><span class="op">);</span></span></code></pre></div>
+<p>Using this memory offset, the internal low-level API exposes methods
+like <code>compareAndSetInt</code>, which translate directly into the
+platform's atomic CAS machine instructions.</p>
+<h2 id="the-optimistic-cas-loop">The Optimistic CAS Loop</h2>
+<p>Instead of blocking threads, <code>AtomicInteger</code> employs an
+optimistic concurrency control strategy known as a CAS loop (or
+spin-retry loop). Operations assume no contention will occur, attempt
+the update, and retry if contention is detected.</p>
+<p>Consider the implementation of an increment operation:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">final</span> <span class="dt">int</span> <span class="fu">incrementAndGet</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> U<span class="op">.</span><span class="fu">getAndAddInt</span><span class="op">(</span><span class="kw">this</span><span class="op">,</span> VALUE<span class="op">,</span> <span class="dv">1</span><span class="op">)</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Under the hood in the JVM, the logic inside <code>getAndAddInt</code>
+resembles the following loop:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> current<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="cf">do</span> <span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    current <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="fu">getIntVolatile</span><span class="op">(</span>o<span class="op">,</span> offset<span class="op">);</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="cf">while</span> <span class="op">(!</span><span class="kw">this</span><span class="op">.</span><span class="fu">compareAndSetInt</span><span class="op">(</span>o<span class="op">,</span> offset<span class="op">,</span> current<span class="op">,</span> current <span class="op">+</span> <span class="dv">1</span><span class="op">));</span></span></code></pre></div>
+<p>The workflow proceeds as follows:</p>
+<ol type="1">
+<li>The thread reads the current volatile value from memory.</li>
+<li>The thread computes the updated value
+(<code>current + 1</code>).</li>
+<li>The thread attempts to write the new value using
+<code>compareAndSetInt</code>.</li>
+<li>If the value has not changed since step 1, the CAS instruction
+succeeds, the loop terminates, and the operation returns.</li>
+<li>If another thread updated the value between steps 1 and 3, the CAS
+instruction fails. The loop discards the computation, reads the updated
+value, and tries again immediately.</li>
+</ol>
+<h2 id="performance-characteristics-and-trade-offs">Performance
+Characteristics and Trade-Offs</h2>
+<p>By eliminating thread blocking, <code>AtomicInteger</code> prevents
+thread descheduling, kernel context switches, and deadlocks. This makes
+it significantly faster than lock-based synchronization under low to
+moderate thread contention.</p>
+<p>However, the CAS approach has distinct trade-offs:</p>
+<ul>
+<li><strong>High Contention Overhead:</strong> If many threads
+continuously attempt to modify the same <code>AtomicInteger</code>,
+multiple threads will spin in retry loops, consuming CPU cycles without
+making progress. In such high-contention scenarios, classes like
+<code>LongAdder</code> (which divide work across cells) are
+preferable.</li>
+<li><strong>The ABA Problem:</strong> A CAS operation checks whether a
+value is still <span class="math inline">\(A\)</span>, but cannot detect
+if the value changed from <span class="math inline">\(A\)</span> to
+<span class="math inline">\(B\)</span> and then back to <span
+class="math inline">\(A\)</span>. While this does not impact simple
+numeric counters, it can corrupt complex linked data structures. In
+Java, this edge case is solved using
+<code>AtomicStampedReference</code>.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

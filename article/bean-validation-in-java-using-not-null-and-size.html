@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean Validation in Java: Using @NotNull and @Size - java</title>
+    <meta name="description" content="Bean Validation provides a standardized, declarative model for enforcing data integrity across modern Java applications. By replacing boilerplate imperative checks with standardized annotations like @NotNull and @Size, developers can define constraint lo">
+    <link rel="canonical" href="https://salivity.github.io/java/article/bean-validation-in-java-using-not-null-and-size">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bean Validation in Java: Using @NotNull and @Size - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/bean-validation-in-java-using-not-null-and-size" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Bean Validation provides a standardized, declarative model for enforcing data integrity across modern Java applications. By replacing boilerplate imperative checks with standardized annotations like @NotNull and @Size, developers can define constraint lo" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="bean-validation-in-java-using-notnull-and-size">Bean Validation
+in Java: Using @NotNull and @Size</h1>
+<p>Bean Validation provides a standardized, declarative model for
+enforcing data integrity across modern Java applications. By replacing
+boilerplate imperative checks with standardized annotations like
+<code>@NotNull</code> and <code>@Size</code>, developers can define
+constraint logic directly within domain entities and Data Transfer
+Objects (DTOs). This article explores the mechanics of Jakarta Bean
+Validation, the specific roles of core constraint annotations, and how
+modern frameworks leverage them to streamline application architecture,
+prevent bugs, and maintain clean separation of concerns.</p>
+<h3 id="declarative-constraint-definition">Declarative Constraint
+Definition</h3>
+<p>In traditional Java development, validating incoming data required
+repetitive, manual conditional statements scattered across controllers,
+service layers, and data access objects. Modern Java relies on Jakarta
+Validation (formerly JSR 380/Bean Validation) to shift this paradigm
+from imperative code to declarative metadata.</p>
+<p>By annotating class fields directly, developers establish a single
+source of truth for constraints. The runtime environment—typically
+powered by reference implementations like Hibernate Validator—inspects
+these metadata tags and executes the checks automatically without
+requiring developers to write custom plumbing logic for basic
+constraints.</p>
+<h3 id="core-annotations-notnull-and-size">Core Annotations:
+<code>@NotNull</code> and <code>@Size</code></h3>
+<p>While the validation specification includes dozens of annotations,
+<code>@NotNull</code> and <code>@Size</code> represent fundamental
+building blocks for controlling data boundaries:</p>
+<ul>
+<li><strong><code>@NotNull</code></strong>: Ensures that a target field
+does not evaluate to <code>null</code>. It is agnostic of content size
+or structure; an empty string <code>""</code> or an empty collection
+<code>[]</code> satisfies <code>@NotNull</code> because the reference
+itself exists. In modern architectures, it is commonly paired with
+primitive wrappers, reference objects, and IDs to guarantee the presence
+of required attributes.</li>
+<li><strong><code>@Size</code></strong>: Constrains the size or length
+of an element within specified <code>min</code> and <code>max</code>
+boundaries. It supports multiple types, including
+<code>CharSequence</code>, <code>Collection</code>, <code>Map</code>,
+and arrays. For example, applying <code>@Size(min = 8, max = 64)</code>
+on a password field ensures length compliance, while applying it to a
+<code>List&lt;Item&gt;</code> restricts array payload bounds to prevent
+resource exhaustion attacks.</li>
+</ul>
+<h3 id="seamless-framework-integration">Seamless Framework
+Integration</h3>
+<p>The primary strength of these annotations in modern Java is how well
+they integrate into the broader ecosystem, particularly with Spring Boot
+and Jakarta EE:</p>
+<ul>
+<li><strong>Fail-Fast REST Endpoints</strong>: When applied to request
+payloads in a REST controller alongside <code>@Valid</code> or
+<code>@Validated</code>, the framework intercepts incoming HTTP requests
+before they reach application service methods. If constraints fail, the
+framework halts execution immediately and generates a standard HTTP 400
+Bad Request containing structured validation errors.</li>
+<li><strong>JPA/Database Alignment</strong>: When applied to JPA
+entities, Bean Validation acts as an extra layer of defense right before
+database persistence or updates. This ensures that corrupted data cannot
+be written to the database even if it bypasses presentation-layer
+checks.</li>
+<li><strong>Java Record Support</strong>: Modern Java records naturally
+complement validation annotations. Placing annotations like
+<code>@NotNull</code> directly on record components ensures compact,
+immutable DTOs that validate instantly upon deserialization.</li>
+</ul>
+<h3 id="maintainability-and-error-reporting">Maintainability and Error
+Reporting</h3>
+<p>Beyond input filtering, modern Bean Validation unifies error handling
+across applications. Annotations accept custom message attributes, which
+can be linked to internationalized resource bundles for
+localization:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">record</span> <span class="fu">UserRegistrationRequest</span><span class="op">(</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">@NotNull</span><span class="op">(</span>message <span class="op">=</span> <span class="st">&quot;{user.name.required}&quot;</span><span class="op">)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Size</span><span class="op">(</span>min <span class="op">=</span> <span class="dv">2</span><span class="op">,</span> max <span class="op">=</span> <span class="dv">50</span><span class="op">,</span> message <span class="op">=</span> <span class="st">&quot;{user.name.length}&quot;</span><span class="op">)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">String</span> username</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">)</span> <span class="op">{}</span></span></code></pre></div>
+<p>This decoupling ensures that business rules and their corresponding
+client-facing messages remain centralized, self-documenting, and
+effortless to update as application requirements evolve.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

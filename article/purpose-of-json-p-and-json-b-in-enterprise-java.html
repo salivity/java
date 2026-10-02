@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purpose of JSON-P and JSON-B in Enterprise Java - java</title>
+    <meta name="description" content="In modern enterprise Java applications, exchanging data via JSON is a fundamental requirement for microservices, RESTful APIs, and cloud-native architectures. This article provides a clear breakdown of the purpose and function of the Jakarta JSON Process">
+    <link rel="canonical" href="https://salivity.github.io/java/article/purpose-of-json-p-and-json-b-in-enterprise-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Purpose of JSON-P and JSON-B in Enterprise Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/purpose-of-json-p-and-json-b-in-enterprise-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In modern enterprise Java applications, exchanging data via JSON is a fundamental requirement for microservices, RESTful APIs, and cloud-native architectures. This article provides a clear breakdown of the purpose and function of the Jakarta JSON Process" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="purpose-of-json-p-and-json-b-in-enterprise-java">Purpose of
+JSON-P and JSON-B in Enterprise Java</h1>
+<p>In modern enterprise Java applications, exchanging data via JSON is a
+fundamental requirement for microservices, RESTful APIs, and
+cloud-native architectures. This article provides a clear breakdown of
+the purpose and function of the Jakarta JSON Processing (JSON-P) and
+Jakarta JSON Binding (JSON-B) specifications. It explains how these two
+standard APIs work, how they differ, and how they provide a
+standardized, vendor-neutral foundation for parsing, generating, and
+mapping JSON data without relying on proprietary third-party
+libraries.</p>
+<h3 id="the-role-of-json-p-json-processing">The Role of JSON-P (JSON
+Processing)</h3>
+<p>JSON-P is a low-level API designed to parse, generate, transform, and
+query JSON documents. Standardized originally as JSR 353 (and updated in
+JSR 374), JSON-P provides two distinct programming models:</p>
+<ol type="1">
+<li><strong>The Object Model API:</strong> A DOM-like model that loads
+the entire JSON structure into an in-memory tree of immutable objects
+(<code>JsonObject</code>, <code>JsonArray</code>,
+<code>JsonValue</code>). This approach is intuitive and ideal for
+navigating, transforming, and querying small-to-medium JSON documents
+using JSON Pointer and JSON Patch.</li>
+<li><strong>The Streaming API:</strong> An event-based parser and
+generator modeled after StAX (Streaming API for XML). Using
+<code>JsonParser</code> and <code>JsonGenerator</code>, it processes
+JSON data token-by-token (such as start of object, field name, string
+value). Because it does not store the document in memory, the streaming
+model offers low overhead and high performance, making it suitable for
+processing large payloads.</li>
+</ol>
+<p>The primary purpose of JSON-P is to give developers fine-grained,
+manual control over JSON data when the structure is arbitrary, dynamic,
+or too large to map directly to structured Java classes.</p>
+<h3 id="the-role-of-json-b-json-binding">The Role of JSON-B (JSON
+Binding)</h3>
+<p>JSON-B is a high-level abstraction layer standardized under JSR 367.
+It defines how Java objects are converted into JSON text (serialization)
+and how JSON text is converted back into Java objects
+(deserialization).</p>
+<p>Similar to what JAXB did for XML, JSON-B provides an intuitive,
+standard approach for mapping Plain Old Java Objects (POJOs) without
+manual parsing:</p>
+<ul>
+<li><strong>Default Mapping:</strong> By default, JSON-B converts Java
+fields to JSON keys without requiring annotations or boilerplate
+code.</li>
+<li><strong>Customization via Annotations:</strong> Developers can
+fine-tune serialization behavior using annotations like
+<code>@JsonbProperty</code> to rename fields,
+<code>@JsonbTransient</code> to ignore sensitive data, and
+<code>@JsonbDateFormat</code> to handle date formats.</li>
+<li><strong>Custom Adapters and Serializers:</strong> For complex types,
+JSON-B provides <code>JsonbAdapter</code> and low-level
+serializers/deserializers to customize how specific objects are
+constructed or represented.</li>
+</ul>
+<p>JSON-B is the standard engine powering JSON serialization in Jakarta
+RESTful Web Services (Jakarta REST), enabling automated conversion of
+incoming HTTP request bodies and outgoing responses.</p>
+<h3 id="how-json-p-and-json-b-complement-each-other">How JSON-P and
+JSON-B Complement Each Other</h3>
+<p>Rather than competing, JSON-P and JSON-B serve complementary roles
+within enterprise Java:</p>
+<ul>
+<li><strong>Abstraction Level:</strong> JSON-P handles raw tokens and
+structural nodes, whereas JSON-B maps data directly to strongly typed
+Java domain models.</li>
+<li><strong>Architecture:</strong> JSON-B implementations typically rely
+on JSON-P under the hood to perform the underlying parsing and
+generation operations.</li>
+<li><strong>Use Cases:</strong> JSON-P is preferred when inspecting
+loosely defined JSON, executing partial updates, or streaming massive
+files. JSON-B is the preferred choice for standard enterprise business
+applications that rely on typed Data Transfer Objects (DTOs) and REST
+endpoints.</li>
+</ul>
+<p>By utilizing JSON-P and JSON-B, enterprise applications achieve
+portable, standards-compliant JSON handling across any compliant
+application server or microservices framework.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Method Hiding vs Overriding for Java Static Methods - java</title>
+    <meta name="description" content="In Java, the fundamental difference between method overriding and method hiding lies in how method calls are resolved—either dynamically at runtime or statically at compile time. While non-static instance methods use method overriding to enable runtime">
+    <link rel="canonical" href="https://salivity.github.io/java/article/method-hiding-vs-overriding-for-java-static-methods">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Method Hiding vs Overriding for Java Static Methods - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/method-hiding-vs-overriding-for-java-static-methods" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, the fundamental difference between method overriding and method hiding lies in how method calls are resolved—either dynamically at runtime or statically at compile time. While non-static instance methods use method overriding to enable runtime" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="method-hiding-vs-overriding-for-java-static-methods">Method
+Hiding vs Overriding for Java Static Methods</h1>
+<p>In Java, the fundamental difference between method overriding and
+method hiding lies in how method calls are resolved—either dynamically
+at runtime or statically at compile time. While non-static instance
+methods use method overriding to enable runtime polymorphism based on
+the actual object instance, static methods cannot be overridden.
+Instead, defining a static method in a subclass with the same signature
+as one in the superclass results in method hiding. This article examines
+the mechanics of method hiding versus method overriding, illustrating
+how reference types, binding mechanisms, and class inheritance govern
+their behavior.</p>
+<h2 id="core-differences">Core Differences</h2>
+<p>The primary distinction stems from whether a method belongs to an
+individual object instance or to the class itself.</p>
+<ul>
+<li><strong>Method Overriding (Runtime Polymorphism):</strong> Applies
+exclusively to non-static instance methods. The Java Virtual Machine
+(JVM) determines which implementation to execute at runtime based on the
+actual object type created in memory, regardless of the reference type
+used.</li>
+<li><strong>Method Hiding (Compile-Time Resolution):</strong> Applies to
+<code>static</code> methods. Because static methods belong to the class
+rather than any instance, the JVM resolves the call at compile time
+based strictly on the declared reference type of the variable, not the
+underlying runtime object.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Method Overriding</th>
+<th style="text-align: left;">Method Hiding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Method Type</strong></td>
+<td style="text-align: left;">Instance (non-static)</td>
+<td style="text-align: left;">Class (static)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Resolution Type</strong></td>
+<td style="text-align: left;">Dynamic binding (Runtime)</td>
+<td style="text-align: left;">Static binding (Compile-time)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Polymorphism</strong></td>
+<td style="text-align: left;">Achieves runtime polymorphism</td>
+<td style="text-align: left;">Does not exhibit polymorphic behavior</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>@Override</code>
+Annotation</strong></td>
+<td style="text-align: left;">Valid</td>
+<td style="text-align: left;">Invalid (causes compilation error)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Invocation Target</strong></td>
+<td style="text-align: left;">Determined by the object instance</td>
+<td style="text-align: left;">Determined by the reference type</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-method-overriding-works">How Method Overriding Works</h2>
+<p>When a subclass provides a specific implementation of an instance
+method already defined in its superclass, it overrides that method.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Parent <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">display</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Parent instance method&quot;</span><span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Child <span class="kw">extends</span> Parent <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">display</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Child instance method&quot;</span><span class="op">);</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>If you invoke this method using a superclass reference holding a
+subclass instance:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>Parent obj <span class="op">=</span> <span class="kw">new</span> <span class="fu">Child</span><span class="op">();</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>obj<span class="op">.</span><span class="fu">display</span><span class="op">();</span> <span class="co">// Output: &quot;Child instance method&quot;</span></span></code></pre></div>
+<p>The runtime environment inspects the object created via
+<code>new Child()</code> and executes the subclass implementation.</p>
+<h2 id="how-method-hiding-works">How Method Hiding Works</h2>
+<p>When a subclass defines a static method with the exact same signature
+as a static method in its superclass, the subclass method hides the
+superclass method instead of overriding it.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Parent <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">static</span> <span class="dt">void</span> <span class="fu">printMessage</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Parent static method&quot;</span><span class="op">);</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Child <span class="kw">extends</span> Parent <span class="op">{</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// This hides Parent.printMessage()</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">static</span> <span class="dt">void</span> <span class="fu">printMessage</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Child static method&quot;</span><span class="op">);</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Invoking the method through a reference variable reveals the
+compile-time binding:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>Parent obj <span class="op">=</span> <span class="kw">new</span> <span class="fu">Child</span><span class="op">();</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>obj<span class="op">.</span><span class="fu">printMessage</span><span class="op">();</span> <span class="co">// Output: &quot;Parent static method&quot;</span></span></code></pre></div>
+<p>Because <code>obj</code> is declared as type <code>Parent</code>, the
+compiler binds the call directly to <code>Parent.printMessage()</code>,
+ignoring the fact that <code>obj</code> references an instance of
+<code>Child</code>.</p>
+<h2 id="key-rules-and-best-practices">Key Rules and Best Practices</h2>
+<ol type="1">
+<li><strong>Do Not Mix Static and Non-Static:</strong> A static method
+cannot hide an instance method of the same signature from a superclass,
+nor can an instance method override a static method. Attempting either
+results in a compile-time error.</li>
+<li><strong>Avoid Invoking Static Methods via References:</strong> To
+avoid confusion caused by method hiding, always invoke static methods
+using the class name directly (e.g., <code>Parent.printMessage()</code>
+or <code>Child.printMessage()</code>) rather than through an instance
+variable.</li>
+<li><strong>Compiler Checks:</strong> Applying the
+<code>@Override</code> annotation to a static method in a subclass will
+trigger a compilation error, as the compiler recognizes that static
+members cannot participate in polymorphic overriding.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loop-Invariant Code Motion in Java HotSpot JIT - java</title>
+    <meta name="description" content="Loop-invariant code motion (LICM) is a compiler optimization technique that identifies computations inside a loop that yield the same result across every iteration and moves them outside the loop body. In the Java Virtual Machine (JVM), the HotSpot Just-">
+    <link rel="canonical" href="https://salivity.github.io/java/article/loop-invariant-code-motion-in-java-hot-spot-jit">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Loop-Invariant Code Motion in Java HotSpot JIT - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/loop-invariant-code-motion-in-java-hot-spot-jit" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Loop-invariant code motion (LICM) is a compiler optimization technique that identifies computations inside a loop that yield the same result across every iteration and moves them outside the loop body. In the Java Virtual Machine (JVM), the HotSpot Just-" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="loop-invariant-code-motion-in-java-hotspot-jit">Loop-Invariant
+Code Motion in Java HotSpot JIT</h1>
+<p>Loop-invariant code motion (LICM) is a compiler optimization
+technique that identifies computations inside a loop that yield the same
+result across every iteration and moves them outside the loop body. In
+the Java Virtual Machine (JVM), the HotSpot Just-In-Time (JIT) compiler
+leverages LICM to eliminate redundant operations, minimize CPU cycle
+consumption, and enhance memory throughput during runtime execution.
+This article examines what loop-invariant code motion entails, the
+requirements for its application, and the step-by-step mechanism the
+HotSpot C2 compiler uses to detect and hoist invariant instructions.</p>
+<h2 id="what-is-loop-invariant-code-motion">What is Loop-Invariant Code
+Motion?</h2>
+<p>Loop-invariant code motion, often referred to as loop hoisting,
+targets statements or expressions within a loop whose operands remain
+constant throughout the loop's lifespan.</p>
+<p>Consider the following conceptual example:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> array<span class="op">.</span><span class="fu">length</span><span class="op">;</span> i<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> factor <span class="op">=</span> width <span class="op">*</span> scale<span class="op">;</span> <span class="co">// Invariant: width and scale never change in the loop</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    array<span class="op">[</span>i<span class="op">]</span> <span class="op">=</span> array<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> factor<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In an unoptimized state, the multiplication
+<code>width * scale</code> executes on every iteration. Applying LICM
+transforms the code by hoisting the invariant calculation into a
+pre-header block placed immediately before the loop:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> factor <span class="op">=</span> width <span class="op">*</span> scale<span class="op">;</span> <span class="co">// Hoisted outside</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> array<span class="op">.</span><span class="fu">length</span><span class="op">;</span> i<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    array<span class="op">[</span>i<span class="op">]</span> <span class="op">=</span> array<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> factor<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>By computing <code>factor</code> only once instead of <span
+class="math inline">\(N\)</span> times, the program reduces total
+instruction count and conserves CPU registers within the critical path
+of the loop.</p>
+<h2 id="conditions-for-invariant-code-motion">Conditions for Invariant
+Code Motion</h2>
+<p>A compiler cannot safely hoist an expression simply because its
+variables appear static. The HotSpot compiler must guarantee that moving
+an operation preserves exact program semantics:</p>
+<ol type="1">
+<li><strong>Operand Invariance:</strong> All operands supplying inputs
+to the expression must either be constants, variables defined outside
+the loop, or other previously verified loop-invariant expressions.</li>
+<li><strong>Absence of Unintended Side Effects:</strong> The instruction
+must not modify memory or alter global program state (such as mutating a
+static field or invoking an impure method).</li>
+<li><strong>Preservation of Exception Semantics:</strong> The hoisted
+code must not trigger an exception prematurely. For instance, hoisting
+an integer division <code>x / y</code> where <code>y</code> could be
+zero would trigger an <code>ArithmeticException</code> before the loop
+even starts, altering observable program behavior.</li>
+</ol>
+<h2 id="how-hotspot-applies-licm">How HotSpot Applies LICM</h2>
+<p>The HotSpot JIT engine—predominantly its optimizing server compiler
+(C2)—implements LICM late in the compilation pipeline after initial
+profiling, inlining, and escape analysis.</p>
+<h3 id="1-intermediate-representation-via-sea-of-nodes">1. Intermediate
+Representation via Sea-of-Nodes</h3>
+<p>HotSpot C2 represents Java bytecode as a "Sea-of-Nodes" intermediate
+representation (IR), a graph that models both data flow and control flow
+simultaneously. This graph decouples mathematical operations from fixed
+sequential scheduling, making data dependencies explicit.</p>
+<h3 id="2-loop-tree-construction-and-analysis">2. Loop Tree Construction
+and Analysis</h3>
+<p>C2 scans the control-flow graph to identify loops, natural
+back-edges, and loop bodies. It constructs a loop tree that establishes
+loop nesting levels, identifying inner loops that benefit most from
+optimization. During this phase, C2 creates a loop pre-header: a
+dedicated control block directly preceding the loop entry point designed
+specifically to receive hoisted operations.</p>
+<h3 id="3-invariant-detection">3. Invariant Detection</h3>
+<p>To detect invariants, C2 traverses the nodes comprising the loop
+body:</p>
+<ul>
+<li><strong>Constants and External Definitions:</strong> Nodes whose
+inputs originate exclusively from outside the loop boundary are flagged
+as invariant.</li>
+<li><strong>Transitive Invariance:</strong> Any node whose inputs depend
+strictly on already confirmed invariant nodes is also marked
+invariant.</li>
+<li><strong>Memory Invariance:</strong> Memory read operations (such as
+array reads or field accesses) are inspected via alias analysis. If the
+loop contains no memory writes that could alias with the address being
+read, the load instruction is deemed invariant.</li>
+</ul>
+<h3 id="4-loop-predication-and-guard-hoisting">4. Loop Predication and
+Guard Hoisting</h3>
+<p>Java enforces strict runtime bounds checks for array accesses.
+Normally, an expression like <code>array[i]</code> requires validating
+that <code>i &gt;= 0 &amp;&amp; i &lt; array.length</code> on every
+step, potentially preventing invariant operations from moving.</p>
+<p>HotSpot resolves this through <strong>Loop Predication</strong>. C2
+extracts range and null checks, creating dynamic guards in the loop
+pre-header. If HotSpot can prove that the entire range of loop
+iterations will stay within array bounds, the checks and associated
+memory base-address calculations are safely hoisted out of the loop.</p>
+<h3 id="5-node-hoisting-and-rescheduling">5. Node Hoisting and
+Rescheduling</h3>
+<p>Once nodes are confirmed as invariant and safe from premature side
+effects, C2 relocates them into the loop pre-header. Because the
+Sea-of-Nodes representation defers final instruction ordering until the
+Global Code Motion (GCM) phase, hoisting simply means anchoring the
+invariant nodes to the pre-header's control token. During final
+machine-code generation, the hoisted computations are scheduled and
+emitted just prior to the initial loop branch instruction.</p>
+<h2 id="runtime-impact">Runtime Impact</h2>
+<p>By reducing repetitive computations to a single execution, LICM
+lowers register pressure within the inner loop, shortens dependency
+chains, and exposes simplified loop bodies to subsequent optimizations
+like loop unrolling and SIMD vectorization.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

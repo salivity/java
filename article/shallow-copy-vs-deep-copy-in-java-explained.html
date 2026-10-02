@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shallow Copy vs Deep Copy in Java Explained - java</title>
+    <meta name="description" content="In Java, duplicating an object is primarily achieved through either shallow copying or deep copying, each determining how nested references are handled in memory. A shallow copy duplicates the primary object while sharing references to any internal objec">
+    <link rel="canonical" href="https://salivity.github.io/java/article/shallow-copy-vs-deep-copy-in-java-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Shallow Copy vs Deep Copy in Java Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/shallow-copy-vs-deep-copy-in-java-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, duplicating an object is primarily achieved through either shallow copying or deep copying, each determining how nested references are handled in memory. A shallow copy duplicates the primary object while sharing references to any internal objec" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="shallow-copy-vs-deep-copy-in-java-explained">Shallow Copy vs
+Deep Copy in Java Explained</h1>
+<p>In Java, duplicating an object is primarily achieved through either
+shallow copying or deep copying, each determining how nested references
+are handled in memory. A shallow copy duplicates the primary object
+while sharing references to any internal objects, meaning modifications
+to inner data affect both copies. In contrast, a deep copy recursively
+duplicates the object and all nested instances, creating a completely
+independent copy. This guide explains the core mechanics, implementation
+techniques, and key differences between these two copying
+approaches.</p>
+<h2 id="what-is-a-shallow-copy">What is a Shallow Copy?</h2>
+<p>A shallow copy creates a new instance of an object and copies all of
+its fields directly to the new instance. For primitive data types (such
+as <code>int</code>, <code>boolean</code>, or <code>double</code>), the
+actual values are duplicated. However, for reference types (such as
+arrays, collections, or custom objects), only the memory addresses
+(references) are copied.</p>
+<p>Because the references point to the exact same memory locations on
+the heap, both the original and copied objects share the same nested
+objects. Modifying the state of a nested mutable object through either
+instance will immediately reflect in the other.</p>
+<h3 id="how-to-implement-a-shallow-copy">How to Implement a Shallow
+Copy</h3>
+<p>The most common way to create a shallow copy is by using the default
+<code>clone()</code> method provided by
+<code>java.lang.Object</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Address <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">String</span> city<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">Address</span><span class="op">(</span><span class="bu">String</span> city<span class="op">)</span> <span class="op">{</span> <span class="kw">this</span><span class="op">.</span><span class="fu">city</span> <span class="op">=</span> city<span class="op">;</span> <span class="op">}</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> User <span class="kw">implements</span> <span class="bu">Cloneable</span> <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">String</span> name<span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> Address address<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">User</span><span class="op">(</span><span class="bu">String</span> name<span class="op">,</span> Address address<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">name</span> <span class="op">=</span> name<span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">address</span> <span class="op">=</span> address<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">Object</span> <span class="fu">clone</span><span class="op">()</span> <span class="kw">throws</span> <span class="bu">CloneNotSupportedException</span> <span class="op">{</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">super</span><span class="op">.</span><span class="fu">clone</span><span class="op">();</span> <span class="co">// Performs a shallow copy by default</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>If you modify <code>userCopy.address.city</code>, the
+<code>originalUser.address.city</code> will also change because both
+instances reference the same <code>Address</code> object.</p>
+<h2 id="what-is-a-deep-copy">What is a Deep Copy?</h2>
+<p>A deep copy creates a new instance of the object and recursively
+duplicates every object referenced by it. Rather than copying
+references, new memory is allocated on the heap for every nested
+object.</p>
+<p>Because no references are shared between the original and the new
+instance, the two objects are entirely independent. Changes made to any
+part of the copied object graph have no effect on the original object
+graph.</p>
+<h3 id="how-to-implement-a-deep-copy">How to Implement a Deep Copy</h3>
+<p>Deep copies can be implemented using several methods depending on the
+complexity of the object structure.</p>
+<h4 id="1-copy-constructors">1. Copy Constructors</h4>
+<p>Manually instantiating nested objects within a copy constructor is
+often the cleanest and most explicit approach:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Address <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">String</span> city<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">Address</span><span class="op">(</span><span class="bu">String</span> city<span class="op">)</span> <span class="op">{</span> <span class="kw">this</span><span class="op">.</span><span class="fu">city</span> <span class="op">=</span> city<span class="op">;</span> <span class="op">}</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Copy constructor for Address</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">Address</span><span class="op">(</span>Address other<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">city</span> <span class="op">=</span> other<span class="op">.</span><span class="fu">city</span><span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> User <span class="op">{</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">String</span> name<span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> Address address<span class="op">;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">User</span><span class="op">(</span><span class="bu">String</span> name<span class="op">,</span> Address address<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">name</span> <span class="op">=</span> name<span class="op">;</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">address</span> <span class="op">=</span> address<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Deep copy constructor for User</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">User</span><span class="op">(</span>User other<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">name</span> <span class="op">=</span> other<span class="op">.</span><span class="fu">name</span><span class="op">;</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">address</span> <span class="op">=</span> <span class="kw">new</span> <span class="fu">Address</span><span class="op">(</span>other<span class="op">.</span><span class="fu">address</span><span class="op">);</span> <span class="co">// Creates a new nested instance</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="2-overriding-the-clone-method">2. Overriding the
+<code>clone()</code> Method</h4>
+<p>You can override <code>clone()</code> to explicitly clone internal
+references:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="at">@Override</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> User <span class="fu">clone</span><span class="op">()</span> <span class="kw">throws</span> <span class="bu">CloneNotSupportedException</span> <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    User cloned <span class="op">=</span> <span class="op">(</span>User<span class="op">)</span> <span class="kw">super</span><span class="op">.</span><span class="fu">clone</span><span class="op">();</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    cloned<span class="op">.</span><span class="fu">address</span> <span class="op">=</span> <span class="kw">new</span> <span class="fu">Address</span><span class="op">(</span><span class="kw">this</span><span class="op">.</span><span class="fu">address</span><span class="op">.</span><span class="fu">city</span><span class="op">);</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> cloned<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="3-serialization">3. Serialization</h4>
+<p>For deep object graphs, serializing the object to JSON or byte
+streams and deserializing it into a new instance guarantees a complete
+deep copy without writing manual copy logic for every nested field.</p>
+<h2 id="key-differences">Key Differences</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Shallow Copy</th>
+<th style="text-align: left;">Deep Copy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Object Isolation</strong></td>
+<td style="text-align: left;">Dependent on shared mutable
+references</td>
+<td style="text-align: left;">Completely independent</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Nested Objects</strong></td>
+<td style="text-align: left;">References are copied (shared memory)</td>
+<td style="text-align: left;">Objects are fully duplicated (new
+memory)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Performance</strong></td>
+<td style="text-align: left;">Fast execution and minimal memory
+usage</td>
+<td style="text-align: left;">Slower execution and higher memory
+overhead</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Implementation
+Complexity</strong></td>
+<td style="text-align: left;">Simple (default <code>clone()</code> or
+shallow assignment)</td>
+<td style="text-align: left;">Complex (requires manual recursion or
+serialization)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Side Effects</strong></td>
+<td style="text-align: left;">High risk of unintended mutations</td>
+<td style="text-align: left;">No risk of unintended mutations</td>
+</tr>
+</tbody>
+</table>
+<h2 id="when-to-use-each-approach">When to Use Each Approach</h2>
+<p>Use a <strong>shallow copy</strong> when:</p>
+<ul>
+<li>The object contains only primitive values or immutable objects (such
+as <code>String</code>, <code>Integer</code>, or
+<code>LocalDate</code>).</li>
+<li>The shared state is intentional for caching or resource
+sharing.</li>
+<li>Performance and memory constraints are critical, and nested objects
+will never be modified.</li>
+</ul>
+<p>Use a <strong>deep copy</strong> when:</p>
+<ul>
+<li>The object contains mutable nested structures that must be modified
+independently.</li>
+<li>You need to pass an isolated snapshot of an object to another thread
+or external API.</li>
+<li>You must ensure strict encapsulation and eliminate side-effects
+across components.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

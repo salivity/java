@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Volatile Keyword in Java Multithreading - java</title>
+    <meta name="description" content="In Java multithreaded programming, the volatile keyword ensures that changes made to a variable by one thread are immediately visible to all other threads. This article explains the primary role of volatile, addressing how it manages memory visibility an">
+    <link rel="canonical" href="https://salivity.github.io/java/article/the-volatile-keyword-in-java-multithreading">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="The Volatile Keyword in Java Multithreading - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/the-volatile-keyword-in-java-multithreading" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java multithreaded programming, the volatile keyword ensures that changes made to a variable by one thread are immediately visible to all other threads. This article explains the primary role of volatile, addressing how it manages memory visibility an" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="the-volatile-keyword-in-java-multithreading">The Volatile
+Keyword in Java Multithreading</h1>
+<p>In Java multithreaded programming, the <code>volatile</code> keyword
+ensures that changes made to a variable by one thread are immediately
+visible to all other threads. This article explains the primary role of
+<code>volatile</code>, addressing how it manages memory visibility and
+instruction reordering through the Java Memory Model (JMM), while
+highlighting its critical distinction from full synchronization.</p>
+<h3 id="the-memory-visibility-problem">The Memory Visibility
+Problem</h3>
+<p>In a multithreaded environment, modern processors use local CPU
+caches (L1, L2, L3) to speed up execution. When a thread reads or
+modifies a variable, it often operates on a cached copy rather than
+fetching from or writing directly to the main RAM.</p>
+<p>If Thread A updates a standard shared variable, the new value may
+linger in Thread A's CPU cache. Thread B, running on another core, will
+continue reading its own cached copy of the stale value. This causes a
+memory visibility issue where threads operate on conflicting states.</p>
+<h3 id="how-volatile-works">How <code>volatile</code> Works</h3>
+<p>Marking a variable as <code>volatile</code> alters how the runtime
+and CPU handle read and write operations:</p>
+<ol type="1">
+<li><strong>Direct Main Memory Access:</strong> Every write to a
+<code>volatile</code> variable is flushed immediately to main memory,
+and every read is fetched directly from main memory rather than a local
+CPU cache.</li>
+<li><strong>Happens-Before Guarantee:</strong> A write to a
+<code>volatile</code> field <em>happens-before</em> every subsequent
+read of that same field. This guarantees that any data written by a
+thread prior to writing a <code>volatile</code> variable is also made
+visible to the thread that subsequently reads that variable.</li>
+<li><strong>Prevention of Instruction Reordering:</strong> Compilers and
+CPUs frequently reorder instructions to optimize performance. Marking a
+variable as <code>volatile</code> introduces memory barriers (fences)
+that prevent reads and writes from being reordered around the
+<code>volatile</code> access point.</li>
+</ol>
+<h3 id="what-volatile-does-not-do-atomicity">What <code>volatile</code>
+Does Not Do: Atomicity</h3>
+<p>The most critical limitation of the <code>volatile</code> keyword is
+that it guarantees visibility, not atomicity.</p>
+<p>Compound operations—such as incrementing a counter
+(<code>count++</code>)—consist of three separate actions: read, modify,
+and write. Even if <code>count</code> is declared <code>volatile</code>,
+two threads can read the same value simultaneously, increment it, and
+overwrite each other's changes. For compound actions or check-then-act
+operations, <code>volatile</code> is insufficient; synchronization
+primitives like <code>synchronized</code> blocks or classes from
+<code>java.util.concurrent.atomic</code> (such as
+<code>AtomicInteger</code>) must be used instead.</p>
+<h3 id="ideal-use-cases-for-volatile">Ideal Use Cases for
+<code>volatile</code></h3>
+<ul>
+<li><strong>Status Flags:</strong> Signaling thread termination or state
+changes (e.g., <code>volatile boolean running = true;</code>) where one
+thread writes and others only read.</li>
+<li><strong>Double-Checked Locking:</strong> Ensuring the safe
+publication of objects in singleton patterns, preventing other threads
+from seeing partially constructed objects due to instruction
+reordering.</li>
+<li><strong>Single-Writer, Multiple-Reader Scenarios:</strong> Variables
+where only one thread ever modifies the value, while several other
+threads need real-time access to the current state.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

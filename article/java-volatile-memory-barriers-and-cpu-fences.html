@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Volatile Memory Barriers and CPU Fences - java</title>
+    <meta name="description" content="In concurrent Java programming, the volatile keyword guarantees visibility of changes across threads and prevents instruction reordering. Under the hood, the Java Virtual Machine (JVM) enforces these guarantees by translating bytecode into low-level CPU">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-volatile-memory-barriers-and-cpu-fences">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Volatile Memory Barriers and CPU Fences - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-volatile-memory-barriers-and-cpu-fences" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In concurrent Java programming, the volatile keyword guarantees visibility of changes across threads and prevents instruction reordering. Under the hood, the Java Virtual Machine (JVM) enforces these guarantees by translating bytecode into low-level CPU" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-volatile-memory-barriers-and-cpu-fences">Java Volatile
+Memory Barriers and CPU Fences</h1>
+<p>In concurrent Java programming, the <code>volatile</code> keyword
+guarantees visibility of changes across threads and prevents instruction
+reordering. Under the hood, the Java Virtual Machine (JVM) enforces
+these guarantees by translating bytecode into low-level CPU instructions
+known as memory barriers or CPU fences. This article explains how memory
+barriers operate at the hardware level, how the Java Memory Model (JMM)
+classifies them, and how they are injected during the execution of
+volatile reads and writes.</p>
+<h3 id="the-underlying-problem-caching-and-instruction-reordering">The
+Underlying Problem: Caching and Instruction Reordering</h3>
+<p>Modern computer architectures rely on multiple layers of caches (L1,
+L2, L3) and out-of-order execution engines to maximize throughput. Both
+the compiler (JIT) and the CPU reorder instructions to keep execution
+pipelines full, provided the reordering does not alter the outcome of a
+single-threaded program.</p>
+<p>However, in multi-threaded programs, these optimizations can lead to
+two main problems:</p>
+<ol type="1">
+<li><strong>Visibility issues:</strong> A write to a variable by one
+core may remain buffered in a local store buffer or cache, remaining
+invisible to another core.</li>
+<li><strong>Reordering issues:</strong> An operation dependent on a
+prior write may execute before that write is published globally,
+breaking algorithms like double-checked locking.</li>
+</ol>
+<h3 id="what-are-memory-barriers-and-cpu-fences">What Are Memory
+Barriers and CPU Fences?</h3>
+<p>A memory barrier (also called a memory fence or CPU fence) is a
+hardware-level instruction that forces the CPU and compiler to impose an
+ordering constraint on memory operations issued before and after the
+barrier.</p>
+<p>When a processor encounters a memory fence, it ensures that all
+memory operations before the fence are committed or globally visible
+before any memory operations after the fence are allowed to execute. It
+also prevents the CPU pipeline from speculatively loading or executing
+operations out of order across the barrier boundary.</p>
+<h3 id="the-four-logical-barriers-of-the-java-memory-model">The Four
+Logical Barriers of the Java Memory Model</h3>
+<p>The Java Memory Model abstracts hardware-specific fence
+implementations into four logical barriers:</p>
+<ol type="1">
+<li><strong>LoadLoad:</strong> Ensures that all preceding reads are
+completed before any subsequent reads can be executed.</li>
+<li><strong>StoreStore:</strong> Ensures that all preceding writes are
+flushed to cache/memory before any subsequent writes can occur.</li>
+<li><strong>LoadStore:</strong> Ensures that preceding reads are
+executed before any subsequent writes are committed.</li>
+<li><strong>StoreLoad:</strong> Ensures that preceding writes are
+committed and visible to all processors before any subsequent reads can
+be executed. This is the heaviest and most expensive fence, often
+requiring store buffers to be completely drained.</li>
+</ol>
+<h3 id="memory-barriers-in-volatile-operations">Memory Barriers in
+Volatile Operations</h3>
+<p>When compiling Java bytecode containing <code>volatile</code> field
+accesses into native machine code, the JIT compiler inserts specific
+barriers around memory accesses.</p>
+<h4 id="volatile-write-sequence">Volatile Write Sequence</h4>
+<p>A volatile write establishes a "happens-before" relationship with
+subsequent reads. To guarantee this, the JVM inserts:</p>
+<ul>
+<li>A <strong>StoreStore</strong> barrier immediately before the
+volatile write. This guarantees that all preceding normal or volatile
+writes are visible in cache before the volatile variable itself is
+updated.</li>
+<li>The <strong>Volatile Write</strong> instruction.</li>
+<li>A <strong>StoreLoad</strong> barrier immediately after the volatile
+write. This prevents the volatile write from being reordered with
+subsequent volatile reads or writes.</li>
+</ul>
+<h4 id="volatile-read-sequence">Volatile Read Sequence</h4>
+<p>A volatile read ensures that the thread sees the most recent write
+and prevents subsequent operations from floating above the read:</p>
+<ul>
+<li>The <strong>Volatile Read</strong> instruction.</li>
+<li>A <strong>LoadLoad</strong> barrier immediately after the read. This
+ensures that the volatile read completes before any subsequent read
+operations occur.</li>
+<li>A <strong>LoadStore</strong> barrier immediately after the read.
+This ensures that the volatile read completes before any subsequent
+write operations can execute.</li>
+</ul>
+<h3
+id="hardware-level-implementation-x86-vs-weakly-ordered-architectures">Hardware-Level
+Implementation: x86 vs. Weakly Ordered Architectures</h3>
+<p>The actual machine instructions emitted by the JVM depend heavily on
+the target processor architecture:</p>
+<ul>
+<li><strong>x86/x64 Architectures:</strong> x86 processors already
+enforce a strongly ordered memory model (Total Store Order, or TSO).
+Reads are not reordered with other reads (<code>LoadLoad</code>), writes
+are not reordered with other writes (<code>StoreStore</code>), and reads
+are not reordered with prior writes (<code>LoadStore</code>).
+Consequently, volatile reads on x86 require no hardware instructions at
+all—the normal <code>MOV</code> instruction is sufficient. However, x86
+does allow store-load reordering. Therefore, a volatile write on x86
+typically emits either a specialized fence instruction
+(<code>MFENCE</code>) or a locked instruction (such as
+<code>LOCK ADDL</code>), which serves as a full hardware fence to drain
+the CPU store buffer.</li>
+<li><strong>ARM and POWER Architectures:</strong> These are weakly
+ordered architectures where almost any memory reordering is permissible
+by default. On these chips, the JVM must explicitly emit hardware
+barrier instructions—such as <code>DMB</code> (Data Memory Barrier) on
+ARM—for both volatile reads and volatile writes to maintain the
+guarantees required by Java.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

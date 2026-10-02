@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Scanner Tokenization Using Regular Expressions - java</title>
+    <meta name="description" content="The java.util.Scanner class parses primitive types and strings by breaking input streams into discrete tokens using regular expressions. This article explains the internal mechanics of how Scanner establishes token boundaries, leverages custom and defaul">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-scanner-tokenization-using-regular-expressions">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Scanner Tokenization Using Regular Expressions - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-scanner-tokenization-using-regular-expressions" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The java.util.Scanner class parses primitive types and strings by breaking input streams into discrete tokens using regular expressions. This article explains the internal mechanics of how Scanner establishes token boundaries, leverages custom and defaul" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-scanner-tokenization-using-regular-expressions">Java
+Scanner Tokenization Using Regular Expressions</h1>
+<p>The <code>java.util.Scanner</code> class parses primitive types and
+strings by breaking input streams into discrete tokens using regular
+expressions. This article explains the internal mechanics of how
+<code>Scanner</code> establishes token boundaries, leverages custom and
+default delimiter patterns via <code>java.util.regex.Matcher</code>,
+buffers incoming stream data, and validates specific data formats during
+the parsing process.</p>
+<h2 id="the-role-of-the-delimiter-pattern">The Role of the Delimiter
+Pattern</h2>
+<p>At the core of <code>Scanner</code>'s tokenization logic is the
+delimiter. By default, <code>Scanner</code> treats whitespace as the
+boundary between tokens. This default behavior relies on the regular
+expression <code>\p{javaWhitespace}+</code>, which matches one or more
+characters identified as whitespace by
+<code>Character.isWhitespace()</code>.</p>
+<p>Developers can alter this boundary using the
+<code>useDelimiter()</code> method, passing either a compiled
+<code>java.util.Pattern</code> or a <code>String</code> representing a
+regex. Once set, the scanner treats any sequence matching this regex as
+a separator rather than readable data.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Scanner</span> scanner <span class="op">=</span> <span class="kw">new</span> <span class="bu">Scanner</span><span class="op">(</span><span class="st">&quot;apple,orange,banana&quot;</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>scanner<span class="op">.</span><span class="fu">useDelimiter</span><span class="op">(</span><span class="st">&quot;,&quot;</span><span class="op">);</span></span></code></pre></div>
+<h2 id="buffer-management-and-the-matcher-engine">Buffer Management and
+the Matcher Engine</h2>
+<p>A <code>Scanner</code> reads data from an underlying source—such as
+an <code>InputStream</code>, <code>File</code>, or <code>Readable</code>
+object—into an internal character buffer. Because regular expression
+matching requires a continuous character sequence, <code>Scanner</code>
+attaches an internal <code>java.util.regex.Matcher</code> directly to
+this buffer.</p>
+<ol type="1">
+<li><strong>Buffering</strong>: The scanner reads chunks of data into
+memory to allow regex evaluation across incoming bytes.</li>
+<li><strong>Matching Delimiters</strong>: When searching for the next
+token, the scanner runs the delimiter pattern against the buffer to
+locate the beginning and ending boundaries of that token.</li>
+<li><strong>Buffer Expansion</strong>: If the delimiter regex cannot
+find a match before reaching the end of the buffered data,
+<code>Scanner</code> attempts to read additional characters from the
+stream to complete the pattern. If the stream reaches EOF (End-of-File)
+without another delimiter, the remaining buffered characters are treated
+as the final token.</li>
+</ol>
+<h2 id="token-extraction-workflow">Token Extraction Workflow</h2>
+<p>When calling <code>hasNext()</code> or <code>next()</code>, the
+scanner follows a precise step-by-step procedure:</p>
+<ol type="1">
+<li><strong>Skip Leading Delimiters</strong>: The scanner executes the
+delimiter pattern to clear out any leading separators at the current
+read position.</li>
+<li><strong>Locate Trailing Delimiter</strong>: It scans forward through
+the buffer to locate the next instance of the delimiter pattern.</li>
+<li><strong>Capture the Token</strong>: The sequence of characters
+residing between the end of the leading delimiter and the start of the
+trailing delimiter is extracted as a token string.</li>
+<li><strong>Advance Position</strong>: The scanner updates its internal
+read pointer to the end of the trailing delimiter, ready for the next
+operation.</li>
+</ol>
+<h2 id="type-specific-regex-matching">Type-Specific Regex Matching</h2>
+<p>Beyond basic string tokenization, <code>Scanner</code> utilizes
+regular expressions to parse typed data such as integers, floats, and
+booleans via methods like <code>nextInt()</code> or
+<code>nextDouble()</code>.</p>
+<p>Instead of merely converting a pre-extracted token string,
+<code>Scanner</code> builds internal regular expression patterns that
+represent valid numerical representations according to the specified
+<code>Locale</code>. For example, integer recognition employs patterns
+handling optional signs (<code>+</code> or <code>-</code>) and
+locale-specific thousands separators.</p>
+<p>When invoking <code>hasNextInt()</code>, the scanner matches the
+upcoming token region against this internal integer regex before
+consuming it. If the token matches, the scanner converts the matched
+substring to the corresponding primitive type; otherwise, it throws an
+<code>InputMismatchException</code>.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Double-Checked Locking Fails Without Volatile - java</title>
+    <meta name="description" content="The double-checked locking idiom is a software design pattern intended to reduce the overhead of acquiring a lock by testing the locking criterion before acquiring the lock. In Java, this pattern is commonly used for lazy initialization of singleton inst">
+    <link rel="canonical" href="https://salivity.github.io/java/article/why-double-checked-locking-fails-without-volatile">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Double-Checked Locking Fails Without Volatile - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/why-double-checked-locking-fails-without-volatile" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The double-checked locking idiom is a software design pattern intended to reduce the overhead of acquiring a lock by testing the locking criterion before acquiring the lock. In Java, this pattern is commonly used for lazy initialization of singleton inst" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-double-checked-locking-fails-without-volatile">Why
+Double-Checked Locking Fails Without Volatile</h1>
+<p>The double-checked locking idiom is a software design pattern
+intended to reduce the overhead of acquiring a lock by testing the
+locking criterion before acquiring the lock. In Java, this pattern is
+commonly used for lazy initialization of singleton instances. However,
+without the use of the <code>volatile</code> keyword, the idiom is
+fundamentally flawed and thread-unsafe because the Java Memory Model
+permits instruction reordering. This optimization allows a thread to
+observe a non-null reference to an object before that object has
+finished being constructed, leading to severe concurrency bugs.</p>
+<p>To understand why the pattern fails, consider its typical
+implementation:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Singleton <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">static</span> Singleton instance<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> Singleton <span class="fu">getInstance</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>instance <span class="op">==</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span> <span class="co">// First check (no lock)</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>            <span class="kw">synchronized</span> <span class="op">(</span>Singleton<span class="op">.</span><span class="fu">class</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>instance <span class="op">==</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span> <span class="co">// Second check (with lock)</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                    instance <span class="op">=</span> <span class="kw">new</span> <span class="fu">Singleton</span><span class="op">();</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> instance<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The issue lies entirely in the line
+<code>instance = new Singleton();</code>. At the bytecode and machine
+instruction levels, instantiating an object is not an atomic operation.
+Constructing an object generally involves three distinct steps:</p>
+<ol type="1">
+<li>Allocate memory for the <code>Singleton</code> object.</li>
+<li>Execute the constructor to initialize the fields within the
+allocated memory.</li>
+<li>Assign the memory address of the allocated block to the
+<code>instance</code> variable.</li>
+</ol>
+<p>Under the Java Memory Model, compilers and hardware processors are
+free to reorder instructions to optimize performance, provided that the
+reordering does not alter the execution result within a single thread.
+Because assigning the reference (step 3) does not depend on the
+constructor finishing its execution (step 2), the runtime environment
+may reorder the execution sequence to 1, then 3, then 2.</p>
+<p>When this reordering occurs, a race condition emerges across multiple
+threads:</p>
+<ol type="1">
+<li><strong>Thread A</strong> enters <code>getInstance()</code>, finds
+<code>instance</code> is <code>null</code>, acquires the monitor lock,
+and proceeds to instantiate the object.</li>
+<li>The compiler or CPU reorders the steps, executing step 1
+(allocation) and step 3 (assigning the pointer to
+<code>instance</code>). At this precise moment, <code>instance</code> is
+no longer <code>null</code>, but step 2 (the constructor) has not yet
+executed.</li>
+<li><strong>Thread B</strong> calls <code>getInstance()</code>. It
+performs the first check: <code>if (instance == null)</code>.</li>
+<li>Because Thread A has already written the memory address to
+<code>instance</code>, Thread B sees that <code>instance</code> is not
+<code>null</code>.</li>
+<li>Thread B skips the <code>synchronized</code> block entirely and
+immediately returns <code>instance</code>.</li>
+<li>Thread B attempts to read properties or call methods on this
+partially initialized object. Since the constructor has not finished
+running, Thread B encounters uninitialized data, default values, or
+unexpected <code>NullPointerException</code> errors.</li>
+</ol>
+<p>Declaring the reference field as
+<code>private static volatile Singleton instance;</code> resolves this
+defect. Under the updated Java Memory Model introduced in Java 5, reads
+and writes to a <code>volatile</code> variable establish a
+"happens-before" relationship.</p>
+<p>The <code>volatile</code> modifier introduces memory barriers that
+prevent the reordering of the write to the reference variable with the
+preceding initialization writes. Consequently, it guarantees that all
+constructor actions complete before the reference becomes visible to
+other threads, ensuring that any thread observing a non-null reference
+always sees a fully constructed object.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

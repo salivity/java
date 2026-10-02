@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java MethodHandles.Lookup Security and Access Control - java</title>
+    <meta name="description" content="This article examines how Java's MethodHandles.Lookup API enforces access controls and encapsulation within the java.lang.invoke framework. It details the transition from traditional reflection to capability-based security, explains the roles of the look">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-method-handles-lookup-security-and-access-control">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java MethodHandles.Lookup Security and Access Control - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-method-handles-lookup-security-and-access-control" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article examines how Java's MethodHandles.Lookup API enforces access controls and encapsulation within the java.lang.invoke framework. It details the transition from traditional reflection to capability-based security, explains the roles of the look" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-methodhandleslookup-security-and-access-control">Java
+MethodHandles.Lookup Security and Access Control</h1>
+<p>This article examines how Java's <code>MethodHandles.Lookup</code>
+API enforces access controls and encapsulation within the
+<code>java.lang.invoke</code> framework. It details the transition from
+traditional reflection to capability-based security, explains the roles
+of the lookup class and lookup modes, and outlines how module boundaries
+and privilege attenuation safeguard member access during method handle
+creation.</p>
+<h3 id="the-capability-based-security-model">The Capability-Based
+Security Model</h3>
+<p>Traditional Java reflection (<code>java.lang.reflect</code>)
+evaluates access permissions dynamically each time a member is invoked,
+unless explicitly bypassed using <code>setAccessible(true)</code>. In
+contrast, the <code>java.lang.invoke</code> API relies on a
+capability-based security architecture implemented through
+<code>MethodHandles.Lookup</code>.</p>
+<p>Under this model, access checks are performed strictly at the moment
+a <code>MethodHandle</code> is created, rather than when it is executed.
+The <code>Lookup</code> object acts as an access token or capability.
+Once a <code>MethodHandle</code> is produced by a valid
+<code>Lookup</code> token, it is considered pre-authorized and can be
+invoked repeatedly without ongoing security checks, yielding performance
+close to direct bytecode invocation.</p>
+<h3 id="lookup-class-and-lookup-modes">Lookup Class and Lookup
+Modes</h3>
+<p>Every <code>MethodHandles.Lookup</code> instance encapsulates two
+critical state properties:</p>
+<ol type="1">
+<li><strong>The Lookup Class (<code>lookupClass</code>):</strong> The
+class on whose behalf access checks are evaluated. Bytecode access rules
+are checked as if the lookup class itself were attempting direct
+access.</li>
+<li><strong>The Lookup Modes (<code>lookupModes</code>):</strong> A
+bitmask defining the scope of access rights the lookup token
+possesses.</li>
+</ol>
+<p>The primary modes defined in <code>MethodHandles.Lookup</code>
+include:</p>
+<ul>
+<li><code>PUBLIC</code>: Access to <code>public</code> members.</li>
+<li><code>PACKAGE</code>: Access to package-private (default) members
+within the lookup class's package.</li>
+<li><code>PROTECTED</code>: Access to <code>protected</code> members
+accessible to the lookup class.</li>
+<li><code>PRIVATE</code>: Access to <code>private</code> members within
+the lookup class and its nestmates.</li>
+<li><code>MODULE</code>: Access to members within the lookup class's
+module.</li>
+<li><code>UNCONDITIONAL</code>: Unconditional access to public members
+in public classes across exported packages, regardless of module
+boundaries.</li>
+</ul>
+<p>When a caller invokes <code>MethodHandles.lookup()</code>, the JVM
+inspects the immediate caller's frame and instantiates a
+<code>Lookup</code> object where the lookup class is the caller, granted
+full access rights
+(<code>PUBLIC | PRIVATE | PROTECTED | PACKAGE | MODULE</code>).</p>
+<h3 id="privilege-delegation-and-encapsulation">Privilege Delegation and
+Encapsulation</h3>
+<p>Because access checks depend entirely on the <code>Lookup</code>
+instance rather than the caller invoking the method handle,
+<code>Lookup</code> objects embody portable access capabilities:</p>
+<ul>
+<li><strong>Intentional Delegation:</strong> If Class A creates a
+full-privilege <code>Lookup</code> and passes it to Class B, Class B can
+use that token to look up and access Class A's private members.
+Encapsulation boundaries are preserved because Class A must explicitly
+choose to share its lookup token.</li>
+<li><strong>Public Lookup:</strong> Calling
+<code>MethodHandles.publicLookup()</code> creates an unprivileged token
+that can only access public members of public classes in unconditionally
+exported packages.</li>
+</ul>
+<h3 id="privilege-attenuation">Privilege Attenuation</h3>
+<p>To prevent unauthorized privilege escalation, the <code>Lookup</code>
+API enforces strict attenuation rules when modifying or transferring
+tokens:</p>
+<ul>
+<li><strong>Target Class Switching
+(<code>Lookup.in(Class&lt;?&gt; requestedLookupClass)</code>):</strong>
+When a lookup token is redirected to a different target class, it
+automatically loses privileges. If the new class belongs to a different
+module, all modes except public and unconditional access are dropped. If
+it resides in a different package within the same module, private and
+package access modes are stripped.</li>
+<li><strong>Explicit Dropping
+(<code>Lookup.dropLookupMode(int mode)</code>):</strong> Callers can
+explicitly reduce the capabilities of a lookup token before passing it
+to untrusted code, ensuring that the recipient cannot resolve sensitive
+internal members.</li>
+</ul>
+<h3
+id="integration-with-the-java-platform-module-system-jpms">Integration
+with the Java Platform Module System (JPMS)</h3>
+<p>Starting in Java 9, <code>MethodHandles.Lookup</code> enforces
+modular encapsulation. For a lookup to access a member in another
+module:</p>
+<ol type="1">
+<li>The lookup class's module must read the target member's module.</li>
+<li>The package containing the target member must be exported (for
+<code>public</code> and <code>protected</code> access) or opened (for
+<code>private</code> and deep reflection access) to the lookup class's
+module.</li>
+</ol>
+<p>If a lookup lacks the <code>MODULE</code> mode, it cannot resolve
+members that require module-level readability or package exports,
+ensuring that modular boundaries cannot be bypassed via handle
+creation.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

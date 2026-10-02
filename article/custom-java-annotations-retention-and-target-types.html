@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Java Annotations: Retention and Target Types - java</title>
+    <meta name="description" content="Custom Java annotations provide structured metadata that can decorate elements like classes, methods, and variables without directly modifying program logic. To control how these annotations function, the Java language relies on two foundational meta-ann">
+    <link rel="canonical" href="https://salivity.github.io/java/article/custom-java-annotations-retention-and-target-types">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Custom Java Annotations: Retention and Target Types - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/custom-java-annotations-retention-and-target-types" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Custom Java annotations provide structured metadata that can decorate elements like classes, methods, and variables without directly modifying program logic. To control how these annotations function, the Java language relies on two foundational meta-ann" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="custom-java-annotations-retention-and-target-types">Custom Java
+Annotations: Retention and Target Types</h1>
+<p>Custom Java annotations provide structured metadata that can decorate
+elements like classes, methods, and variables without directly modifying
+program logic. To control how these annotations function, the Java
+language relies on two foundational meta-annotations:
+<code>@Retention</code> and <code>@Target</code>.
+<code>@Retention</code> dictates the lifecycle stage at which the
+annotation is preserved and accessible, while <code>@Target</code>
+restricts the specific syntax elements to which the annotation can be
+applied. Understanding and properly configuring these two attributes is
+essential for building robust, compile-time-safe, and
+reflection-friendly custom annotations.</p>
+<h3 id="the-role-of-retention-policies">The Role of Retention
+Policies</h3>
+<p>The retention policy of an annotation determines how long the Java
+compiler and the Java Virtual Machine (JVM) retain the metadata. It is
+defined using the <code>@Retention</code> meta-annotation, which accepts
+a value from the <code>java.lang.annotation.RetentionPolicy</code>
+enum:</p>
+<ul>
+<li><strong><code>RetentionPolicy.SOURCE</code></strong>: Annotations
+with this policy exist exclusively in the source code. The compiler
+discards them during compilation, meaning they do not appear in the
+compiled <code>.class</code> bytecode. Source-level annotations are
+primarily used by compile-time tools, linters, and code generators (such
+as Project Lombok or <code>@Override</code>).</li>
+<li><strong><code>RetentionPolicy.CLASS</code></strong>: This is the
+default retention policy if none is specified. The compiler records the
+annotation inside the <code>.class</code> file, but the JVM does not
+load or retain it into memory at runtime. This level is useful for build
+tools, static bytecode analyzers, or off-line bytecode instrumentation
+frameworks that parse <code>.class</code> files directly without
+executing them.</li>
+<li><strong><code>RetentionPolicy.RUNTIME</code></strong>: Annotations
+are recorded in the <code>.class</code> file and maintained in memory by
+the JVM during application execution. This allows the metadata to be
+read reflectively at runtime using methods such as
+<code>Class.isAnnotationPresent()</code> or
+<code>Method.getAnnotation()</code>. Frameworks such as Spring,
+Hibernate, and JUnit rely heavily on runtime retention to facilitate
+dependency injection, transaction management, and automated test
+execution.</li>
+</ul>
+<h3 id="defining-applicable-contexts-with-target-types">Defining
+Applicable Contexts with Target Types</h3>
+<p>The target type defines the programmatic contexts where a custom
+annotation is legally allowed. It is configured using the
+<code>@Target</code> meta-annotation, which accepts an array of values
+from the <code>java.lang.annotation.ElementType</code> enum. If
+<code>@Target</code> is omitted, the annotation can be placed on almost
+any Java declaration.</p>
+<p>Common <code>ElementType</code> values include:</p>
+<ul>
+<li><strong><code>ElementType.TYPE</code></strong>: Allows the
+annotation to be placed on classes, interfaces (including annotation
+types), records, or enums.</li>
+<li><strong><code>ElementType.FIELD</code></strong>: Restricts placement
+to fields, including enum constants.</li>
+<li><strong><code>ElementType.METHOD</code></strong>: Restricts
+placement strictly to methods.</li>
+<li><strong><code>ElementType.PARAMETER</code></strong>: Applies to
+method or constructor parameters, often used in REST API controllers for
+request binding.</li>
+<li><strong><code>ElementType.CONSTRUCTOR</code></strong>: Limits the
+annotation to constructors.</li>
+<li><strong><code>ElementType.LOCAL_VARIABLE</code></strong>: Allows
+decorating local variables inside methods (note: local variable
+annotations cannot be read via reflection, even with runtime
+retention).</li>
+<li><strong><code>ElementType.ANNOTATION_TYPE</code></strong>:
+Designates meta-annotations, restricting application only to other
+annotation declarations.</li>
+<li><strong><code>ElementType.TYPE_USE</code></strong>: Introduced in
+Java 8, this target allows an annotation to be used anywhere a type is
+used, including generic type arguments, casts, and
+<code>implements</code> clauses, enabling advanced static type
+checking.</li>
+</ul>
+<h3 id="practical-implementation">Practical Implementation</h3>
+<p>To construct a custom annotation, declare it using the
+<code>@interface</code> syntax and apply both meta-annotations directly
+above the declaration:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">package</span><span class="im"> com</span><span class="op">.</span><span class="im">example</span><span class="op">.</span><span class="im">annotations</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">annotation</span><span class="op">.</span><span class="im">ElementType</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">annotation</span><span class="op">.</span><span class="im">Retention</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">annotation</span><span class="op">.</span><span class="im">RetentionPolicy</span><span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">annotation</span><span class="op">.</span><span class="im">Target</span><span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">@Retention</span><span class="op">(</span><span class="bu">RetentionPolicy</span><span class="op">.</span><span class="fu">RUNTIME</span><span class="op">)</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">@Target</span><span class="op">({</span><span class="bu">ElementType</span><span class="op">.</span><span class="fu">METHOD</span><span class="op">,</span> <span class="bu">ElementType</span><span class="op">.</span><span class="fu">TYPE</span><span class="op">})</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="at">@interface</span> AuditLog <span class="op">{</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="bu">String</span> <span class="fu">action</span><span class="op">()</span> <span class="kw">default</span> <span class="st">&quot;DEFAULT_ACTION&quot;</span><span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="fu">severity</span><span class="op">()</span> <span class="kw">default</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this example, <code>@Retention(RetentionPolicy.RUNTIME)</code>
+ensures that application frameworks can inspect the
+<code>@AuditLog</code> metadata via reflection while the application is
+running. Concurrently,
+<code>@Target({ElementType.METHOD, ElementType.TYPE})</code> instructs
+the compiler to permit the annotation only on class declarations or
+individual methods. If a developer attempts to annotate a private field
+or a method parameter with <code>@AuditLog</code>, the Java compiler
+immediately halts with a compilation error, enforcing strict and
+predictable usage across the codebase.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

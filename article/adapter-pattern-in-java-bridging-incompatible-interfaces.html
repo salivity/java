@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adapter Pattern in Java: Bridging Incompatible Interfaces - java</title>
+    <meta name="description" content="The Adapter design pattern serves as a structural bridge in Java applications, allowing classes with incompatible interfaces to collaborate seamlessly without modifying their existing source code. By acting as a wrapper, the pattern translates the interf">
+    <link rel="canonical" href="https://salivity.github.io/java/article/adapter-pattern-in-java-bridging-incompatible-interfaces">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Adapter Pattern in Java: Bridging Incompatible Interfaces - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/adapter-pattern-in-java-bridging-incompatible-interfaces" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Adapter design pattern serves as a structural bridge in Java applications, allowing classes with incompatible interfaces to collaborate seamlessly without modifying their existing source code. By acting as a wrapper, the pattern translates the interf" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="adapter-pattern-in-java-bridging-incompatible-interfaces">Adapter
+Pattern in Java: Bridging Incompatible Interfaces</h1>
+<p>The Adapter design pattern serves as a structural bridge in Java
+applications, allowing classes with incompatible interfaces to
+collaborate seamlessly without modifying their existing source code. By
+acting as a wrapper, the pattern translates the interface of an existing
+class (the adaptee) into an interface expected by the client (the
+target). This article examines the structural role of the Adapter
+pattern in Java, breaks down its key components, contrasts its two
+primary implementation approaches—object and class adapters—and
+demonstrates how it preserves design integrity and promotes the
+Open/Closed Principle.</p>
+<h2 id="the-core-structural-role">The Core Structural Role</h2>
+<p>In software architecture, systems frequently need to integrate
+third-party libraries, legacy systems, or off-the-shelf components. The
+challenge arises when an existing component performs the required
+functionality but exposes an API signature different from what the
+client code expects.</p>
+<p>The structural role of the Adapter pattern is to resolve this
+mismatch by converting calls from the client's preferred interface into
+calls that the adaptee understands. Rather than rewriting the client or
+refactoring the adaptee—which may be impractical, risky, or impossible
+if using precompiled libraries—the adapter acts as an intermediary
+translator.</p>
+<p>The pattern comprises four primary structural components:</p>
+<ol type="1">
+<li><strong>Target Interface:</strong> The standard interface that the
+client expects and understands.</li>
+<li><strong>Client:</strong> The business logic class that makes calls
+conforming to the Target interface.</li>
+<li><strong>Adaptee:</strong> The existing or third-party class that
+provides the core functionality but possesses an incompatible
+interface.</li>
+<li><strong>Adapter:</strong> The concrete class that implements the
+Target interface and maps requests to the Adaptee.</li>
+</ol>
+<h2 id="structural-variants-object-adapter-vs-class-adapter">Structural
+Variants: Object Adapter vs. Class Adapter</h2>
+<p>In Java, the Adapter pattern is primarily implemented in two ways,
+dictated by the language's object-oriented constraints.</p>
+<h3 id="1-object-adapter-composition">1. Object Adapter
+(Composition)</h3>
+<p>The Object Adapter relies on composition. The adapter implements the
+target interface and holds an internal reference (an instance) to the
+adaptee.</p>
+<p>Because Java does not support multiple inheritance of classes, the
+Object Adapter is the standard and idiomatic approach in Java
+development. It complies with the "favor composition over inheritance"
+principle and allows a single adapter to work with the adaptee and any
+of its subclasses.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Target Interface</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> MediaPlayer <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">play</span><span class="op">(</span><span class="bu">String</span> audioType<span class="op">,</span> <span class="bu">String</span> fileName<span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Adaptee</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> AdvancedAudioPlayer <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">playVlc</span><span class="op">(</span><span class="bu">String</span> fileName<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Playing vlc file: &quot;</span> <span class="op">+</span> fileName<span class="op">);</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">playMp4</span><span class="op">(</span><span class="bu">String</span> fileName<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Playing mp4 file: &quot;</span> <span class="op">+</span> fileName<span class="op">);</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">// Object Adapter</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MediaAdapter <span class="kw">implements</span> MediaPlayer <span class="op">{</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">final</span> AdvancedAudioPlayer advancedAudioPlayer<span class="op">;</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">MediaAdapter</span><span class="op">(</span>AdvancedAudioPlayer advancedAudioPlayer<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">advancedAudioPlayer</span> <span class="op">=</span> advancedAudioPlayer<span class="op">;</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">play</span><span class="op">(</span><span class="bu">String</span> audioType<span class="op">,</span> <span class="bu">String</span> fileName<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span><span class="st">&quot;vlc&quot;</span><span class="op">.</span><span class="fu">equalsIgnoreCase</span><span class="op">(</span>audioType<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>            advancedAudioPlayer<span class="op">.</span><span class="fu">playVlc</span><span class="op">(</span>fileName<span class="op">);</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> <span class="op">(</span><span class="st">&quot;mp4&quot;</span><span class="op">.</span><span class="fu">equalsIgnoreCase</span><span class="op">(</span>audioType<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>            advancedAudioPlayer<span class="op">.</span><span class="fu">playMp4</span><span class="op">(</span>fileName<span class="op">);</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="2-class-adapter-inheritance">2. Class Adapter (Inheritance)</h3>
+<p>The Class Adapter relies on multiple inheritance to adapt one
+interface to another. Since Java allows a class to inherit from only one
+parent class but implement multiple interfaces, a Class Adapter in Java
+must extend the concrete adaptee class while implementing the target
+interface.</p>
+<p>While functional, this approach tightly couples the adapter directly
+to the concrete adaptee implementation and prevents the adapter from
+being reused with any subclasses of the adaptee.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Class Adapter</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> ClassMediaAdapter <span class="kw">extends</span> AdvancedAudioPlayer <span class="kw">implements</span> MediaPlayer <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">play</span><span class="op">(</span><span class="bu">String</span> audioType<span class="op">,</span> <span class="bu">String</span> fileName<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span><span class="st">&quot;vlc&quot;</span><span class="op">.</span><span class="fu">equalsIgnoreCase</span><span class="op">(</span>audioType<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>            <span class="fu">playVlc</span><span class="op">(</span>fileName<span class="op">);</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> <span class="op">(</span><span class="st">&quot;mp4&quot;</span><span class="op">.</span><span class="fu">equalsIgnoreCase</span><span class="op">(</span>audioType<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            <span class="fu">playMp4</span><span class="op">(</span>fileName<span class="op">);</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="architectural-advantages">Architectural Advantages</h2>
+<p>Deploying the Adapter pattern introduces several architectural
+benefits to Java applications:</p>
+<ul>
+<li><strong>Separation of Concerns:</strong> Interface conversion logic
+is isolated inside the adapter class, keeping client code clean and
+focused solely on business logic.</li>
+<li><strong>Open/Closed Principle Compliance:</strong> New adapters can
+be introduced to support new formats or services without modifying
+existing client code or target interfaces.</li>
+<li><strong>Code Reusability:</strong> Existing, thoroughly tested
+components can be reused across different systems even when their
+interfaces do not naturally align.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

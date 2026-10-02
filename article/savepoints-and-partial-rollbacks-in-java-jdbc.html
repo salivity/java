@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Savepoints and Partial Rollbacks in Java JDBC - java</title>
+    <meta name="description" content="This article explores how JDBC savepoints function as intermediate checkpoints within database transactions to allow partial rollbacks. You will learn the core concepts behind the java.sql.Savepoint interface, how to configure transactions manually, the">
+    <link rel="canonical" href="https://salivity.github.io/java/article/savepoints-and-partial-rollbacks-in-java-jdbc">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Savepoints and Partial Rollbacks in Java JDBC - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/savepoints-and-partial-rollbacks-in-java-jdbc" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores how JDBC savepoints function as intermediate checkpoints within database transactions to allow partial rollbacks. You will learn the core concepts behind the java.sql.Savepoint interface, how to configure transactions manually, the" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="savepoints-and-partial-rollbacks-in-java-jdbc">Savepoints and
+Partial Rollbacks in Java JDBC</h1>
+<p>This article explores how JDBC savepoints function as intermediate
+checkpoints within database transactions to allow partial rollbacks. You
+will learn the core concepts behind the <code>java.sql.Savepoint</code>
+interface, how to configure transactions manually, the exact methods
+required to mark and revert to specific points of execution, and
+practical code implementation for robust error handling.</p>
+<h3 id="understanding-savepoints">Understanding Savepoints</h3>
+<p>In standard relational database management, a transaction adheres to
+the "all-or-nothing" rule of atomicity. When an error occurs, the entire
+transaction is typically rolled back, discarding every operation
+executed up to that point.</p>
+<p>A savepoint, represented by the <code>java.sql.Savepoint</code>
+interface in JDBC, provides finer-grained control by establishing a
+bookmark within an active transaction. Instead of discarding the entire
+transaction during an exception, an application can roll back state to
+the designated savepoint, preserving all valid operations completed
+before that marker.</p>
+<h3 id="how-savepoints-enable-partial-rollbacks">How Savepoints Enable
+Partial Rollbacks</h3>
+<p>Savepoints only operate when auto-commit mode is disabled. Once a
+transaction is managed manually, a developer can define one or more
+savepoints at critical junctures. If an intermediate operation fails,
+the application catches the exception and commands the database
+connection to roll back only to the specified savepoint. The surrounding
+transaction remains active, allowing subsequent operations to proceed
+before finalizing with a full commit.</p>
+<h4 id="key-methods-in-javasqlconnection">Key Methods in
+<code>java.sql.Connection</code></h4>
+<ol type="1">
+<li><strong><code>setSavepoint()</code> /
+<code>setSavepoint(String name)</code></strong>: Creates a savepoint. It
+can be unnamed (system-generated) or named using a <code>String</code>
+identifier. Both return a <code>Savepoint</code> object.</li>
+<li><strong><code>rollback(Savepoint savepoint)</code></strong>: Reverts
+all changes made after the specified savepoint was established. Changes
+made prior to the savepoint remain intact.</li>
+<li><strong><code>releaseSavepoint(Savepoint savepoint)</code></strong>:
+Removes the savepoint from the database, freeing internal resources.
+This does not commit or roll back any data.</li>
+<li><strong><code>commit()</code></strong>: Finalizes all remaining,
+un-rolled-back modifications made throughout the entire
+transaction.</li>
+</ol>
+<h3 id="practical-implementation-example">Practical Implementation
+Example</h3>
+<p>The following example demonstrates setting a savepoint before a
+non-critical operation, rolling back to that checkpoint upon failure,
+and committing the primary operation:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">sql</span><span class="op">.</span><span class="im">Connection</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">sql</span><span class="op">.</span><span class="im">DriverManager</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">sql</span><span class="op">.</span><span class="im">PreparedStatement</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">sql</span><span class="op">.</span><span class="im">SQLException</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">sql</span><span class="op">.</span><span class="im">Savepoint</span><span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> SavepointDemo <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="bu">String</span> url <span class="op">=</span> <span class="st">&quot;jdbc:your_database_url&quot;</span><span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="bu">String</span> user <span class="op">=</span> <span class="st">&quot;username&quot;</span><span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="bu">String</span> password <span class="op">=</span> <span class="st">&quot;password&quot;</span><span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span> <span class="op">(</span><span class="bu">Connection</span> connection <span class="op">=</span> <span class="bu">DriverManager</span><span class="op">.</span><span class="fu">getConnection</span><span class="op">(</span>url<span class="op">,</span> user<span class="op">,</span> password<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Step 1: Disable auto-commit</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>            connection<span class="op">.</span><span class="fu">setAutoCommit</span><span class="op">(</span><span class="kw">false</span><span class="op">);</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Step 2: Perform the critical operation</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>            <span class="bu">String</span> primarySql <span class="op">=</span> <span class="st">&quot;INSERT INTO orders (order_id, customer_id) VALUES (?, ?)&quot;</span><span class="op">;</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>            <span class="cf">try</span> <span class="op">(</span><span class="bu">PreparedStatement</span> stmt1 <span class="op">=</span> connection<span class="op">.</span><span class="fu">prepareStatement</span><span class="op">(</span>primarySql<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>                stmt1<span class="op">.</span><span class="fu">setInt</span><span class="op">(</span><span class="dv">1</span><span class="op">,</span> <span class="dv">101</span><span class="op">);</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>                stmt1<span class="op">.</span><span class="fu">setInt</span><span class="op">(</span><span class="dv">2</span><span class="op">,</span> <span class="dv">5001</span><span class="op">);</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>                stmt1<span class="op">.</span><span class="fu">executeUpdate</span><span class="op">();</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Step 3: Create a savepoint before an optional/risky operation</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>            <span class="bu">Savepoint</span> logSavepoint <span class="op">=</span> connection<span class="op">.</span><span class="fu">setSavepoint</span><span class="op">(</span><span class="st">&quot;LogSavepoint&quot;</span><span class="op">);</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>            <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>                <span class="co">// Secondary operation that may fail</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>                <span class="bu">String</span> secondarySql <span class="op">=</span> <span class="st">&quot;INSERT INTO audit_logs (log_id, message) VALUES (?, ?)&quot;</span><span class="op">;</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>                <span class="cf">try</span> <span class="op">(</span><span class="bu">PreparedStatement</span> stmt2 <span class="op">=</span> connection<span class="op">.</span><span class="fu">prepareStatement</span><span class="op">(</span>secondarySql<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>                    stmt2<span class="op">.</span><span class="fu">setInt</span><span class="op">(</span><span class="dv">1</span><span class="op">,</span> <span class="dv">101</span><span class="op">);</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>                    stmt2<span class="op">.</span><span class="fu">setString</span><span class="op">(</span><span class="dv">2</span><span class="op">,</span> <span class="st">&quot;Order processed successfully&quot;</span><span class="op">);</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>                    stmt2<span class="op">.</span><span class="fu">executeUpdate</span><span class="op">();</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">SQLException</span> ex<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>                <span class="co">// Step 4: Partial rollback to the savepoint if the secondary task fails</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>                <span class="bu">System</span><span class="op">.</span><span class="fu">err</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Audit log failed, rolling back to savepoint: &quot;</span> <span class="op">+</span> ex<span class="op">.</span><span class="fu">getMessage</span><span class="op">());</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>                connection<span class="op">.</span><span class="fu">rollback</span><span class="op">(</span>logSavepoint<span class="op">);</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Step 5: Commit the transaction (primary order remains intact)</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>            connection<span class="op">.</span><span class="fu">commit</span><span class="op">();</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Transaction successfully committed.&quot;</span><span class="op">);</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">SQLException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>            e<span class="op">.</span><span class="fu">printStackTrace</span><span class="op">();</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="key-considerations">Key Considerations</h3>
+<ul>
+<li><strong>Database Support</strong>: Not all relational database
+management systems or JDBC drivers support savepoints. Verify support
+using <code>connection.getMetaData().supportsSavepoints()</code> before
+relying on them in production.</li>
+<li><strong>Savepoint Invalidation</strong>: When a rollback to a
+specific savepoint occurs, any subsequent savepoints created after that
+point are automatically released and become invalid.</li>
+<li><strong>Transaction Finalization</strong>: Calling
+<code>commit()</code> or a parameterless <code>rollback()</code> on the
+connection automatically removes and invalidates all active savepoints
+within that transaction scope.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

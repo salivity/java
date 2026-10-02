@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified JVM Logging and -Xlog Flag Configuration - java</title>
+    <meta name="description" content="Unified JVM Logging is a standardized framework introduced in Java 9 to replace fragmented legacy logging options with a single, coherent command-line interface. This article explores the architecture of Unified JVM Logging and details how to configure t">
+    <link rel="canonical" href="https://salivity.github.io/java/article/unified-jvm-logging-and-xlog-flag-configuration">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Unified JVM Logging and -Xlog Flag Configuration - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/unified-jvm-logging-and-xlog-flag-configuration" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Unified JVM Logging is a standardized framework introduced in Java 9 to replace fragmented legacy logging options with a single, coherent command-line interface. This article explores the architecture of Unified JVM Logging and details how to configure t" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="unified-jvm-logging-and--xlog-flag-configuration">Unified JVM
+Logging and -Xlog Flag Configuration</h1>
+<p>Unified JVM Logging is a standardized framework introduced in Java 9
+to replace fragmented legacy logging options with a single, coherent
+command-line interface. This article explores the architecture of
+Unified JVM Logging and details how to configure the <code>-Xlog</code>
+flag to capture precise runtime metrics—such as garbage collection,
+safepoint pauses, and JIT compilation events—to effectively identify
+bottlenecks and tune Java application performance.</p>
+<hr />
+<h3 id="what-is-unified-jvm-logging">What is Unified JVM Logging?</h3>
+<p>Prior to Java 9, HotSpot JVM components used disjointed, ad-hoc
+command-line flags to generate diagnostic information (for example,
+<code>-XX:+PrintGCDetails</code>, <code>-XX:+PrintGCDateStamps</code>,
+and <code>-XX:+PrintCompilation</code>). Unified JVM Logging (introduced
+via JEP 158) consolidated all HotSpot subsystem logging into a unified
+infrastructure controlled exclusively via the <code>-Xlog</code>
+flag.</p>
+<p>This subsystem provides a consistent syntax for routing logs,
+filtering by subsystem, controlling log severity levels, formatting log
+metadata, and managing file rotation.</p>
+<hr />
+<h3 id="the--xlog-command-syntax">The <code>-Xlog</code> Command
+Syntax</h3>
+<p>The general syntax for the <code>-Xlog</code> option follows this
+pattern:</p>
+<pre class="text"><code>-Xlog:[selectors]:[output]:[decorators]:[output-options]</code></pre>
+<p>Each component operates as follows:</p>
+<ol type="1">
+<li><strong>Selectors (<code>tag1[+tag2...][=level]</code>):</strong>
+Defines what to log and at what verbosity.
+<ul>
+<li><strong>Tags:</strong> Identify the JVM component (e.g.,
+<code>gc</code>, <code>safepoint</code>, <code>class</code>,
+<code>jit</code>, <code>os</code>, <code>compiler</code>). Using
+<code>+</code> requires all specified tags to match; using
+<code>*</code> acts as a wildcard for any tag combinations containing
+the base tag (e.g., <code>gc*</code>).</li>
+<li><strong>Levels:</strong> Determine verbosity. Available levels in
+ascending order are <code>off</code>, <code>trace</code>,
+<code>debug</code>, <code>info</code>, <code>warning</code>, and
+<code>error</code>. The default level is <code>info</code>.</li>
+</ul></li>
+<li><strong>Output:</strong> Specifies destination. Options are
+<code>stdout</code>, <code>stderr</code>, or
+<code>file=&lt;path&gt;</code>. If omitted, output defaults to
+<code>stdout</code>.</li>
+<li><strong>Decorators:</strong> Specify the metadata prepended to each
+log message. Common decorators include:
+<ul>
+<li><code>time</code> (ISO-8601 calendar timestamp)</li>
+<li><code>uptime</code> (time since JVM launch)</li>
+<li><code>pid</code> (process identifier)</li>
+<li><code>tid</code> (thread identifier)</li>
+<li><code>level</code> (log level)</li>
+<li><code>tags</code> (associated tags)</li>
+</ul></li>
+<li><strong>Output-Options:</strong> Configures log file behavior,
+specifically file rotation:
+<ul>
+<li><code>filesize=&lt;size&gt;</code> (e.g., <code>100M</code>)</li>
+<li><code>filecount=&lt;number&gt;</code> (number of rotated files to
+retain)</li>
+</ul></li>
+</ol>
+<hr />
+<h3 id="configuring--xlog-for-performance-tuning">Configuring
+<code>-Xlog</code> for Performance Tuning</h3>
+<p>Performance tuning requires targeted diagnostic data without
+overwhelming disk I/O. Below are the most critical <code>-Xlog</code>
+configurations used to tune JVM performance.</p>
+<h4 id="1-garbage-collection-gc-monitoring">1. Garbage Collection (GC)
+Monitoring</h4>
+<p>Garbage collection pauses directly affect application throughput and
+latency. To capture detailed GC behavior, memory pool changes, and
+individual collection phases:</p>
+<pre class="text"><code>-Xlog:gc*,gc+phases=debug:file=/var/log/jvm/gc.log:time,uptime,pid:filecount=5,filesize=100M</code></pre>
+<ul>
+<li><strong><code>gc*</code></strong>: Captures high-level GC events and
+ergonomics.</li>
+<li><strong><code>gc+phases=debug</code></strong>: Logs time spent in
+individual sub-phases of collectors like G1, ZGC, or Shenandoah,
+revealing which phase causes high tail latencies.</li>
+<li><strong><code>time,uptime,pid</code></strong>: Allows log
+correlation with host operating system events and Application
+Performance Monitoring (APM) tools.</li>
+</ul>
+<h4 id="2-safepoint-and-stop-the-world-stw-pauses">2. Safepoint and
+Stop-the-World (STW) Pauses</h4>
+<p>Applications may encounter latency spikes caused by safepoint
+operations unrelated to GC, such as biased lock revocation, code
+deoptimization, or thread dumps.</p>
+<pre class="text"><code>-Xlog:safepoint=debug:file=/var/log/jvm/safepoints.log:uptime,tags,level:filecount=3,filesize=50M</code></pre>
+<p>This configuration logs:</p>
+<ul>
+<li>Time taken to bring all application threads to a safepoint ("time to
+safepoint" / <code>tts</code>).</li>
+<li>The duration threads remained stopped.</li>
+<li>The specific operation that triggered the safepoint.</li>
+</ul>
+<h4 id="3-jit-compilation-activity">3. JIT Compilation Activity</h4>
+<p>JIT compilation consumes CPU and can cause temporary performance
+degradation during application warmup or after phase changes.</p>
+<pre class="text"><code>-Xlog:jit+compilation=info:file=/var/log/jvm/jit.log:time,uptime:filecount=3,filesize=50M</code></pre>
+<ul>
+<li>Tracks method compilation levels (C1 vs. C2).</li>
+<li>Highlights aggressive recompilations, deoptimizations, and code
+cache pressure.</li>
+</ul>
+<hr />
+<h3 id="best-practices-for-production-logging">Best Practices for
+Production Logging</h3>
+<ul>
+<li><strong>Use Asynchronous Logging:</strong> Synchronous disk writes
+during logging can stall JVM threads. Starting in Java 17, use the
+<code>-Xlog:async</code> flag alongside
+<code>-XX:AsyncLogBufferSize=&lt;bytes&gt;</code> to offload I/O writes
+to an intermediate ring buffer managed by a background thread.</li>
+<li><strong>Always Rotate Log Files:</strong> In production
+environments, never log directly to unbounded files. Explicitly define
+<code>filecount</code> and <code>filesize</code> to avoid consuming all
+available disk space.</li>
+<li><strong>Keep Verbosity Controlled:</strong> Avoid using
+<code>trace</code> in production, as the volume of generated data can
+saturate CPU and memory buses. Reserve <code>debug</code> and
+<code>trace</code> for isolated environments or targeted, temporary
+investigations.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

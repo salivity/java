@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java String Interpolation and Template Processors - java</title>
+    <meta name="description" content="This article explains the concept of string interpolation, examines why traditional Java lacked native support for it, and explores how modern Java addresses this feature through template processors. You will learn the mechanics behind String Templates,">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-string-interpolation-and-template-processors">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java String Interpolation and Template Processors - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-string-interpolation-and-template-processors" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the concept of string interpolation, examines why traditional Java lacked native support for it, and explores how modern Java addresses this feature through template processors. You will learn the mechanics behind String Templates," />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-string-interpolation-and-template-processors">Java String
+Interpolation and Template Processors</h1>
+<p>This article explains the concept of string interpolation, examines
+why traditional Java lacked native support for it, and explores how
+modern Java addresses this feature through template processors. You will
+learn the mechanics behind String Templates, how they balance developer
+ergonomics with security, and how template processors differentiate
+Java's approach from other modern programming languages.</p>
+<h2 id="what-is-string-interpolation">What Is String Interpolation?</h2>
+<p>String interpolation is a language feature that allows developers to
+evaluate expressions or variables directly inside a string literal.
+Instead of relying on manual concatenation or positional format
+specifiers, developers can embed references seamlessly.</p>
+<p>In languages like JavaScript, Kotlin, or C#, string interpolation
+typically looks like this:</p>
+<pre class="text"><code>// C# example
+string message = $&quot;Hello, {name}!&quot;;
+
+// JavaScript example
+let message = `Hello, ${name}!`;</code></pre>
+<p>Before the introduction of String Templates, Java developers relied
+on three primary alternatives:</p>
+<ul>
+<li><strong>Concatenation (<code>+</code> operator):</strong> Verbose,
+visually cluttered, and hard to read with complex expressions.</li>
+<li><strong><code>StringBuilder</code>:</strong> Efficient for multiple
+mutations, but unnecessarily verbose for simple messages.</li>
+<li><strong><code>String.format()</code> /
+<code>formatted()</code>:</strong> Cleaner than concatenation, but
+separates the values from their target positions and introduces runtime
+type mismatch risks.</li>
+</ul>
+<h2 id="string-templates-in-java">String Templates in Java</h2>
+<p>Java introduced String Templates as a preview feature (via JEP 430 in
+JDK 21 and JEP 459 in JDK 22). Rather than offering naive string
+interpolation—which directly merges raw text and variable values into an
+immutable string—Java decoupled the template from the evaluation
+phase.</p>
+<p>Java's implementation relies on three components:</p>
+<ol type="1">
+<li><strong>A Template Processor:</strong> An object that handles the
+template and its embedded expressions.</li>
+<li><strong>A Dot (<code>.</code>):</strong> Separates the processor
+from the template literal.</li>
+<li><strong>A Template Literal:</strong> A string containing embedded
+expressions enclosed within <code>\{...}</code>.</li>
+</ol>
+<p>The standard syntax appears as:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> name <span class="op">=</span> <span class="st">&quot;Alice&quot;</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> greeting <span class="op">=</span> STR<span class="op">.</span><span class="st">&quot;Hello, </span><span class="er">\{</span><span class="st">name}!&quot;</span><span class="op">;</span></span></code></pre></div>
+<p>In this example, <code>STR</code> is a built-in template processor,
+and <code>\{name}</code> is an embedded expression evaluated at
+runtime.</p>
+<h2 id="how-template-processors-work">How Template Processors Work</h2>
+<p>A template processor is an implementation of the
+<code>StringTemplate.Processor</code> functional interface. When Java
+encounters a template, it does not immediately construct a
+<code>String</code>. Instead, the compiler transforms the literal into a
+<code>StringTemplate</code> object.</p>
+<p>A <code>StringTemplate</code> contains:</p>
+<ul>
+<li><strong>Fragments:</strong> The static, literal portions of the
+text.</li>
+<li><strong>Values:</strong> The computed results of the embedded
+expressions.</li>
+</ul>
+<p>The template processor receives these fragments and values, processes
+them, and returns an arbitrary result type—not strictly a
+<code>String</code>.</p>
+<h3 id="standard-processors">Standard Processors</h3>
+<p>Modern Java drafts introduced built-in processors to handle common
+scenarios:</p>
+<ul>
+<li><strong><code>STR</code>:</strong> Evaluates embedded expressions,
+converts them to strings via <code>String.valueOf()</code>, and
+concatenates them with the static fragments.</li>
+<li><strong><code>FMT</code>:</strong> Similar to <code>STR</code>, but
+allows format specifiers directly within the expression brackets to
+control layout, alignment, and precision:
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> <span class="kw">record</span> <span class="op">=</span> FMT<span class="op">.</span><span class="st">&quot;Item: %-10s</span><span class="er">\{</span><span class="st">item} | Price: %7.2f</span><span class="er">\{</span><span class="st">price}&quot;</span><span class="op">;</span></span></code></pre></div></li>
+<li><strong><code>RAW</code>:</strong> Does not evaluate or concatenate
+the template automatically. It returns the raw
+<code>StringTemplate</code> object containing the unevaluated
+components, useful for passing templates directly to custom
+processors.</li>
+</ul>
+<h2 id="why-java-avoided-naive-interpolation-the-security-advantage">Why
+Java Avoided Naive Interpolation: The Security Advantage</h2>
+<p>The primary motivation for Java’s template processor design is
+security. In naive string interpolation, untrusted user input directly
+interpolated into a query string easily leads to vulnerabilities like
+SQL injection or Cross-Site Scripting (XSS).</p>
+<p>Consider a database query:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Naive interpolation risk:</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> query <span class="op">=</span> $<span class="st">&quot;SELECT * FROM users WHERE name = &#39;{userInput}&#39;&quot;</span><span class="op">;</span></span></code></pre></div>
+<p>If <code>userInput</code> contains malicious SQL code, the resulting
+string compromises the system.</p>
+<p>Java solves this by allowing custom processors that intercept the raw
+fragments and values before a final query is formed:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="bu">PreparedStatement</span> ps <span class="op">=</span> DB<span class="op">.</span><span class="st">&quot;SELECT * FROM users WHERE name = </span><span class="er">\{</span><span class="st">userInput}&quot;</span><span class="op">;</span></span></code></pre></div>
+<p>In this architecture, the <code>DB</code> processor parses the
+template into a parameterized query with placeholders (<code>?</code>)
+and safely binds <code>userInput</code> as a parameter, neutralizing
+injection risks entirely at compile and execution boundaries.</p>
+<h2 id="summary">Summary</h2>
+<p>String interpolation in Java evolves beyond basic syntactic sugar. By
+channeling interpolation through template processors, Java allows direct
+variable embedding while granting processors full control over the
+parsing, validation, and final output type, establishing a balance
+between developer readability and critical application security.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

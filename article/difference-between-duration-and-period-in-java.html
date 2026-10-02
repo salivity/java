@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Difference Between Duration and Period in Java - java</title>
+    <meta name="description" content="Java's java.time package, introduced in Java 8, provides two distinct classes to represent an amount of time: Duration and Period. While both model a distance on a timeline, their primary distinction lies in their measurement scale. Duration measures tim">
+    <link rel="canonical" href="https://salivity.github.io/java/article/difference-between-duration-and-period-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Difference Between Duration and Period in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/difference-between-duration-and-period-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's java.time package, introduced in Java 8, provides two distinct classes to represent an amount of time: Duration and Period. While both model a distance on a timeline, their primary distinction lies in their measurement scale. Duration measures tim" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="difference-between-duration-and-period-in-java">Difference
+Between Duration and Period in Java</h1>
+<p>Java's <code>java.time</code> package, introduced in Java 8, provides
+two distinct classes to represent an amount of time:
+<code>Duration</code> and <code>Period</code>. While both model a
+distance on a timeline, their primary distinction lies in their
+measurement scale. <code>Duration</code> measures time-based amounts
+using seconds and nanoseconds, whereas <code>Period</code> measures
+date-based amounts using years, months, and days. Understanding the
+differences between machine time and human-centric calendar time is
+essential for choosing the correct class in your application.</p>
+<h2 id="the-role-of-duration-time-based-precision">The Role of Duration:
+Time-Based Precision</h2>
+<p>The <code>Duration</code> class represents an exact amount of time
+measured in seconds and nanoseconds. It is machine-oriented and ideal
+for measuring technical, high-precision intervals, such as execution
+times, network latencies, or timeouts.</p>
+<h3 id="key-characteristics-of-duration">Key Characteristics of
+Duration</h3>
+<ul>
+<li><strong>Units:</strong> Seconds, nanoseconds, milliseconds, minutes,
+and hours (where an hour is strictly evaluated as 3,600 seconds).</li>
+<li><strong>Compatible Types:</strong> Works seamlessly with machine
+timestamps like <code>Instant</code>, as well as <code>LocalTime</code>
+and <code>LocalDateTime</code>.</li>
+<li><strong>Daylight Saving Time (DST) Agnostic:</strong> A
+<code>Duration</code> of 24 hours always means exactly 86,400 seconds,
+regardless of whether a daylight saving transition occurs.</li>
+</ul>
+<h3 id="example-usage">Example Usage</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">time</span><span class="op">.</span><span class="im">Duration</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">time</span><span class="op">.</span><span class="im">Instant</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">time</span><span class="op">.</span><span class="im">LocalTime</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Measuring elapsed execution time</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>Instant start <span class="op">=</span> Instant<span class="op">.</span><span class="fu">now</span><span class="op">();</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">// ... run task ...</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>Instant finish <span class="op">=</span> Instant<span class="op">.</span><span class="fu">now</span><span class="op">();</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="bu">Duration</span> elapsed <span class="op">=</span> <span class="bu">Duration</span><span class="op">.</span><span class="fu">between</span><span class="op">(</span>start<span class="op">,</span> finish<span class="op">);</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Elapsed milliseconds: &quot;</span> <span class="op">+</span> elapsed<span class="op">.</span><span class="fu">toMillis</span><span class="op">());</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">// Defining explicit intervals</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="bu">Duration</span> fiveMinutes <span class="op">=</span> <span class="bu">Duration</span><span class="op">.</span><span class="fu">ofMinutes</span><span class="op">(</span><span class="dv">5</span><span class="op">);</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>LocalTime time <span class="op">=</span> LocalTime<span class="op">.</span><span class="fu">of</span><span class="op">(</span><span class="dv">10</span><span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>LocalTime later <span class="op">=</span> time<span class="op">.</span><span class="fu">plus</span><span class="op">(</span>fiveMinutes<span class="op">);</span> <span class="co">// 10:05</span></span></code></pre></div>
+<h2 id="the-role-of-period-date-based-calendar-intervals">The Role of
+Period: Date-Based Calendar Intervals</h2>
+<p>The <code>Period</code> class represents a date-based amount of time
+modeled on the human calendar. It stores values in terms of years,
+months, and days. It is designed for business logic where calendar
+semantics matter, such as calculating someone’s age, handling
+subscription billing cycles, or setting calendar reminders.</p>
+<h3 id="key-characteristics-of-period">Key Characteristics of
+Period</h3>
+<ul>
+<li><strong>Units:</strong> Years, months, and days.</li>
+<li><strong>Compatible Types:</strong> Works primarily with date-only
+types like <code>LocalDate</code>.</li>
+<li><strong>DST Aware When Applied:</strong> Adding a
+<code>Period</code> of one day (<code>Period.ofDays(1)</code>) to a
+<code>ZonedDateTime</code> shifts the date by one calendar day while
+preserving the local wall-clock time, even if that calendar day has 23
+or 25 hours due to a DST shift.</li>
+</ul>
+<h3 id="example-usage-1">Example Usage</h3>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">time</span><span class="op">.</span><span class="im">LocalDate</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">time</span><span class="op">.</span><span class="im">Period</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Calculating age or difference between dates</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>LocalDate birthDate <span class="op">=</span> LocalDate<span class="op">.</span><span class="fu">of</span><span class="op">(</span><span class="dv">1990</span><span class="op">,</span> <span class="dv">5</span><span class="op">,</span> <span class="dv">15</span><span class="op">);</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>LocalDate today <span class="op">=</span> LocalDate<span class="op">.</span><span class="fu">of</span><span class="op">(</span><span class="dv">2023</span><span class="op">,</span> <span class="dv">5</span><span class="op">,</span> <span class="dv">15</span><span class="op">);</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>Period age <span class="op">=</span> Period<span class="op">.</span><span class="fu">between</span><span class="op">(</span>birthDate<span class="op">,</span> today<span class="op">);</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Years: &quot;</span> <span class="op">+</span> age<span class="op">.</span><span class="fu">getYears</span><span class="op">());</span> <span class="co">// 33 years</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co">// Adding calendar units</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>LocalDate initialDate <span class="op">=</span> LocalDate<span class="op">.</span><span class="fu">of</span><span class="op">(</span><span class="dv">2024</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">31</span><span class="op">);</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>LocalDate nextMonth <span class="op">=</span> initialDate<span class="op">.</span><span class="fu">plus</span><span class="op">(</span>Period<span class="op">.</span><span class="fu">ofMonths</span><span class="op">(</span><span class="dv">1</span><span class="op">));</span> <span class="co">// 2024-02-29 (leap year adjustment)</span></span></code></pre></div>
+<h2 id="summary-of-differences">Summary of Differences</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;"><code>Duration</code></th>
+<th style="text-align: left;"><code>Period</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Measurement Scale</strong></td>
+<td style="text-align: left;">Time-based (Seconds, Nanoseconds)</td>
+<td style="text-align: left;">Date-based (Years, Months, Days)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Typical Target Types</strong></td>
+<td style="text-align: left;"><code>Instant</code>,
+<code>LocalTime</code>, <code>LocalDateTime</code></td>
+<td style="text-align: left;"><code>LocalDate</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Use Cases</strong></td>
+<td style="text-align: left;">Benchmarks, timeouts, machine
+intervals</td>
+<td style="text-align: left;">Human age, billing cycles, calendar
+events</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DST Behavior</strong></td>
+<td style="text-align: left;">Fixed seconds (ignores calendar
+adjustments)</td>
+<td style="text-align: left;">Context-aware (adjusts for calendar day
+lengths)</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>Duration</code> when you need exact physical time
+measurement down to the second or nanosecond. Use <code>Period</code>
+when your logic depends on conceptual human calendar definitions where
+the length of a day or month can vary.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

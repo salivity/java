@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Non-Blocking Sockets and Selectors in Java NIO - java</title>
+    <meta name="description" content="Java NIO (New I/O) introduces an asynchronous, event-driven approach to network communication that allows a single thread to manage multiple network connections concurrently. This article explores how non-blocking socket channels operate, how they differ">
+    <link rel="canonical" href="https://salivity.github.io/java/article/non-blocking-sockets-and-selectors-in-java-nio">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Non-Blocking Sockets and Selectors in Java NIO - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/non-blocking-sockets-and-selectors-in-java-nio" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java NIO (New I/O) introduces an asynchronous, event-driven approach to network communication that allows a single thread to manage multiple network connections concurrently. This article explores how non-blocking socket channels operate, how they differ" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="non-blocking-sockets-and-selectors-in-java-nio">Non-Blocking
+Sockets and Selectors in Java NIO</h1>
+<p>Java NIO (New I/O) introduces an asynchronous, event-driven approach
+to network communication that allows a single thread to manage multiple
+network connections concurrently. This article explores how non-blocking
+socket channels operate, how they differ from standard blocking I/O, and
+the exact mechanics of how a <code>Selector</code> multiplexes and polls
+ready I/O events from the underlying operating system.</p>
+<h2 id="understanding-non-blocking-socket-channels">Understanding
+Non-Blocking Socket Channels</h2>
+<p>In traditional Java I/O (<code>java.net.Socket</code>), operations
+such as <code>read()</code>, <code>write()</code>, and
+<code>accept()</code> are blocking. When a thread invokes
+<code>read()</code>, it halts execution until data arrives from the
+network. If an application must serve thousands of concurrent clients,
+it must allocate a dedicated thread per connection, leading to severe
+resource overhead and high context-switching costs.</p>
+<p>Java NIO solves this with <code>SocketChannel</code> and
+<code>ServerSocketChannel</code>. By default, these channels are
+blocking, but calling <code>channel.configureBlocking(false)</code>
+switches them into non-blocking mode:</p>
+<ul>
+<li><strong><code>ServerSocketChannel.accept()</code></strong>: If an
+incoming connection is present, it returns the new
+<code>SocketChannel</code>. If no connection is pending, it returns
+<code>null</code> immediately instead of blocking.</li>
+<li><strong><code>SocketChannel.read()</code></strong>: Reads whatever
+bytes are currently available in the system's socket receive buffer into
+a <code>ByteBuffer</code> and returns the byte count. If no data is
+available, it returns <code>0</code> immediately.</li>
+<li><strong><code>SocketChannel.write()</code></strong>: Writes as many
+bytes as can fit into the system's socket send buffer and returns
+immediately, even if the entire buffer could not be transmitted.</li>
+</ul>
+<p>Because these calls return immediately, a thread cannot continuously
+loop through channels checking their status without causing 100% CPU
+utilization. This is where the <code>Selector</code> comes in.</p>
+<h2 id="the-role-of-the-selector">The Role of the Selector</h2>
+<p>A <code>Selector</code> acts as an I/O multiplexer. It is a software
+component capable of monitoring multiple registered NIO channels and
+determining which channels are ready for specific I/O operations.</p>
+<p>To associate a channel with a <code>Selector</code>, the channel must
+inherit from <code>SelectableChannel</code> and be set to non-blocking
+mode. The channel is then registered using its <code>register()</code>
+method:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">SelectionKey</span> key <span class="op">=</span> channel<span class="op">.</span><span class="fu">register</span><span class="op">(</span>selector<span class="op">,</span> <span class="bu">SelectionKey</span><span class="op">.</span><span class="fu">OP_READ</span><span class="op">);</span></span></code></pre></div>
+<p>The registration specifies an "interest set" using bitwise operation
+masks:</p>
+<ul>
+<li><code>SelectionKey.OP_ACCEPT</code>: The server channel is ready to
+accept a new connection.</li>
+<li><code>SelectionKey.OP_CONNECT</code>: The client channel has
+completed its connection handshake.</li>
+<li><code>SelectionKey.OP_READ</code>: The channel has data ready to be
+read.</li>
+<li><code>SelectionKey.OP_WRITE</code>: The channel's buffer has space
+available for writing.</li>
+</ul>
+<p>The <code>register()</code> method returns a
+<code>SelectionKey</code>, which encapsulates the relationship between
+the channel, the selector, and the operation states.</p>
+<h2 id="how-the-selector-polls-ready-events">How the Selector Polls
+Ready Events</h2>
+<p>The <code>Selector</code> relies directly on native OS-level event
+notification mechanisms rather than continuously checking channels in
+user space:</p>
+<ul>
+<li><strong>Linux</strong>: <code>epoll</code></li>
+<li><strong>macOS / BSD</strong>: <code>kqueue</code></li>
+<li><strong>Windows</strong>: <code>poll</code> or I/O Completion Ports
+(IOCP)</li>
+</ul>
+<h3 id="1-polling-via-select">1. Polling via <code>select()</code></h3>
+<p>The thread invokes one of the selector's polling methods:</p>
+<ul>
+<li><code>selector.select()</code>: Blocks the calling thread until at
+least one registered channel becomes ready for an interested
+operation.</li>
+<li><code>selector.select(long timeout)</code>: Blocks until at least
+one channel is ready or until the specified timeout expires.</li>
+<li><code>selector.selectNow()</code>: Non-blocking; immediately returns
+the count of ready channels.</li>
+</ul>
+<p>Under the hood, Java NIO delegates to the operating system's system
+call (such as <code>epoll_wait</code>). The operating system pauses the
+thread and wakes it up only when the network stack updates the state of
+any watched file descriptor.</p>
+<h3 id="2-processing-selected-keys">2. Processing Selected Keys</h3>
+<p>When <code>select()</code> returns a positive integer, it indicates
+that one or more channels are ready. The application retrieves these
+channels via <code>selector.selectedKeys()</code>, which returns a
+<code>Set&lt;SelectionKey&gt;</code>.</p>
+<p>The application then iterates through the set and inspects each key's
+readiness state:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Set</span><span class="op">&lt;</span><span class="bu">SelectionKey</span><span class="op">&gt;</span> selectedKeys <span class="op">=</span> selector<span class="op">.</span><span class="fu">selectedKeys</span><span class="op">();</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Iterator</span><span class="op">&lt;</span><span class="bu">SelectionKey</span><span class="op">&gt;</span> iterator <span class="op">=</span> selectedKeys<span class="op">.</span><span class="fu">iterator</span><span class="op">();</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> <span class="op">(</span>iterator<span class="op">.</span><span class="fu">hasNext</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">SelectionKey</span> key <span class="op">=</span> iterator<span class="op">.</span><span class="fu">next</span><span class="op">();</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>key<span class="op">.</span><span class="fu">isAcceptable</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="bu">ServerSocketChannel</span> server <span class="op">=</span> <span class="op">(</span><span class="bu">ServerSocketChannel</span><span class="op">)</span> key<span class="op">.</span><span class="fu">channel</span><span class="op">();</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="bu">SocketChannel</span> client <span class="op">=</span> server<span class="op">.</span><span class="fu">accept</span><span class="op">();</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        client<span class="op">.</span><span class="fu">configureBlocking</span><span class="op">(</span><span class="kw">false</span><span class="op">);</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        client<span class="op">.</span><span class="fu">register</span><span class="op">(</span>selector<span class="op">,</span> <span class="bu">SelectionKey</span><span class="op">.</span><span class="fu">OP_READ</span><span class="op">);</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> <span class="op">(</span>key<span class="op">.</span><span class="fu">isReadable</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="bu">SocketChannel</span> client <span class="op">=</span> <span class="op">(</span><span class="bu">SocketChannel</span><span class="op">)</span> key<span class="op">.</span><span class="fu">channel</span><span class="op">();</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        <span class="bu">ByteBuffer</span> buffer <span class="op">=</span> <span class="bu">ByteBuffer</span><span class="op">.</span><span class="fu">allocate</span><span class="op">(</span><span class="dv">1024</span><span class="op">);</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> bytesRead <span class="op">=</span> client<span class="op">.</span><span class="fu">read</span><span class="op">(</span>buffer<span class="op">);</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>bytesRead <span class="op">==</span> <span class="op">-</span><span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>            client<span class="op">.</span><span class="fu">close</span><span class="op">();</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    iterator<span class="op">.</span><span class="fu">remove</span><span class="op">();</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="3-key-removal-requirement">3. Key Removal Requirement</h3>
+<p>Calling <code>iterator.remove()</code> is a critical step. The
+<code>Selector</code> populates the selected key set when an event
+occurs, but it does not automatically clear the set. If a key is not
+explicitly removed from the iterator, it remains in the selected keys
+collection and will be re-evaluated on the next iteration, potentially
+leading to errors or handling stale events.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

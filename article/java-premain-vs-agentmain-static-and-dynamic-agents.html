@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Premain vs Agentmain: Static and Dynamic Agents - java</title>
+    <meta name="description" content="Java agents provide a powerful mechanism for intercepting, monitoring, and modifying bytecode running on the Java Virtual Machine (JVM). This article examines the core differences between static Java agents using the premain method and dynamic Java agent">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-premain-vs-agentmain-static-and-dynamic-agents">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Premain vs Agentmain: Static and Dynamic Agents - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-premain-vs-agentmain-static-and-dynamic-agents" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java agents provide a powerful mechanism for intercepting, monitoring, and modifying bytecode running on the Java Virtual Machine (JVM). This article examines the core differences between static Java agents using the premain method and dynamic Java agent" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-premain-vs-agentmain-static-and-dynamic-agents">Java
+Premain vs Agentmain: Static and Dynamic Agents</h1>
+<p>Java agents provide a powerful mechanism for intercepting,
+monitoring, and modifying bytecode running on the Java Virtual Machine
+(JVM). This article examines the core differences between static Java
+agents using the <code>premain</code> method and dynamic Java agents
+using the <code>agentmain</code> method. By understanding their distinct
+lifecycles, configuration requirements, and deployment mechanisms,
+developers can choose the right instrumentation strategy for profiling,
+application performance monitoring (APM), or live debugging.</p>
+<h2 id="what-are-java-agents">What Are Java Agents?</h2>
+<p>A Java agent is a specially crafted JAR file that utilizes the
+<code>java.lang.instrument</code> API to inspect or alter the bytecode
+of classes loaded by the JVM. Agents operate independently of the main
+application code and are commonly used by APM tools like New Relic,
+Datadog, mock frameworks, and security profilers. The instrumentation
+package defines two distinct entry points for agents:
+<code>premain</code> and <code>agentmain</code>.</p>
+<h2 id="premain-static-initialization-at-startup">Premain: Static
+Initialization at Startup</h2>
+<p>The <code>premain</code> method represents a static agent, meaning it
+is attached to the JVM at startup before the target application begins
+execution.</p>
+<h3 id="how-premain-works">How Premain Works</h3>
+<p>To load a static agent, you must specify the agent's path via a
+command-line argument when launching the JVM:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-javaagent:path</span>/to/agent.jar <span class="at">-jar</span> application.jar</span></code></pre></div>
+<p>The JVM initializes the agent and invokes its entry point before
+passing control to the application's standard
+<code>main(String[] args)</code> method.</p>
+<h3 id="signature-and-manifest-requirements">Signature and Manifest
+Requirements</h3>
+<p>A static agent must implement one of the following method
+signatures:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">premain</span><span class="op">(</span><span class="bu">String</span> agentArgs<span class="op">,</span> <span class="bu">Instrumentation</span> inst<span class="op">);</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">premain</span><span class="op">(</span><span class="bu">String</span> agentArgs<span class="op">);</span></span></code></pre></div>
+<p>The agent's <code>META-INF/MANIFEST.MF</code> file must explicitly
+declare the class containing this method using the
+<code>Premain-Class</code> attribute:</p>
+<pre class="manifest"><code>Manifest-Version: 1.0
+Premain-Class: com.example.MyStaticAgent
+Can-Redefine-Classes: true
+Can-Retransform-Classes: true</code></pre>
+<h3 id="key-advantages-and-limitations">Key Advantages and
+Limitations</h3>
+<ul>
+<li><strong>Early Access:</strong> Because <code>premain</code> executes
+before the application starts, it can intercept and instrument every
+class loaded by the system class loader from the very beginning.</li>
+<li><strong>Predictable Lifecycle:</strong> The agent lifecycle strictly
+matches the lifecycle of the host JVM.</li>
+<li><strong>Requires Restart:</strong> To add, remove, or modify a
+static agent, the JVM process must be restarted.</li>
+</ul>
+<hr />
+<h2 id="agentmain-dynamic-attachment-at-runtime">Agentmain: Dynamic
+Attachment at Runtime</h2>
+<p>The <code>agentmain</code> method represents a dynamic agent,
+designed to attach to an already running JVM process without requiring a
+restart.</p>
+<h3 id="how-agentmain-works">How Agentmain Works</h3>
+<p>Dynamic agents are loaded externally using the Java Attach API
+(located in <code>com.sun.tools.attach.VirtualMachine</code>). A
+secondary process connects to the target JVM process ID (PID) and
+injects the agent JAR:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>VirtualMachine vm <span class="op">=</span> VirtualMachine<span class="op">.</span><span class="fu">attach</span><span class="op">(</span>targetPid<span class="op">);</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>vm<span class="op">.</span><span class="fu">loadAgent</span><span class="op">(</span><span class="st">&quot;path/to/agent.jar&quot;</span><span class="op">,</span> <span class="st">&quot;optionalArguments&quot;</span><span class="op">);</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>vm<span class="op">.</span><span class="fu">detach</span><span class="op">();</span></span></code></pre></div>
+<p>Once attached, the target JVM invokes the agent's entry point.</p>
+<h3 id="signature-and-manifest-requirements-1">Signature and Manifest
+Requirements</h3>
+<p>A dynamic agent must implement one of the following method
+signatures:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">agentmain</span><span class="op">(</span><span class="bu">String</span> agentArgs<span class="op">,</span> <span class="bu">Instrumentation</span> inst<span class="op">);</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">agentmain</span><span class="op">(</span><span class="bu">String</span> agentArgs<span class="op">);</span></span></code></pre></div>
+<p>The agent's <code>META-INF/MANIFEST.MF</code> file must declare the
+dynamic entry class using the <code>Agent-Class</code> attribute:</p>
+<pre class="manifest"><code>Manifest-Version: 1.0
+Agent-Class: com.example.MyDynamicAgent
+Can-Redefine-Classes: true
+Can-Retransform-Classes: true</code></pre>
+<h3 id="key-advantages-and-limitations-1">Key Advantages and
+Limitations</h3>
+<ul>
+<li><strong>No Downtime:</strong> Ideal for production environments
+where restarting the service is not permissible.</li>
+<li><strong>On-Demand Diagnostics:</strong> Can be attached temporarily
+to capture thread dumps, profile hotspots, or collect telemetry, and
+then detached.</li>
+<li><strong>Already Loaded Classes:</strong> Classes that have already
+been loaded and JIT-compiled prior to attachment require explicit
+retransformation via
+<code>Instrumentation.retransformClasses()</code>.</li>
+<li><strong>Bytecode Limitations:</strong> Transforming already loaded
+classes is strictly constrained; you cannot add, remove, or rename
+fields or methods, or change method signatures.</li>
+</ul>
+<hr />
+<h2 id="key-differences-summary">Key Differences Summary</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;"><code>premain</code> (Static Agent)</th>
+<th style="text-align: left;"><code>agentmain</code> (Dynamic
+Agent)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Attachment Timing</strong></td>
+<td style="text-align: left;">JVM startup</td>
+<td style="text-align: left;">JVM runtime</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Launch Mechanism</strong></td>
+<td style="text-align: left;">CLI flag (<code>-javaagent</code>)</td>
+<td style="text-align: left;">Attach API
+(<code>VirtualMachine.loadAgent</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Manifest Attribute</strong></td>
+<td style="text-align: left;"><code>Premain-Class</code></td>
+<td style="text-align: left;"><code>Agent-Class</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Execution Order</strong></td>
+<td style="text-align: left;">Runs before application
+<code>main()</code></td>
+<td style="text-align: left;">Runs on demand while application runs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Application Restart</strong></td>
+<td style="text-align: left;">Required</td>
+<td style="text-align: left;">Not required</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Instrumentation
+Scope</strong></td>
+<td style="text-align: left;">Can transform every application class
+natively</td>
+<td style="text-align: left;">Requires explicit retransformation for
+classes already loaded</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Use Cases</strong></td>
+<td style="text-align: left;">APM monitoring, security auditing, code
+coverage</td>
+<td style="text-align: left;">Ad-hoc profiling, hot-patching, live
+debugging</td>
+</tr>
+</tbody>
+</table>
+<h2 id="combining-both-methods">Combining Both Methods</h2>
+<p>A single agent JAR can declare both <code>Premain-Class</code> and
+<code>Agent-Class</code> inside its manifest. By implementing both
+<code>premain</code> and <code>agentmain</code> methods, the same tool
+can function either as a permanent startup monitor via
+<code>-javaagent</code> or as an on-demand diagnostic utility attached
+dynamically at runtime.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

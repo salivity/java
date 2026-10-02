@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How the Final Keyword Works in Java - java</title>
+    <meta name="description" content="In Java, the final keyword is a non-access modifier used to enforce immutability and restrict modification across different elements of your code. Depending on where it is applied—variables, methods, or classes—it prevents reassignment, halts method">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-the-final-keyword-works-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How the Final Keyword Works in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-the-final-keyword-works-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, the final keyword is a non-access modifier used to enforce immutability and restrict modification across different elements of your code. Depending on where it is applied—variables, methods, or classes—it prevents reassignment, halts method" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-the-final-keyword-works-in-java">How the Final Keyword Works
+in Java</h1>
+<p>In Java, the <code>final</code> keyword is a non-access modifier used
+to enforce immutability and restrict modification across different
+elements of your code. Depending on where it is applied—variables,
+methods, or classes—it prevents reassignment, halts method overriding,
+or stops class inheritance entirely. Understanding its behavior across
+these three contexts is fundamental for writing secure, robust, and
+maintainable object-oriented programs.</p>
+<h3 id="final-variables">Final Variables</h3>
+<p>Applying <code>final</code> to a variable makes it a constant,
+meaning its value can be assigned only once. Any attempt to reassign a
+<code>final</code> variable after initialization results in a
+compilation error.</p>
+<ul>
+<li><strong>Primitive Variables:</strong> Once a primitive value is
+assigned to a <code>final</code> variable, that value can never
+change.</li>
+<li><strong>Reference Variables:</strong> For non-primitive objects,
+declaring a reference as <code>final</code> means the reference cannot
+be reassigned to point to another object in memory. However, the
+internal state of the object itself can still be modified if the object
+provides mutable methods (such as adding elements to a
+<code>final List</code>).</li>
+<li><strong>Blank Final Variables:</strong> A variable declared as
+<code>final</code> without an immediate initial value is called a blank
+final variable. It must be initialized inside the class constructor (or
+an initialization block) before object construction completes.</li>
+<li><strong>Static Final Constants:</strong> When combined with the
+<code>static</code> keyword, the variable becomes a class-level constant
+shared across all instances (e.g.,
+<code>public static final double PI = 3.14159;</code>).</li>
+</ul>
+<h3 id="final-methods">Final Methods</h3>
+<p>Declaring a method as <code>final</code> prevents subclasses from
+overriding it.</p>
+<ul>
+<li><strong>Preventing Alteration of Core Logic:</strong> If a
+superclass implements a critical algorithm or security-sensitive process
+that must remain intact across an inheritance hierarchy, declaring the
+method as <code>final</code> ensures derived classes cannot alter its
+behavior.</li>
+<li><strong>Design Control:</strong> It is frequently used in design
+patterns, such as the Template Method Pattern, where the overarching
+workflow method is marked <code>final</code> while individual sub-steps
+remain open to being overridden.</li>
+<li><strong>Performance:</strong> Historically, <code>final</code>
+methods allowed compiler optimizations such as method inlining, though
+modern JVMs often perform this optimization automatically via
+Just-In-Time (JIT) compilation regardless of the keyword.</li>
+</ul>
+<h3 id="final-classes">Final Classes</h3>
+<p>Applying <code>final</code> to a class declaration completely
+prevents that class from being extended by another class.</p>
+<ul>
+<li><strong>Blocking Inheritance:</strong> No other class can use the
+<code>extends</code> keyword on a <code>final</code> class. This is
+useful for creating secure, immutable types where inheritance could
+expose vulnerabilities or break invariants.</li>
+<li><strong>Standard Library Examples:</strong> Core Java classes such
+as <code>java.lang.String</code>, <code>java.lang.Integer</code>, and
+other wrapper classes are marked <code>final</code> to guarantee
+consistent behavior across the runtime.</li>
+<li><strong>Implicit Method Finality:</strong> All methods inside a
+<code>final</code> class are implicitly <code>final</code> because no
+subclass can exist to override them. Note, however, that fields inside a
+<code>final</code> class are not automatically <code>final</code> and
+must be explicitly declared as such if immutability is required.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Invokedynamic and Bootstrap Methods Explained - java</title>
+    <meta name="description" content="This article explores how bootstrap methods (BSMs) underpin the invokedynamic bytecode instruction within the Java Virtual Machine (JVM). It explains the mechanics of dynamic linkage, demonstrates how Java utilizes this architecture to implement lightwei">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-invokedynamic-and-bootstrap-methods-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Invokedynamic and Bootstrap Methods Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-invokedynamic-and-bootstrap-methods-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores how bootstrap methods (BSMs) underpin the invokedynamic bytecode instruction within the Java Virtual Machine (JVM). It explains the mechanics of dynamic linkage, demonstrates how Java utilizes this architecture to implement lightwei" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-invokedynamic-and-bootstrap-methods-explained">Java
+Invokedynamic and Bootstrap Methods Explained</h1>
+<p>This article explores how bootstrap methods (BSMs) underpin the
+<code>invokedynamic</code> bytecode instruction within the Java Virtual
+Machine (JVM). It explains the mechanics of dynamic linkage,
+demonstrates how Java utilizes this architecture to implement
+lightweight lambda expressions via <code>LambdaMetafactory</code>, and
+details how dynamic languages on the JVM leverage mutable call sites to
+optimize runtime method dispatch.</p>
+<h2 id="the-purpose-of-invokedynamic">The Purpose of Invokedynamic</h2>
+<p>Prior to Java 7, the JVM relied on four invocation instructions:
+<code>invokestatic</code>, <code>invokespecial</code>,
+<code>invokevirtual</code>, and <code>invokeinterface</code>. Each of
+these instructions requires hardcoded, compile-time type checks and
+static linkages embedded in the class file's constant pool. This design
+posed significant challenges for dynamic languages targeting the JVM,
+where variable types and method targets are evaluated only at
+runtime.</p>
+<p>Introduced in Java 7 as part of JSR 292, the
+<code>invokedynamic</code> (often abbreviated as <em>indy</em>)
+instruction decouples the call site from the JVM's strict type system.
+Instead of referencing a fixed method in the constant pool, an
+<code>invokedynamic</code> instruction delegates the resolution of the
+target method to user-defined code executed at runtime.</p>
+<h2 id="the-role-of-the-bootstrap-method-bsm">The Role of the Bootstrap
+Method (BSM)</h2>
+<p>An <code>invokedynamic</code> instruction executes in two phases:
+linkage and invocation. The bootstrap method is the central component of
+the linkage phase.</p>
+<p>When the JVM encounters an unlinked <code>invokedynamic</code>
+instruction for the first time, it suspends execution and invokes a
+designated bootstrap method. The BSM is a standard method that must
+return a <code>java.lang.invoke.CallSite</code> object. The JVM supplies
+default context arguments to the BSM:</p>
+<ol type="1">
+<li><strong><code>MethodHandles.Lookup</code></strong>: A context object
+providing the caller class's access rights.</li>
+<li><strong><code>String</code></strong>: The name of the method being
+invoked.</li>
+<li><strong><code>MethodType</code></strong>: The expected signature
+(parameter types and return type) of the call site.</li>
+<li><strong>Additional static arguments</strong>: Optional constants
+passed from the constant pool (such as strings, class references, or
+method handles).</li>
+</ol>
+<p>Once the BSM produces a <code>CallSite</code>, that call site binds a
+<code>java.lang.invoke.MethodHandle</code>—an executable, strongly-typed
+reference to the target method. Subsequent executions of that specific
+<code>invokedynamic</code> bytecode bypass the BSM and directly invoke
+the linked <code>MethodHandle</code>, achieving performance comparable
+to standard JVM method invocations.</p>
+<h2 id="implementation-of-java-lambdas">Implementation of Java
+Lambdas</h2>
+<p>Java 8 leveraged <code>invokedynamic</code> to implement lambda
+expressions without the overhead of generating anonymous inner classes
+at compile time.</p>
+<p>When a lambda expression is compiled, javac does not emit a synthetic
+class file (e.g., <code>EnclosingClass$1.class</code>). Instead, it
+produces an <code>invokedynamic</code> call site targeting
+<code>java.lang.invoke.LambdaMetafactory.metafactory</code> as its
+bootstrap method. The actual lambda body is compiled into a private
+synthetic method within the enclosing class.</p>
+<p>During execution:</p>
+<ol type="1">
+<li>The JVM invokes <code>LambdaMetafactory.metafactory</code>.</li>
+<li>The metafactory inspects the functional interface type, the target
+synthetic method handle, and interface constraints.</li>
+<li>It dynamically constructs an implementation class in memory using
+the internal ASM bytecode library.</li>
+<li>It returns a <code>ConstantCallSite</code> containing a
+<code>MethodHandle</code> that acts as a factory, instantiating the
+functional interface on demand.</li>
+</ol>
+<p>This dynamic mechanism minimizes disk footprint, lowers startup
+times, and allows the JVM to optimize lambda creation strategies across
+JDK versions without breaking backward compatibility.</p>
+<h2 id="enabling-dynamic-languages-on-the-jvm">Enabling Dynamic
+Languages on the JVM</h2>
+<p>For dynamic languages like JRuby, Groovy, or Jython, types are not
+known at compile time. A line of code such as <code>x.calculate()</code>
+might execute against different object types throughout the lifecycle of
+a program.</p>
+<p>Bootstrap methods allow dynamic language runtimes to implement custom
+dispatch strategies:</p>
+<ul>
+<li><strong>Monomorphic Call Sites:</strong> If <code>x</code>
+consistently belongs to the same type, the BSM returns a
+<code>ConstantCallSite</code> bound to that type's implementation.</li>
+<li><strong>Polymorphic and Megamorphic Call Sites:</strong> If the type
+of <code>x</code> varies, the BSM can return a
+<code>MutableCallSite</code> or a <code>VolatileCallSite</code>. The
+runtime can attach a fallback <code>MethodHandle</code> that re-links
+the call site when a new type is encountered.</li>
+<li><strong>Inline Caching:</strong> Dynamic runtimes use guard method
+handles (<code>MethodHandles.guardWithTest</code>) to check the incoming
+object's type. If the type matches the cache, the target executes
+directly; if it fails, execution routes to a slower fallback path that
+updates the cache.</li>
+</ul>
+<p>By delegating the resolution logic to language-specific bootstrap
+methods, <code>invokedynamic</code> allows dynamic languages to
+implement advanced dispatch techniques directly on the JVM, delivering
+near-native execution speeds.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

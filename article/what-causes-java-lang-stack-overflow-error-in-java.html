@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Causes java.lang.StackOverflowError in Java? - java</title>
+    <meta name="description" content="A java.lang.StackOverflowError is a runtime error thrown when a thread requires more memory than has been allocated for its call stack. Every time a thread invokes a method, the Java Virtual Machine (JVM) allocates a new stack frame to store local variab">
+    <link rel="canonical" href="https://salivity.github.io/java/article/what-causes-java-lang-stack-overflow-error-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What Causes java.lang.StackOverflowError in Java? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/what-causes-java-lang-stack-overflow-error-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="A java.lang.StackOverflowError is a runtime error thrown when a thread requires more memory than has been allocated for its call stack. Every time a thread invokes a method, the Java Virtual Machine (JVM) allocates a new stack frame to store local variab" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="what-causes-javalangstackoverflowerror-in-java">What Causes
+java.lang.StackOverflowError in Java?</h1>
+<p>A <code>java.lang.StackOverflowError</code> is a runtime error thrown
+when a thread requires more memory than has been allocated for its call
+stack. Every time a thread invokes a method, the Java Virtual Machine
+(JVM) allocates a new stack frame to store local variables, partial
+results, and execution state. This article explains the underlying
+mechanics of thread stacks in Java, details the primary programming
+errors and architectural patterns that cause stack exhaustion, and
+outlines the standard methods for diagnosing and resolving the
+issue.</p>
+<h3 id="understanding-the-thread-call-stack">Understanding the Thread
+Call Stack</h3>
+<p>When a Java application spawns a thread, the JVM assigns that thread
+its own dedicated call stack. The size of this stack is fixed at thread
+creation, either defined by the default platform setting or customized
+using the <code>-Xss</code> JVM flag.</p>
+<p>Each method call pushes a new frame onto this stack. When the method
+completes, its frame is popped, releasing that memory back to the
+thread's stack area. If methods continue to be called without returning,
+the stack memory depletes. Once the thread pushes a frame that exceeds
+the allocated boundary, the JVM halts execution for that thread and
+throws a <code>java.lang.StackOverflowError</code>. Because it extends
+<code>java.lang.Error</code> rather than
+<code>java.lang.Exception</code>, it indicates a serious condition that
+applications should generally not attempt to catch.</p>
+<h3 id="primary-causes-of-stackoverflowerror">Primary Causes of
+StackOverflowError</h3>
+<h4 id="1-unbounded-or-infinite-recursion">1. Unbounded or Infinite
+Recursion</h4>
+<p>The most frequent cause of a <code>StackOverflowError</code> is a
+recursive method that lacks an appropriate base case or possesses a base
+case that is never reached.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> RecursionExample <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">int</span> <span class="fu">calculate</span><span class="op">(</span><span class="dt">int</span> n<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Missing base condition (e.g., if (n &lt;= 1) return 1;)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> n <span class="op">*</span> <span class="fu">calculate</span><span class="op">(</span>n <span class="op">-</span> <span class="dv">1</span><span class="op">);</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this scenario, <code>calculate</code> will continuously invoke
+itself until the thread exhausts its stack memory, triggering the
+error.</p>
+<h4 id="2-cyclic-relationships-and-indirect-recursion">2. Cyclic
+Relationships and Indirect Recursion</h4>
+<p>Indirect or mutual recursion occurs when two or more methods call
+each other in a loop (e.g., <code>methodA()</code> calls
+<code>methodB()</code>, which calls <code>methodA()</code>).</p>
+<p>A common variant in enterprise applications involves circular
+dependencies within data models:</p>
+<ul>
+<li>Two entities reference each other bidirectionally (such as an
+<code>Order</code> containing a list of <code>Item</code> objects, and
+each <code>Item</code> referencing its parent <code>Order</code>).</li>
+<li>Generating automated methods like <code>toString()</code>,
+<code>hashCode()</code>, or <code>equals()</code>—often via libraries or
+boilerplate generators—without excluding the circular reference causes
+infinite ping-pong invocations between the two objects.</li>
+<li>JSON serialization libraries (such as Jackson or Gson) traversing
+bidirectional object graphs without proper serialization annotations
+(like <code>@JsonManagedReference</code> and
+<code>@JsonBackReference</code>).</li>
+</ul>
+<h4 id="3-class-instantiation-cycles">3. Class Instantiation Cycles</h4>
+<p>If a class instantiates an instance of itself as a field initializer,
+it leads to an infinite initialization loop:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> SelfInstantiator <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> SelfInstantiator instance <span class="op">=</span> <span class="kw">new</span> <span class="fu">SelfInstantiator</span><span class="op">();</span> <span class="co">// Causes infinite recursion during construction</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Each call to <code>new SelfInstantiator()</code> invokes the field
+initialization, which calls the constructor again, exhausting the stack
+before the object can finish initializing.</p>
+<h4 id="4-extremely-deep-call-hierarchies">4. Extremely Deep Call
+Hierarchies</h4>
+<p>Even when an algorithm has a valid termination condition, it may
+exceed the default stack size if the problem set is sufficiently large.
+For example, processing a linked list with one million nodes using
+standard recursion will push one million frames onto the stack, which
+exceeds standard stack capacities.</p>
+<h3 id="diagnosing-and-resolving-the-error">Diagnosing and Resolving the
+Error</h3>
+<ol type="1">
+<li><strong>Examine the Stack Trace:</strong> Look for repetitive
+patterns in the printed stack trace. Repeating method names pointing to
+the same line numbers identify the exact point of infinite recursion or
+cyclic loops.</li>
+<li><strong>Implement or Correct Termination Conditions:</strong> Ensure
+all recursive pathways have reachable base cases that successfully
+terminate execution under all input conditions.</li>
+<li><strong>Refactor Recursion to Iteration:</strong> For algorithms
+processing deep datasets (such as trees or graph traversals), convert
+the logic to use iterative loops (<code>for</code> or
+<code>while</code>) combined with heap-allocated data structures like
+<code>java.util.ArrayDeque</code>.</li>
+<li><strong>Break Bidirectional Serialization:</strong> Exclude cyclic
+references from <code>toString()</code>, <code>hashCode()</code>, and
+JSON serializers using explicit exclusion or framework-specific
+annotations.</li>
+<li><strong>Adjust the JVM Stack Size:</strong> If an algorithm is
+mathematically proven to be bounded and requires deeper stack space,
+increase the thread stack limit using the <code>-Xss</code> flag (e.g.,
+<code>-Xss2m</code>). However, this should only be treated as a solution
+if the code is verified to be free of infinite recursion.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Write Barriers and Garbage Collection Explained - java</title>
+    <meta name="description" content="In Java, write barriers are low-level code snippets inserted by the Just-In-Time (JIT) compiler that execute whenever an application thread modifies an object reference. This article explores how write barriers assist the Java Garbage Collector (GC) duri">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-write-barriers-and-garbage-collection-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Write Barriers and Garbage Collection Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-write-barriers-and-garbage-collection-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, write barriers are low-level code snippets inserted by the Just-In-Time (JIT) compiler that execute whenever an application thread modifies an object reference. This article explores how write barriers assist the Java Garbage Collector (GC) duri" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-write-barriers-and-garbage-collection-explained">Java Write
+Barriers and Garbage Collection Explained</h1>
+<p>In Java, write barriers are low-level code snippets inserted by the
+Just-In-Time (JIT) compiler that execute whenever an application thread
+modifies an object reference. This article explores how write barriers
+assist the Java Garbage Collector (GC) during runtime pointer updates,
+explaining their role in maintaining generational tracking, facilitating
+concurrent marking, and preventing race conditions between application
+threads and garbage collection phases.</p>
+<h3 id="what-is-a-write-barrier">What Is a Write Barrier?</h3>
+<p>A write barrier is not a memory barrier in the hardware
+synchronization sense, but rather a small hook of instructions
+intercepted during reference assignments (such as
+<code>object.field = newReference</code>). When the runtime mutates a
+pointer in the Java heap, the write barrier informs the garbage
+collection subsystem about the modification. This mechanism enables GC
+algorithms to accurately track object graphs without constantly scanning
+the entire heap.</p>
+<h3 id="tracking-inter-generational-references-card-marking">Tracking
+Inter-Generational References (Card Marking)</h3>
+<p>In generational garbage collectors like Serial, Parallel, and
+traditional CMS, the heap is split into Young and Old generations. Most
+objects die young, making minor garbage collections frequent and focused
+strictly on the Young generation. However, an object in the Old
+generation might hold a reference to an object in the Young
+generation.</p>
+<p>Without a write barrier, a minor GC would have to scan the entire Old
+generation to ensure that young objects referenced by old objects are
+not prematurely discarded. The write barrier solves this through
+<strong>card marking</strong>:</p>
+<ol type="1">
+<li>The heap is divided into fixed-size memory blocks called "cards"
+(typically 512 bytes).</li>
+<li>A corresponding byte array, known as the <strong>card
+table</strong>, tracks the status of each card.</li>
+<li>When a thread executes a reference write
+(<code>oldObj.field = youngObj</code>), the JIT-generated post-write
+barrier marks the corresponding entry in the card table as "dirty."</li>
+<li>During a minor collection, the GC only inspects the dirty cards in
+the Old generation instead of the entire generation, significantly
+reducing pause times.</li>
+</ol>
+<h3 id="supporting-concurrent-collectors-g1-and-shenandoah">Supporting
+Concurrent Collectors (G1 and Shenandoah)</h3>
+<p>Modern garbage collectors run marking and evacuation phases
+concurrently with application threads. When application threads alter
+object graphs while the GC is actively tracing them, inconsistencies can
+occur—specifically, the "lost object" problem, where a live object
+becomes invisible to the collector. Write barriers prevent these
+anomalies.</p>
+<h4 id="pre-write-barriers-and-snapshot-at-the-beginning-satb">Pre-Write
+Barriers and Snapshot-At-The-Beginning (SATB)</h4>
+<p>The Garbage-First (G1) collector employs a pre-write barrier to
+implement SATB marking:</p>
+<ul>
+<li>Before a field is overwritten (<code>x.f = y</code>), the pre-write
+barrier logs the <em>previous</em> value of <code>x.f</code> into a
+thread-local buffer.</li>
+<li>The GC treats the state of the object graph at the start of marking
+as a snapshot. Preserving overwritten references ensures that reachable
+objects are not missed if an application thread moves a pointer while
+the collector is traversing the graph.</li>
+</ul>
+<h4 id="evacuation-and-forwarding-pointers">Evacuation and Forwarding
+Pointers</h4>
+<p>Collectors like Shenandoah utilize write barriers during concurrent
+evacuation:</p>
+<ul>
+<li>When an object is copied from one region to another, its location
+changes.</li>
+<li>If an application thread writes to an object while it is being
+moved, the write barrier checks whether the object resides in a
+collection set.</li>
+<li>If so, the barrier updates the reference to the new forwarded copy
+(or performs the copy itself) before allowing the write operation to
+complete, preventing data corruption.</li>
+</ul>
+<h3 id="performance-impact">Performance Impact</h3>
+<p>Write barriers introduce a slight instruction overhead to reference
+modification operations. However, this cost is minimal—often consisting
+of just a few assembly instructions, such as bit shifts and byte stores.
+By spending a few cycles during runtime pointer updates, the JVM
+eliminates the need for exhaustive heap traversals and enables
+concurrent collection, resulting in drastically lower latency and
+predictable application performance.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

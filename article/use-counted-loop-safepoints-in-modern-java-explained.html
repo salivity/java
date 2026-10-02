@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UseCountedLoopSafepoints in Modern Java Explained - java</title>
+    <meta name="description" content="This article explores the significance of the -XX:+UseCountedLoopSafepoints JVM flag, detailing how it manages safepoint placement within loops in the HotSpot virtual machine. You will learn the mechanics behind loop safepoints, the severe latency proble">
+    <link rel="canonical" href="https://salivity.github.io/java/article/use-counted-loop-safepoints-in-modern-java-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="UseCountedLoopSafepoints in Modern Java Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/use-counted-loop-safepoints-in-modern-java-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the significance of the -XX:+UseCountedLoopSafepoints JVM flag, detailing how it manages safepoint placement within loops in the HotSpot virtual machine. You will learn the mechanics behind loop safepoints, the severe latency proble" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="usecountedloopsafepoints-in-modern-java-explained">UseCountedLoopSafepoints
+in Modern Java Explained</h1>
+<p>This article explores the significance of the
+<code>-XX:+UseCountedLoopSafepoints</code> JVM flag, detailing how it
+manages safepoint placement within loops in the HotSpot virtual machine.
+You will learn the mechanics behind loop safepoints, the severe latency
+problems caused by omitting them, the modern optimization technique
+known as loop strip mining, and why this flag is essential for
+low-latency Java applications and garbage collectors.</p>
+<h3 id="the-purpose-of-safepoints-and-counted-loops">The Purpose of
+Safepoints and Counted Loops</h3>
+<p>A safepoint is a designated execution point where a Java thread
+pauses its execution to allow the JVM to perform global operations, such
+as garbage collection (GC) pauses, thread dumps, biased locking
+revocations, and code deoptimization. For an operation requiring a "Stop
+the World" (STW) phase to begin, every running thread must reach a
+safepoint. The time it takes for all threads to reach this state is
+called Time-to-Safepoint (TTSP).</p>
+<p>In standard HotSpot compilation (specifically using the C2 JIT
+compiler), loops are classified into "counted" and "uncounted"
+loops:</p>
+<ul>
+<li><strong>Counted Loops:</strong> Loops with integer bounds, a
+definite limit, and a constant stride (e.g., standard
+<code>for (int i = 0; i &lt; limit; i++)</code>).</li>
+<li><strong>Uncounted Loops:</strong> Loops controlled by complex
+conditions, <code>long</code> counters, or iterator checks (e.g.,
+<code>while(condition)</code> or
+<code>for (long i = 0; i &lt; limit; i++)</code>).</li>
+</ul>
+<p>Historically, C2 placed safepoint polls inside uncounted loops but
+deliberately omitted them from counted loops. The rationale was to
+minimize loop overhead and enable aggressive JIT optimizations like loop
+unrolling, auto-vectorization, and range check elimination.</p>
+<h3 id="the-latency-dilemma-time-to-safepoint-ttsp">The Latency Dilemma:
+Time-to-Safepoint (TTSP)</h3>
+<p>Omitting safepoint checks in counted loops causes severe latency
+anomalies. If a counted loop executes a large number of iterations (for
+instance, performing billions of arithmetic operations or memory
+lookups), the executing thread will not check for a pending safepoint
+until the entire loop terminates.</p>
+<p>When the JVM initiates a STW phase, threads that reach a safepoint
+must wait idle for the lagging thread to exit its loop. Even if the
+actual garbage collection pause takes only 2 milliseconds, an
+application can experience hundreds of milliseconds—or even seconds—of
+total freeze time solely due to TTSP.</p>
+<h3 id="the-solution--xxusecountedloopsafepoints">The Solution:
+<code>-XX:+UseCountedLoopSafepoints</code></h3>
+<p>Enabling <code>-XX:+UseCountedLoopSafepoints</code> forces the C2
+compiler to insert safepoint checks inside counted loops.</p>
+<h4 id="benefits">Benefits:</h4>
+<ul>
+<li><strong>Eliminates TTSP Spikes:</strong> Threads can pause at
+predictable intervals within loops, preventing rogue loops from stalling
+JVM-wide operations.</li>
+<li><strong>Improves Tail Latency:</strong> Applications sensitive to
+the 99th and 99.9th percentile latencies experience significantly more
+predictable response times.</li>
+</ul>
+<h4 id="traditional-trade-offs">Traditional Trade-offs:</h4>
+<p>In older Java releases, inserting safepoint polls into every
+iteration of a counted loop carried a significant throughput penalty. It
+often prevented SIMD vectorization and added polling instruction
+overhead to tight numerical loops.</p>
+<h3 id="the-modern-java-era-loop-strip-mining">The Modern Java Era: Loop
+Strip Mining</h3>
+<p>To solve the trade-off between throughput and latency, modern Java
+introduced an optimization called <strong>Loop Strip Mining</strong>
+(integrated into JDK 10 and enabled by default in subsequent releases
+when counted loop safepoints are active).</p>
+<p>Loop strip mining transforms a single counted loop into nested
+loops:</p>
+<ol type="1">
+<li><strong>Inner Loop:</strong> Runs a bounded chunk of iterations
+(such as 1,000 iterations) without any safepoint checks. This allows the
+JIT compiler to freely apply vectorization, unrolling, and other
+optimizations without penalty.</li>
+<li><strong>Outer Loop:</strong> Executes a safepoint poll between
+chunks.</li>
+</ol>
+<p>Because of loop strip mining, enabling
+<code>-XX:+UseCountedLoopSafepoints</code> in modern Java versions (JDK
+11, 17, 21+) no longer carries the severe performance degradation it
+once did.</p>
+<h3 id="significance-in-modern-garbage-collectors">Significance in
+Modern Garbage Collectors</h3>
+<p>The relevance of counted loop safepoint handling is magnified with
+modern concurrent garbage collectors like <strong>ZGC</strong> and
+<strong>Shenandoah</strong>:</p>
+<ul>
+<li>These collectors aim for sub-millisecond maximum pause times.</li>
+<li>If a pause takes 0.5 milliseconds but TTSP takes 50 milliseconds due
+to a loop without safepoint polls, the low-latency guarantees of the
+collector are broken.</li>
+<li>Modern collectors frequently rely on counted loop safepoint
+mechanics or have related flags enabled by default to preserve strict
+pause-time SLAs.</li>
+</ul>
+<p>In modern Java runtimes, understanding and utilizing
+<code>-XX:+UseCountedLoopSafepoints</code>—backed by loop strip
+mining—is a fundamental tool for stabilizing performance, eliminating
+unpredictable latency outliers, and ensuring smooth operation of
+concurrent collectors.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Instrumentation Modifies Loaded Bytecode - java</title>
+    <meta name="description" content="The Java Instrumentation API provides a standardized mechanism for external agents to inspect, profile, and modify application bytecode within a Java Virtual Machine (JVM). This capability is achieved by attaching Java agents either at JVM startup or dyn">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-instrumentation-modifies-loaded-bytecode">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Instrumentation Modifies Loaded Bytecode - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-instrumentation-modifies-loaded-bytecode" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Instrumentation API provides a standardized mechanism for external agents to inspect, profile, and modify application bytecode within a Java Virtual Machine (JVM). This capability is achieved by attaching Java agents either at JVM startup or dyn" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-instrumentation-modifies-loaded-bytecode">How Java
+Instrumentation Modifies Loaded Bytecode</h1>
+<p>The Java Instrumentation API provides a standardized mechanism for
+external agents to inspect, profile, and modify application bytecode
+within a Java Virtual Machine (JVM). This capability is achieved by
+attaching Java agents either at JVM startup or dynamically at runtime,
+registering a bytecode transformer, and leveraging the JVM's built-in
+hooks to alter class definitions before or after they have been loaded
+into memory.</p>
+<h2 id="agent-attachment-static-vs-dynamic">Agent Attachment: Static vs.
+Dynamic</h2>
+<p>To manipulate bytecode, an agent must first gain access to an active
+<code>java.lang.instrument.Instrumentation</code> instance. The JVM
+supports two primary attachment workflows:</p>
+<h3 id="1-static-attachment-via--javaagent">1. Static Attachment via
+<code>-javaagent</code></h3>
+<p>Static attachment occurs at application startup. The JVM is provided
+a command-line argument pointing to an agent JAR file:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-javaagent:my-agent.jar</span> <span class="at">-jar</span> application.jar</span></code></pre></div>
+<p>The agent JAR must contain a <code>META-INF/MANIFEST.MF</code> file
+specifying the <code>Premain-Class</code>. The JVM invokes the
+<code>premain</code> method before the application's <code>main</code>
+method executes:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MyAgent <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">premain</span><span class="op">(</span><span class="bu">String</span> agentArgs<span class="op">,</span> <span class="bu">Instrumentation</span> inst<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Initialization and transformer registration</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="2-dynamic-attachment-via-the-attach-api">2. Dynamic Attachment
+via the Attach API</h3>
+<p>Dynamic attachment allows an agent to attach to an already running
+JVM process. The <code>com.sun.tools.attach.VirtualMachine</code> API
+locates the target process via its Process ID (PID) and loads the
+agent:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>VirtualMachine vm <span class="op">=</span> VirtualMachine<span class="op">.</span><span class="fu">attach</span><span class="op">(</span>targetPid<span class="op">);</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>vm<span class="op">.</span><span class="fu">loadAgent</span><span class="op">(</span><span class="st">&quot;path/to/my-agent.jar&quot;</span><span class="op">);</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>vm<span class="op">.</span><span class="fu">detach</span><span class="op">();</span></span></code></pre></div>
+<p>For dynamic attachment, the manifest must declare an
+<code>Agent-Class</code>. The JVM invokes the <code>agentmain</code>
+method upon successfully loading the agent:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MyAgent <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">agentmain</span><span class="op">(</span><span class="bu">String</span> agentArgs<span class="op">,</span> <span class="bu">Instrumentation</span> inst<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Initialization and transformer registration for running process</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="registering-the-classfiletransformer">Registering the
+ClassFileTransformer</h2>
+<p>Once the <code>Instrumentation</code> reference is obtained, the
+agent registers an implementation of
+<code>java.lang.instrument.ClassFileTransformer</code>. This interface
+contains a single <code>transform</code> method that acts as a filter on
+class bytecode.</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>inst<span class="op">.</span><span class="fu">addTransformer</span><span class="op">(</span><span class="kw">new</span> <span class="bu">ClassFileTransformer</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">byte</span><span class="op">[]</span> <span class="fu">transform</span><span class="op">(</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>            <span class="bu">ClassLoader</span> loader<span class="op">,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>            <span class="bu">String</span> className<span class="op">,</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>            <span class="bu">Class</span><span class="op">&lt;?&gt;</span> classBeingRedefined<span class="op">,</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>            <span class="bu">ProtectionDomain</span> protectionDomain<span class="op">,</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>            <span class="dt">byte</span><span class="op">[]</span> classfileBuffer<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Return null if no transformation is desired</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(!</span><span class="st">&quot;com/example/TargetClass&quot;</span><span class="op">.</span><span class="fu">equals</span><span class="op">(</span>className<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> <span class="kw">null</span><span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Return the modified byte array</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="fu">rewriteBytecode</span><span class="op">(</span>classfileBuffer<span class="op">);</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="op">},</span> <span class="kw">true</span><span class="op">);</span> <span class="co">// The boolean flag specifies if the transformer supports retransformation</span></span></code></pre></div>
+<p>When classes are initially loaded by any class loader, the JVM passes
+the raw byte array (<code>classfileBuffer</code>) to all registered
+transformers. If a transformer modifies the array and returns a new
+<code>byte[]</code>, the JVM uses those modified bytes to define the
+class.</p>
+<h2 id="inspecting-and-modifying-the-bytecode">Inspecting and Modifying
+the Bytecode</h2>
+<p>The raw input to <code>transform</code> is a standard compiled class
+file format. Because manual byte manipulation is error-prone, agents
+typically parse and rewrite bytecode using external bytecode engineering
+libraries:</p>
+<ul>
+<li><strong>Byte Buddy:</strong> Provides a high-level, fluent API that
+integrates smoothly with the Instrumentation API.</li>
+<li><strong>ASM:</strong> A low-level, visitor-based framework offering
+direct control and minimal performance overhead.</li>
+<li><strong>Javassist:</strong> A source-level abstraction allowing
+transformations via inserted Java source code strings.</li>
+</ul>
+<p>The transformer reads the original class structure from
+<code>classfileBuffer</code>, injects new instructions (such as method
+entry/exit logging, performance tracking, or security checks), and
+serializes the modified structure back into a <code>byte[]</code> to
+return to the JVM.</p>
+<h2 id="modifying-already-loaded-bytecode">Modifying Already Loaded
+Bytecode</h2>
+<p>If an agent attaches dynamically or needs to update classes that are
+already loaded, it cannot rely on initial class-loading hooks. The
+Instrumentation API provides two mechanisms to handle already loaded
+classes:</p>
+<h3 id="retransformation">Retransformation</h3>
+<p>Using
+<code>Instrumentation.retransformClasses(Class&lt;?&gt;... classes)</code>,
+an agent requests that the JVM re-execute the transformation chain for
+specific loaded classes.</p>
+<ul>
+<li>Transformers registered with <code>canRetransform = true</code> are
+invoked again.</li>
+<li>The JVM supplies the original bytecode (or the bytecode produced by
+previous transforms) back into <code>transform</code>.</li>
+<li>Retransformation does not require preserving the original bytecode
+outside the JVM.</li>
+</ul>
+<h3 id="redefinition">Redefinition</h3>
+<p>Using
+<code>Instrumentation.redefineClasses(ClassDefinition... definitions)</code>,
+an agent directly supplies a class object paired with an explicit,
+freshly generated <code>byte[]</code>. This bypasses the registered
+<code>ClassFileTransformer</code> chain and forces the JVM to replace
+the class definition directly.</p>
+<h3 id="vm-limitations-on-loaded-classes">VM Limitations on Loaded
+Classes</h3>
+<p>Both redefinition and retransformation are constrained by the JVM. In
+standard HotSpot configurations:</p>
+<ul>
+<li>Method bodies may be modified freely.</li>
+<li>New methods, fields, or constructors <strong>cannot</strong> be
+added.</li>
+<li>Existing methods or fields <strong>cannot</strong> be deleted.</li>
+<li>Class hierarchy, interfaces, and signatures must remain
+unchanged.</li>
+</ul>
+<p>Violating these constraints results in an
+<code>UnsupportedOperationException</code>. Within these boundaries, the
+Java Instrumentation API enables non-intrusive runtime profiling,
+monitoring, security enforcement, and live debugging.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

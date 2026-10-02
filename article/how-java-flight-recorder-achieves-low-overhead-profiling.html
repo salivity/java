@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Flight Recorder Achieves Low-Overhead Profiling - java</title>
+    <meta name="description" content="Java Flight Recorder (JFR) is an event-based diagnostics and profiling framework built directly into the OpenJDK HotSpot virtual machine. By avoiding typical bytecode instrumentation and external agent mechanisms, JFR typically maintains less than a one">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-flight-recorder-achieves-low-overhead-profiling">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Flight Recorder Achieves Low-Overhead Profiling - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-flight-recorder-achieves-low-overhead-profiling" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java Flight Recorder (JFR) is an event-based diagnostics and profiling framework built directly into the OpenJDK HotSpot virtual machine. By avoiding typical bytecode instrumentation and external agent mechanisms, JFR typically maintains less than a one" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-flight-recorder-achieves-low-overhead-profiling">How
+Java Flight Recorder Achieves Low-Overhead Profiling</h1>
+<p>Java Flight Recorder (JFR) is an event-based diagnostics and
+profiling framework built directly into the OpenJDK HotSpot virtual
+machine. By avoiding typical bytecode instrumentation and external agent
+mechanisms, JFR typically maintains less than a one to two percent
+performance overhead in production environments. This article explains
+the technical mechanics behind JFR’s low-overhead data capture, focusing
+on its deep JVM integration, multi-tiered buffering system, binary event
+format, and asynchronous sampling model.</p>
+<h3 id="direct-integration-inside-the-hotspot-jvm">Direct Integration
+Inside the HotSpot JVM</h3>
+<p>Unlike traditional profilers that rely on Java Virtual Machine Tool
+Interface (JVMTI) hooks, Java agents, or runtime bytecode injection, JFR
+is embedded directly within the HotSpot runtime written in C++. This
+native integration allows JFR to read internal VM states—such as memory
+management transitions, JIT compiler phases, lock contentions, and
+thread state changes—without transitioning between native and Java
+contexts or injecting synthetic instructions into user code.</p>
+<p>When an event is disabled, the performance cost is negligible:
+execution passes through an inlined boolean check (a simple memory read
+and branch instruction). If the event is enabled, the VM writes event
+payloads directly to native memory structures without causing garbage
+collection allocations.</p>
+<h3 id="multi-tiered-lock-free-buffering-architecture">Multi-Tiered,
+Lock-Free Buffering Architecture</h3>
+<p>To prevent profiling threads from competing with business logic, JFR
+implements a multi-tiered buffering architecture that decouples event
+capture from data storage:</p>
+<ol type="1">
+<li><strong>Thread-Local Buffers (TLBs):</strong> Every thread maintains
+its own thread-local native memory buffer. When a thread emits an event,
+it writes directly to its local buffer without acquiring locks, avoiding
+synchronization bottlenecks across CPU cores.</li>
+<li><strong>Global In-Memory Ring Buffers:</strong> When a thread-local
+buffer fills up, its contents are migrated to a shared, global circular
+ring buffer. This transfer uses atomic pointer swaps or low-contention
+locking mechanisms.</li>
+<li><strong>Background Disk Flushing:</strong> An asynchronous,
+low-priority internal recording thread periodically flushes the global
+ring buffer to disk. If the application experiences an I/O slowdown, JFR
+drops events rather than blocking application threads.</li>
+</ol>
+<p>This design guarantees that execution threads spend only the minimal
+CPU cycles necessary to copy raw bytes into thread-local memory.</p>
+<h3 id="efficient-binary-serialization-and-constant-pools">Efficient
+Binary Serialization and Constant Pools</h3>
+<p>JFR minimizes payload sizes and processing time by emitting compact,
+binary-encoded events rather than formatted text, JSON, or complex
+object structures.</p>
+<p>Instead of writing repetitive data (such as class names, thread
+names, or method signatures) inside every individual event, JFR utilizes
+constant pools. When an event fires, it writes an integer identifier
+that points to an entry in a lookup table. The profiler resolves
+human-readable string values only once or during the final serialization
+phase. Integer compression algorithms, such as variable-length base-128
+encoding (similar to protocol buffers), ensure that standard identifiers
+and timestamps consume minimal bytes in memory.</p>
+<h3 id="asynchronous-execution-sampling">Asynchronous Execution
+Sampling</h3>
+<p>Traditional CPU profilers often evaluate thread state at JVM
+safepoints. This creates "safepoint bias," where only certain
+instructions are sampled, skewing performance profiles and pausing
+threads.</p>
+<p>JFR avoids this by utilizing asynchronous sampling mechanisms. It
+uses platform-specific timers and OS-level signals (such as
+<code>SIGPROF</code> on POSIX systems) to interrupt and inspect running
+threads at regular intervals, regardless of whether a thread is at a
+safepoint. The engine reads the native program counter and traverses the
+JVM execution stack directly via internal frame walkers, producing
+statistically accurate CPU profiles with zero application pausing.</p>
+<h3 id="threshold-based-and-event-driven-filtering">Threshold-Based and
+Event-Driven Filtering</h3>
+<p>JFR avoids overhead by recording only high-impact behavior through
+adaptive thresholds. Instead of capturing every object allocation or
+lock acquisition, JFR can be configured to record only operations that
+exceed a specified duration (such as lock contentions lasting longer
+than 10 milliseconds).</p>
+<p>For memory allocations, JFR bypasses the tracking of every minor
+object initialization inside Thread-Local Allocation Buffers (TLABs).
+Instead, it triggers an allocation sample only when a thread exhausts
+its current TLAB and requests a new one from the garbage collector, or
+when an allocation is large enough to bypass the TLAB entirely. This
+sampling method reduces the volume of tracked allocation events by
+orders of magnitude while preserving statistical accuracy.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Tiered Compilation: Startup vs Peak Performance - java</title>
+    <meta name="description" content="Java's tiered compilation is a dynamic optimization technique within the HotSpot Java Virtual Machine (JVM) designed to eliminate the historical trade-off between fast application startup and optimal steady-state performance. By orchestrating a multi-tie">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-tiered-compilation-startup-vs-peak-performance">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Tiered Compilation: Startup vs Peak Performance - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-tiered-compilation-startup-vs-peak-performance" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's tiered compilation is a dynamic optimization technique within the HotSpot Java Virtual Machine (JVM) designed to eliminate the historical trade-off between fast application startup and optimal steady-state performance. By orchestrating a multi-tie" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-tiered-compilation-startup-vs-peak-performance">Java Tiered
+Compilation: Startup vs Peak Performance</h1>
+<p>Java's tiered compilation is a dynamic optimization technique within
+the HotSpot Java Virtual Machine (JVM) designed to eliminate the
+historical trade-off between fast application startup and optimal
+steady-state performance. By orchestrating a multi-tiered compilation
+pipeline—transitioning code seamlessly from interpreted execution
+through intermediate client-level optimizations up to aggressive
+server-level machine code generation—the JVM ensures that programs start
+running immediately while still reaching peak execution throughput over
+time.</p>
+<h3 id="the-historical-trade-off-c1-vs-c2">The Historical Trade-Off: C1
+vs. C2</h3>
+<p>Prior to tiered compilation, Java developers had to select between
+two distinct Just-In-Time (JIT) compilers via JVM flags:</p>
+<ul>
+<li><strong>Client Compiler (C1):</strong> Designed for rapid startup
+and low memory overhead. It applies light optimizations and compiles
+bytecodes into machine code quickly, making it ideal for desktop
+applications and short-lived CLI tools, but sacrificing peak
+throughput.</li>
+<li><strong>Server Compiler (C2):</strong> Designed for high-throughput,
+long-running server workloads. It uses complex, compute-intensive
+optimizations such as deep inlining, loop unrolling, and escape
+analysis. While it produces highly optimized machine code, the
+compilation process introduces substantial latency and CPU overhead
+during startup.</li>
+</ul>
+<p>Tiered compilation, introduced in Java 7 and enabled by default since
+Java 8, combines both compilers into a unified execution model.</p>
+<h3 id="the-five-execution-levels">The Five Execution Levels</h3>
+<p>Tiered compilation divides code execution into five discrete
+levels:</p>
+<ol type="1">
+<li><strong>Level 0 (Interpreted Code):</strong> The JVM executes raw
+bytecodes without compilation. Execution begins instantly with zero
+compilation latency.</li>
+<li><strong>Level 1 (Simple C1):</strong> Code is compiled using C1 with
+no profiling code injected. Used primarily when C2 is overloaded or for
+trivial methods.</li>
+<li><strong>Level 2 (Limited C1 Profiling):</strong> Code is compiled
+with lightweight profiling counters (such as invocation counts and basic
+branch statistics).</li>
+<li><strong>Level 3 (Full C1 Profiling):</strong> Code is compiled using
+C1 with full profiling instrumentation, capturing comprehensive runtime
+execution profiles, branch probabilities, and type feedback.</li>
+<li><strong>Level 4 (C2 / Server Optimization):</strong> Code is
+compiled using C2. It consumes the profiling data gathered during Level
+3 to apply aggressive global optimizations, resulting in maximum
+execution speed.</li>
+</ol>
+<h3 id="how-tiered-compilation-balances-the-workload">How Tiered
+Compilation Balances the Workload</h3>
+<p>The JVM dynamically transitions methods across these tiers based on
+invocation frequency and workload demands:</p>
+<ul>
+<li><strong>Instant Startup:</strong> At launch, the application begins
+executing immediately at Level 0 (interpreted). There is no waiting for
+compilation queues to clear.</li>
+<li><strong>Rapid Acceleration:</strong> As methods are repeatedly
+executed, they quickly trigger compilation to Level 3 (C1 with full
+profiling). This produces machine code fast enough to eliminate
+interpreter overhead early in the application lifecycle while
+simultaneously measuring how the code actually behaves under load.</li>
+<li><strong>Progressive Peak Performance:</strong> Methods that remain
+"hot" over time are placed in the C2 queue and recompiled at Level 4. C2
+uses the detailed runtime metrics gathered by Level 3 to generate
+peak-performance native code.</li>
+<li><strong>Dynamic Deoptimization:</strong> If the runtime behavior
+changes—such as a previously unseen subclass violating an inlining
+assumption—the JVM safely deoptimizes the code, falling back to Level 0
+or Level 3 to re-profile before optimizing again.</li>
+</ul>
+<p>By allowing C1 to absorb the initial execution burden and profile on
+the fly, C2 can run asynchronously in background threads without
+starving the application of CPU or stalling startup, successfully
+delivering the responsiveness of a lightweight client and the
+high-throughput performance of an enterprise server.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

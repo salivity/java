@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Serialization with Non-Serializable Superclasses - java</title>
+    <meta name="description" content="Standard Java object serialization allows a class to implement java.io.Serializable even if its superclass does not. When this happens, the serialization mechanism saves only the state of the serializable subclass, while the non-serializable superclass's">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-serialization-with-non-serializable-superclasses">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Serialization with Non-Serializable Superclasses - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-serialization-with-non-serializable-superclasses" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Standard Java object serialization allows a class to implement java.io.Serializable even if its superclass does not. When this happens, the serialization mechanism saves only the state of the serializable subclass, while the non-serializable superclass's" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-serialization-with-non-serializable-superclasses">Java
+Serialization with Non-Serializable Superclasses</h1>
+<p>Standard Java object serialization allows a class to implement
+<code>java.io.Serializable</code> even if its superclass does not. When
+this happens, the serialization mechanism saves only the state of the
+serializable subclass, while the non-serializable superclass's state is
+ignored during the writing process. Upon deserialization, the superclass
+state is re-initialized by invoking its accessible no-argument
+constructor, making the presence of such a constructor an absolute
+requirement for successful object reconstruction.</p>
+<h3 id="serialization-behavior">Serialization Behavior</h3>
+<p>During serialization using an <code>ObjectOutputStream</code>, the
+runtime traverses the class hierarchy of the object being serialized.
+The stream serializes fields starting from the first class in the
+hierarchy that implements <code>Serializable</code> down to the concrete
+subtype. Any fields declared directly in a non-serializable superclass
+are completely skipped and omitted from the serialized byte stream.</p>
+<h3 id="deserialization-and-constructor-execution">Deserialization and
+Constructor Execution</h3>
+<p>When the object is deserialized via an
+<code>ObjectInputStream</code>, the process reconstructs the object
+differently depending on the serializability of each level in the class
+hierarchy:</p>
+<ol type="1">
+<li><strong>Locating the Constructor:</strong> The runtime walks up the
+inheritance chain to locate the first non-serializable superclass.</li>
+<li><strong>State Initialization:</strong> The runtime invokes the
+accessible zero-argument constructor of that non-serializable
+superclass. This constructor runs normally, setting the superclass
+fields to their default or constructor-defined values.</li>
+<li><strong>Subclass Population:</strong> After the superclass is
+initialized via its constructor, the <code>ObjectInputStream</code>
+reads the serialized stream data and directly populates the fields of
+the serializable subclass without invoking any subclass
+constructors.</li>
+</ol>
+<h3 id="the-no-argument-constructor-requirement">The No-Argument
+Constructor Requirement</h3>
+<p>For this mechanism to function, the non-serializable superclass must
+declare a no-argument constructor that is accessible to the subclass.
+The constructor must have <code>public</code>, <code>protected</code>,
+or package-private (if both classes reside in the same package)
+access.</p>
+<p>If the non-serializable superclass lacks an accessible no-argument
+constructor, serialization may proceed without error, but
+deserialization will fail immediately at runtime by throwing a
+<code>java.io.InvalidClassException</code>.</p>
+<h3 id="preserving-superclass-state">Preserving Superclass State</h3>
+<p>Because the standard serialization protocol ignores the fields of a
+non-serializable superclass, any state stored at that level is lost by
+default. If that state must be preserved across serialization, the
+subclass must implement custom serialization logic using the
+<code>writeObject</code> and <code>readObject</code> private
+methods:</p>
+<ul>
+<li><strong>In
+<code>writeObject(ObjectOutputStream out)</code>:</strong> Call
+<code>out.defaultWriteObject()</code> to serialize the subclass fields,
+followed by explicitly writing the superclass fields to the stream using
+methods like <code>out.writeInt()</code> or
+<code>out.writeObject()</code>.</li>
+<li><strong>In <code>readObject(ObjectInputStream in)</code>:</strong>
+Call <code>in.defaultReadObject()</code> to populate the subclass
+fields, followed by explicitly reading the superclass values back from
+the stream and setting them on the superclass using accessible setter
+methods or reflection.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resolving Java Method Overloading with Null - java</title>
+    <meta name="description" content="Passing a null literal to an overloaded method in Java often triggers compilation questions or errors due to how the compiler chooses the appropriate method signature. The Java compiler resolves these calls using the "most specific" method rule defined i">
+    <link rel="canonical" href="https://salivity.github.io/java/article/resolving-java-method-overloading-with-null">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Resolving Java Method Overloading with Null - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/resolving-java-method-overloading-with-null" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Passing a null literal to an overloaded method in Java often triggers compilation questions or errors due to how the compiler chooses the appropriate method signature. The Java compiler resolves these calls using the "most specific" method rule defined i" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="resolving-java-method-overloading-with-null">Resolving Java
+Method Overloading with Null</h1>
+<p>Passing a <code>null</code> literal to an overloaded method in Java
+often triggers compilation questions or errors due to how the compiler
+chooses the appropriate method signature. The Java compiler resolves
+these calls using the "most specific" method rule defined in the Java
+Language Specification (JLS §15.12.2.5). When multiple overloaded
+methods are applicable for a <code>null</code> argument, the compiler
+inspects their parameter types to find an inheritance hierarchy. If one
+type is a subtype of another, the compiler selects the most specific
+type; if the types are unrelated siblings in the type hierarchy, a
+compile-time ambiguity error occurs.</p>
+<h3 id="the-most-specific-rule">The Most Specific Rule</h3>
+<p>The <code>null</code> literal has the <code>null</code> type, which
+is a subtype of all reference types in Java. Because <code>null</code>
+can be assigned to any reference type, every overloaded method accepting
+an object reference is technically applicable.</p>
+<p>To determine which method to call, the compiler compares the
+parameter types of all applicable methods:</p>
+<ul>
+<li>A method <code>m1(TypeA a)</code> is more specific than
+<code>m2(TypeB b)</code> if <code>TypeA</code> is a subtype of
+<code>TypeB</code> (i.e., <code>TypeA</code> can be converted to
+<code>TypeB</code> via widening reference conversion).</li>
+<li>If one method is strictly more specific than all other applicable
+methods, the compiler selects it without error.</li>
+</ul>
+<h4 id="example-hierarchical-types-no-ambiguity">Example: Hierarchical
+Types (No Ambiguity)</h4>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> OverloadExample <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">print</span><span class="op">(</span><span class="bu">Object</span> obj<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Object version&quot;</span><span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">print</span><span class="op">(</span><span class="bu">String</span> str<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;String version&quot;</span><span class="op">);</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        OverloadExample example <span class="op">=</span> <span class="kw">new</span> <span class="fu">OverloadExample</span><span class="op">();</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        example<span class="op">.</span><span class="fu">print</span><span class="op">(</span><span class="kw">null</span><span class="op">);</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this case:</p>
+<ol type="1">
+<li>Both <code>print(Object)</code> and <code>print(String)</code> are
+applicable to <code>null</code>.</li>
+<li><code>String</code> is a subtype of <code>Object</code>.</li>
+<li><code>String</code> is more specific than <code>Object</code>.</li>
+<li>The output is <code>"String version"</code>.</li>
+</ol>
+<p>If a third overload, <code>print(CharSequence cs)</code>, is
+introduced, <code>String</code> remains the most specific because
+<code>String</code> implements <code>CharSequence</code>, and
+<code>CharSequence</code> extends <code>Object</code>.</p>
+<h3 id="when-ambiguity-occurs">When Ambiguity Occurs</h3>
+<p>Ambiguity occurs when the compiler identifies two or more applicable
+methods where neither parameter type is a subtype of the other. Since
+neither type is more specific, the compiler cannot make a deterministic
+choice and halts with a compilation error.</p>
+<h4 id="example-sibling-types-compile-time-error">Example: Sibling Types
+(Compile-Time Error)</h4>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> AmbiguityExample <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">process</span><span class="op">(</span><span class="bu">String</span> str<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;String version&quot;</span><span class="op">);</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">process</span><span class="op">(</span><span class="bu">Integer</span> num<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Integer version&quot;</span><span class="op">);</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        AmbiguityExample example <span class="op">=</span> <span class="kw">new</span> <span class="fu">AmbiguityExample</span><span class="op">();</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Compile-time error: reference to process is ambiguous</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        example<span class="op">.</span><span class="fu">process</span><span class="op">(</span><span class="kw">null</span><span class="op">);</span> </span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this scenario:</p>
+<ol type="1">
+<li><code>null</code> is a valid argument for both <code>String</code>
+and <code>Integer</code>.</li>
+<li><code>String</code> is not a subtype of <code>Integer</code>, and
+<code>Integer</code> is not a subtype of <code>String</code>.</li>
+<li>The compiler cannot choose between them, producing the error:
+<code>reference to process is ambiguous, both method process(java.lang.String) and method process(java.lang.Integer) match</code>.</li>
+</ol>
+<h3 id="handling-primitive-types">Handling Primitive Types</h3>
+<p>A <code>null</code> literal cannot be directly typed to a primitive.
+If an overloaded set contains primitive parameters alongside reference
+parameters:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">test</span><span class="op">(</span><span class="dt">int</span> i<span class="op">)</span> <span class="op">{}</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">test</span><span class="op">(</span><span class="bu">String</span> s<span class="op">)</span> <span class="op">{}</span></span></code></pre></div>
+<p>Calling <code>test(null)</code> successfully invokes
+<code>test(String)</code> because <code>null</code> cannot be converted
+to the primitive <code>int</code>. The primitive method is not
+considered an applicable candidate during overload resolution.</p>
+<h3 id="how-to-resolve-ambiguity">How to Resolve Ambiguity</h3>
+<p>When encountering an ambiguity error due to a <code>null</code>
+literal, you can resolve it in two primary ways:</p>
+<ol type="1">
+<li><p><strong>Explicit Casting</strong>: Cast the <code>null</code>
+literal to the target type at the call site to make your intent explicit
+to the compiler.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>example<span class="op">.</span><span class="fu">process</span><span class="op">((</span><span class="bu">String</span><span class="op">)</span> <span class="kw">null</span><span class="op">);</span> <span class="co">// Calls process(String)</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>example<span class="op">.</span><span class="fu">process</span><span class="op">((</span><span class="bu">Integer</span><span class="op">)</span> <span class="kw">null</span><span class="op">);</span> <span class="co">// Calls process(Integer)</span></span></code></pre></div></li>
+<li><p><strong>Refactoring Method Names</strong>: If passing
+<code>null</code> has different domain meanings for each method,
+consider giving the methods descriptive, unique names (e.g.,
+<code>processByName(null)</code> and <code>processById(null)</code>)
+rather than overloading them.</p></li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

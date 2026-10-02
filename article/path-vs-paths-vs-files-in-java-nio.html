@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Path vs Paths vs Files in Java NIO - java</title>
+    <meta name="description" content="Java NIO.2, introduced in Java 7, revolutionized the way Java handles file I/O by replacing the outdated java.io.File class with a modern, non-blocking file system API centered around Path, Paths, and Files. While Path serves as an object-oriented repres">
+    <link rel="canonical" href="https://salivity.github.io/java/article/path-vs-paths-vs-files-in-java-nio">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Path vs Paths vs Files in Java NIO - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/path-vs-paths-vs-files-in-java-nio" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java NIO.2, introduced in Java 7, revolutionized the way Java handles file I/O by replacing the outdated java.io.File class with a modern, non-blocking file system API centered around Path, Paths, and Files. While Path serves as an object-oriented repres" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="path-vs-paths-vs-files-in-java-nio">Path vs Paths vs Files in
+Java NIO</h1>
+<p>Java NIO.2, introduced in Java 7, revolutionized the way Java handles
+file I/O by replacing the outdated <code>java.io.File</code> class with
+a modern, non-blocking file system API centered around
+<code>Path</code>, <code>Paths</code>, and <code>Files</code>. While
+<code>Path</code> serves as an object-oriented representation of a file
+or directory location, <code>Paths</code> functions as a factory utility
+to instantiate <code>Path</code> objects, and <code>Files</code>
+provides a rich set of static methods to perform actual file system
+operations. Understanding the distinct roles and interactions among
+these three types is critical for effective and idiomatic file
+manipulation in modern Java applications.</p>
+<h2 id="the-path-interface">The <code>Path</code> Interface</h2>
+<p>The <code>java.nio.file.Path</code> is an interface that represents a
+programmatic, hierarchical path to a file or directory. It is the modern
+replacement for <code>java.io.File</code>.</p>
+<p>Key characteristics of <code>Path</code>:</p>
+<ul>
+<li><strong>Location Representation Only:</strong> A <code>Path</code>
+object purely defines a path string; it does not automatically check
+whether the underlying file or directory actually exists on the physical
+storage.</li>
+<li><strong>Immutability:</strong> Once created, a <code>Path</code>
+instance cannot be altered. Methods that manipulate paths (such as
+<code>resolve()</code>, <code>normalize()</code>, or
+<code>relativize()</code>) return new <code>Path</code> instances.</li>
+<li><strong>Platform Independence:</strong> It automatically handles
+system-specific file separators (such as <code>/</code> on Unix/Linux or
+<code>\</code> on Windows).</li>
+<li><strong>Self-Contained Transformations:</strong> It contains methods
+for path introspection and manipulation, such as
+<code>getFileName()</code>, <code>getParent()</code>,
+<code>getRoot()</code>, and <code>subpath()</code>.</li>
+</ul>
+<h2 id="the-paths-utility-class">The <code>Paths</code> Utility
+Class</h2>
+<p>The <code>java.nio.file.Paths</code> class is a final utility class
+composed exclusively of static factory methods used to construct
+<code>Path</code> instances.</p>
+<p>Prior to Java 11, the primary mechanism for obtaining a
+<code>Path</code> was using <code>Paths.get()</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Path pathFromStrings <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="st">&quot;data&quot;</span><span class="op">,</span> <span class="st">&quot;logs&quot;</span><span class="op">,</span> <span class="st">&quot;app.log&quot;</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>Path pathFromUri <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="bu">URI</span><span class="op">.</span><span class="fu">create</span><span class="op">(</span><span class="st">&quot;file:///home/user/app.log&quot;</span><span class="op">));</span></span></code></pre></div>
+<p><em>Note on Modern Java (Java 11+):</em> With the introduction of
+Java 11, static factory methods were added directly to the
+<code>Path</code> interface (<code>Path.of(...)</code>). As a result,
+the <code>Paths</code> class has become mostly redundant in newer
+codebases, though it remains widely present in existing code for
+backward compatibility. Calling <code>Paths.get(...)</code> simply
+delegates to <code>Path.of(...)</code>.</p>
+<h2 id="the-files-utility-class">The <code>Files</code> Utility
+Class</h2>
+<p>The <code>java.nio.file.Files</code> class is the operational
+powerhouse of the NIO.2 file system API. While <code>Path</code>
+represents the location, <code>Files</code> performs the actual work on
+the physical file system.</p>
+<p>The class contains only static methods that take a <code>Path</code>
+as one of their primary arguments. Major capabilities include:</p>
+<ul>
+<li><strong>File Operations:</strong> Creating (<code>createFile</code>,
+<code>createDirectories</code>), deleting (<code>delete</code>,
+<code>deleteIfExists</code>), copying (<code>copy</code>), and moving
+(<code>move</code>).</li>
+<li><strong>Existence and Metadata Checks:</strong> Inspecting state via
+<code>exists()</code>, <code>notExists()</code>,
+<code>isReadable()</code>, <code>isWritable()</code>,
+<code>size()</code>, and reading file attributes via
+<code>readAttributes()</code>.</li>
+<li><strong>Reading and Writing:</strong> Simplified operations for
+common tasks such as <code>readString()</code>,
+<code>writeString()</code>, <code>readAllBytes()</code>,
+<code>readAllLines()</code>, and <code>newBufferedReader()</code>.</li>
+<li><strong>Stream Operations:</strong> Leveraging Java 8 streams for
+file traversal and search using <code>list()</code>,
+<code>walk()</code>, <code>find()</code>, and <code>lines()</code>.</li>
+</ul>
+<h2 id="summary-of-differences">Summary of Differences</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Component</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Primary Purpose</th>
+<th style="text-align: left;">Example Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>Path</code></strong></td>
+<td style="text-align: left;">Interface</td>
+<td style="text-align: left;">Represents a system-dependent file or
+directory location in memory.</td>
+<td style="text-align: left;"><code>path.getParent();</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>Paths</code></strong></td>
+<td style="text-align: left;">Utility Class</td>
+<td style="text-align: left;">Legacy factory (Java 7–8) used to create
+<code>Path</code> objects.</td>
+<td
+style="text-align: left;"><code>Paths.get("dir", "file.txt");</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>Files</code></strong></td>
+<td style="text-align: left;">Utility Class</td>
+<td style="text-align: left;">Executes real file system I/O operations
+using <code>Path</code> instances.</td>
+<td style="text-align: left;"><code>Files.readString(path);</code></td>
+</tr>
+</tbody>
+</table>
+<p>In practice, a modern Java workflow begins by acquiring a
+<code>Path</code> instance using <code>Path.of(...)</code> (or
+<code>Paths.get(...)</code> in legacy systems), followed by passing that
+instance to <code>Files</code> utility methods to manipulate, read, or
+manage the underlying file.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

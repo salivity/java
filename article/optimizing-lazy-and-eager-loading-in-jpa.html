@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizing Lazy and Eager Loading in JPA - java</title>
+    <meta name="description" content="In Java Persistence API (JPA) and Hibernate, choosing the right fetching strategy is essential to avoid performance bottlenecks like the N+1 select problem and memory bloat. While FetchType.LAZY defers data retrieval until access and FetchType.EAGER retr">
+    <link rel="canonical" href="https://salivity.github.io/java/article/optimizing-lazy-and-eager-loading-in-jpa">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Optimizing Lazy and Eager Loading in JPA - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/optimizing-lazy-and-eager-loading-in-jpa" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java Persistence API (JPA) and Hibernate, choosing the right fetching strategy is essential to avoid performance bottlenecks like the N+1 select problem and memory bloat. While FetchType.LAZY defers data retrieval until access and FetchType.EAGER retr" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="optimizing-lazy-and-eager-loading-in-jpa">Optimizing Lazy and
+Eager Loading in JPA</h1>
+<p>In Java Persistence API (JPA) and Hibernate, choosing the right
+fetching strategy is essential to avoid performance bottlenecks like the
+N+1 select problem and memory bloat. While <code>FetchType.LAZY</code>
+defers data retrieval until access and <code>FetchType.EAGER</code>
+retrieves data immediately, relying solely on these basic mappings often
+leads to inefficient SQL execution. This article examines the primary
+fetching strategies—including JPQL join fetching, JPA Entity Graphs,
+batch fetching, subselect fetching, and DTO projections—that optimize
+both lazy and eager loading patterns for scalable enterprise
+applications.</p>
+<h3 id="the-foundation-lazy-vs-eager-loading">The Foundation: Lazy vs.
+Eager Loading</h3>
+<p>JPA provides two core fetch types defined at the mapping level:</p>
+<ul>
+<li><strong><code>FetchType.LAZY</code></strong>: Delays the
+initialization of a relationship until it is explicitly accessed in the
+code. While it prevents unnecessary database queries up front, accessing
+collections or entities outside an active persistence context causes a
+<code>LazyInitializationException</code>. Moreover, accessing lazy
+collections in a loop triggers the N+1 query problem.</li>
+<li><strong><code>FetchType.EAGER</code></strong>: Loads the related
+entity or collection immediately alongside the parent entity. Overusing
+eager fetching leads to large, Cartesian product joins, excessive memory
+consumption, and unalterable query execution paths, as JPA annotations
+cannot be easily bypassed at runtime.</li>
+</ul>
+<p>Best practice dictates setting all relationships
+(<code>@OneToOne</code>, <code>@ManyToOne</code>,
+<code>@OneToMany</code>, <code>@ManyToMany</code>) to
+<code>FetchType.LAZY</code> by default, then applying dynamic fetching
+strategies tailored to specific use cases.</p>
+<h3 id="dynamic-jpql-and-criteria-join-fetch">Dynamic JPQL and Criteria
+JOIN FETCH</h3>
+<p>The <code>JOIN FETCH</code> clause in JPQL or the Criteria API
+overrides lazy loading declarations at query execution time. It
+instructs the persistence provider to retrieve the associated entities
+in the same SQL <code>SELECT</code> statement using an SQL
+<code>JOIN</code>.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="at">@Query</span><span class="op">(</span><span class="st">&quot;SELECT o FROM Order o JOIN FETCH o.orderItems WHERE o.id = :orderId&quot;</span><span class="op">)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>Optional<span class="op">&lt;</span>Order<span class="op">&gt;</span> <span class="fu">findByIdWithItems</span><span class="op">(</span><span class="at">@Param</span><span class="op">(</span><span class="st">&quot;orderId&quot;</span><span class="op">)</span> <span class="bu">Long</span> orderId<span class="op">);</span></span></code></pre></div>
+<p>This strategy eliminates the N+1 query issue by consolidating data
+retrieval into a single query. However, developers should avoid joining
+multiple <code>@OneToMany</code> or <code>@ManyToMany</code> collections
+simultaneously in a single query, as this causes a Cartesian product
+that severely degrades performance and may trigger an
+<code>IllegalArgumentException</code> in Hibernate.</p>
+<h3 id="jpa-entity-graphs">JPA Entity Graphs</h3>
+<p>JPA 2.1 introduced Entity Graphs, allowing developers to define fetch
+plans declaratively via annotations or dynamically via code. Entity
+graphs decouple fetching logic from the entity model and can be applied
+directly to queries or repository methods.</p>
+<p>Entity graphs can be applied in two modes:</p>
+<ul>
+<li><strong>Fetch Graph
+(<code>javax.persistence.fetchgraph</code>)</strong>: Attributes
+specified in the graph are treated as <code>EAGER</code>, and all
+non-specified attributes are treated as <code>LAZY</code>.</li>
+<li><strong>Load Graph
+(<code>javax.persistence.loadgraph</code>)</strong>: Attributes
+specified in the graph are treated as <code>EAGER</code>, while
+non-specified attributes retain their static mapping definitions.</li>
+</ul>
+<p>Example of defining and applying a named entity graph:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="at">@Entity</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="at">@NamedEntityGraph</span><span class="op">(</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    name <span class="op">=</span> <span class="st">&quot;Order.withCustomerAndItems&quot;</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    attributeNodes <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="at">@NamedAttributeNode</span><span class="op">(</span><span class="st">&quot;customer&quot;</span><span class="op">),</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="at">@NamedAttributeNode</span><span class="op">(</span><span class="st">&quot;orderItems&quot;</span><span class="op">)</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="op">)</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Order <span class="op">{</span> <span class="kw">...</span> <span class="op">}</span></span></code></pre></div>
+<p>In Spring Data JPA, an entity graph is applied directly via the
+<code>@EntityGraph</code> annotation:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="at">@EntityGraph</span><span class="op">(</span>value <span class="op">=</span> <span class="st">&quot;Order.withCustomerAndItems&quot;</span><span class="op">,</span> type <span class="op">=</span> EntityGraph<span class="op">.</span><span class="fu">EntityGraphType</span><span class="op">.</span><span class="fu">FETCH</span><span class="op">)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">List</span><span class="op">&lt;</span>Order<span class="op">&gt;</span> <span class="fu">findByStatus</span><span class="op">(</span>OrderStatus status<span class="op">);</span></span></code></pre></div>
+<h3 id="hibernate-batch-fetching-batchsize">Hibernate Batch Fetching
+(<code>@BatchSize</code>)</h3>
+<p>Batch fetching optimizes lazy loading by replacing individual queries
+with batched <code>IN</code> queries. When a lazy association is
+initialized, Hibernate fetches the associated records not only for the
+single entity being accessed, but also for up to <span
+class="math inline">\(N\)</span> uninitialized entities currently
+managed within the persistence context.</p>
+<p>This can be applied at the entity level or the collection level using
+the <code>@BatchSize</code> annotation:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="at">@OneToMany</span><span class="op">(</span>mappedBy <span class="op">=</span> <span class="st">&quot;order&quot;</span><span class="op">,</span> fetch <span class="op">=</span> FetchType<span class="op">.</span><span class="fu">LAZY</span><span class="op">)</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="at">@BatchSize</span><span class="op">(</span>size <span class="op">=</span> <span class="dv">25</span><span class="op">)</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span> <span class="bu">List</span><span class="op">&lt;</span>OrderItem<span class="op">&gt;</span> orderItems<span class="op">;</span></span></code></pre></div>
+<p>If 100 <code>Order</code> entities are loaded, iterating through
+their items will trigger only 4 queries (each fetching 25 item sets
+using <code>WHERE order_id IN (?, ?, ...)</code>) rather than 100
+distinct queries. Alternatively, batch fetching can be configured
+globally in <code>application.properties</code>:</p>
+<pre class="properties"><code>spring.jpa.properties.hibernate.default_batch_fetch_size=25</code></pre>
+<h3 id="subselect-fetching-fetchmodesubselect">Subselect Fetching
+(<code>FetchMode.SUBSELECT</code>)</h3>
+<p>Hibernate's <code>@Fetch(FetchMode.SUBSELECT)</code> optimizes the
+retrieval of child collections across multiple parent entities. Instead
+of generating multiple batch queries with <code>IN</code> clauses,
+Hibernate issues a single subsequent query that references the original
+parent query via a subselect.</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="at">@OneToMany</span><span class="op">(</span>mappedBy <span class="op">=</span> <span class="st">&quot;order&quot;</span><span class="op">,</span> fetch <span class="op">=</span> FetchType<span class="op">.</span><span class="fu">LAZY</span><span class="op">)</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="at">@Fetch</span><span class="op">(</span>FetchMode<span class="op">.</span><span class="fu">SUBSELECT</span><span class="op">)</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span> <span class="bu">List</span><span class="op">&lt;</span>OrderItem<span class="op">&gt;</span> orderItems<span class="op">;</span></span></code></pre></div>
+<p>When the initial query retrieves a set of orders, accessing
+<code>orderItems</code> on any loaded order triggers a single query
+structured like:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> order_items <span class="kw">WHERE</span> order_id <span class="kw">IN</span> (<span class="kw">SELECT</span> <span class="kw">id</span> <span class="kw">FROM</span> orders <span class="kw">WHERE</span> status <span class="op">=</span> <span class="st">&#39;PENDING&#39;</span>);</span></code></pre></div>
+<p>This strategy retrieves all related collections for the entire parent
+result set using exactly one extra query, making it efficient for large
+result sets where batch size limits might still result in too many
+round-trips.</p>
+<h3 id="read-only-dto-projections">Read-Only DTO Projections</h3>
+<p>For read-heavy use cases, bypassing entity management and lifecycle
+tracking entirely is often the most optimal strategy. DTO projections
+fetch only the exact database columns required, mapping them directly to
+Java records or classes via constructor expressions.</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">record</span> <span class="fu">OrderSummaryDTO</span><span class="op">(</span><span class="bu">Long</span> orderId<span class="op">,</span> <span class="bu">String</span> customerName<span class="op">,</span> <span class="bu">BigDecimal</span> totalAmount<span class="op">)</span> <span class="op">{}</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="at">@Query</span><span class="op">(</span><span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="st">    SELECT new com.example.OrderSummaryDTO(o.id, c.name, o.totalAmount)</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="st">    FROM Order o JOIN o.customer c</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="st">    WHERE o.status = :status</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;&quot;&quot;</span><span class="op">)</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="bu">List</span><span class="op">&lt;</span>OrderSummaryDTO<span class="op">&gt;</span> <span class="fu">findSummariesByStatus</span><span class="op">(</span><span class="at">@Param</span><span class="op">(</span><span class="st">&quot;status&quot;</span><span class="op">)</span> OrderStatus status<span class="op">);</span></span></code></pre></div>
+<p>DTO projections completely eliminate lazy loading issues, prevent
+accidental eager cascades, minimize memory usage, and reduce network
+serialization overhead.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

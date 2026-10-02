@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why super and this Must Be First in Java Constructors - java</title>
+    <meta name="description" content="In Java, invoking super() or this() must strictly be the first statement within any constructor body. This article explains the underlying architectural and safety reasons behind this language constraint, focusing on proper object initialization, the pre">
+    <link rel="canonical" href="https://salivity.github.io/java/article/why-super-and-this-must-be-first-in-java-constructors">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why super and this Must Be First in Java Constructors - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/why-super-and-this-must-be-first-in-java-constructors" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, invoking super() or this() must strictly be the first statement within any constructor body. This article explains the underlying architectural and safety reasons behind this language constraint, focusing on proper object initialization, the pre" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-super-and-this-must-be-first-in-java-constructors">Why super
+and this Must Be First in Java Constructors</h1>
+<p>In Java, invoking <code>super()</code> or <code>this()</code> must
+strictly be the first statement within any constructor body. This
+article explains the underlying architectural and safety reasons behind
+this language constraint, focusing on proper object initialization, the
+prevention of accessing uninitialized state, and how Java maintains a
+predictable class inheritance hierarchy.</p>
+<h3 id="1-ensuring-proper-base-class-initialization">1. Ensuring Proper
+Base Class Initialization</h3>
+<p>Java strictly follows an "outside-in" or "base-to-derived"
+initialization order. An instance of a subclass is an extension of its
+superclass, meaning it inherently depends on the fields, methods, and
+invariants defined in the parent class.</p>
+<p>Before a derived class can perform any meaningful setup, the base
+class must first establish its own state. Placing <code>super()</code>
+at the top guarantees that the parent object is completely initialized
+and stable before the child class begins executing its own constructor
+logic.</p>
+<h3 id="2-preventing-access-to-uninitialized-state">2. Preventing Access
+to Uninitialized State</h3>
+<p>If Java allowed arbitrary code to execute before
+<code>super()</code>, severe safety risks would arise:</p>
+<ul>
+<li><strong>Field Access:</strong> Subclass code could attempt to read
+or modify inherited fields before the superclass constructor assigns
+their initial values.</li>
+<li><strong>Method Invocation:</strong> Calling inherited or overridden
+methods prior to parent initialization could lead to unexpected behavior
+or <code>NullPointerException</code> errors because the internal
+dependencies of those methods have not yet been instantiated.</li>
+</ul>
+<p>By requiring <code>super()</code> as the very first operation, the
+Java compiler eliminates the possibility of referencing an incomplete or
+corrupted object state during construction.</p>
+<h3 id="3-maintaining-single-initialization-via-constructor-chaining">3.
+Maintaining Single Initialization via Constructor Chaining</h3>
+<p>When using <code>this()</code>, a constructor delegates object
+initialization to an alternate overloaded constructor within the same
+class. This chain must ultimately terminate at a constructor that calls
+<code>super()</code>.</p>
+<p>If statements were permitted before <code>this()</code>, operations
+might be performed multiple times or out of order as the constructor
+chain resolves. Forcing <code>this()</code> to be the first statement
+ensures that constructor delegation happens deterministically before any
+additional field manipulation or method execution takes place.</p>
+<h3 id="4-enforcement-by-the-java-virtual-machine-jvm">4. Enforcement by
+the Java Virtual Machine (JVM)</h3>
+<p>This rule is not merely a convenience of the Java compiler; it is
+deeply rooted in the JVM bytecode specification. When compiled, a
+constructor translates into an <code>&lt;init&gt;</code> method. The JVM
+verifier checks that every <code>&lt;init&gt;</code> method invokes
+another <code>&lt;init&gt;</code> method (either from the superclass or
+the same class) using the <code>invokespecial</code> instruction before
+the instance is marked as fully initialized and ready for normal
+use.</p>
+<h3 id="modern-context-flexible-constructor-bodies">Modern Context:
+Flexible Constructor Bodies</h3>
+<p>Recent versions of Java (beginning with preview features in Java 22
+via JEP 447 and JEP 482) introduce "Flexible Constructor Bodies." This
+feature allows statements to precede <code>super()</code> or
+<code>this()</code> under strict conditions: the pre-initialization code
+cannot reference the instance under construction (<code>this</code>),
+its fields, or its non-static methods.</p>
+<p>Even with this evolution, the fundamental rule remains: the actual
+initialization of the parent class must still precede any interaction
+with the subclass instance itself.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

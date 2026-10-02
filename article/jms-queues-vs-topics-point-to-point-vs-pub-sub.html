@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JMS Queues vs Topics: Point-to-Point vs Pub-Sub - java</title>
+    <meta name="description" content="The Java Message Service (JMS) framework supports two primary asynchronous messaging models: point-to-point (PTP) using queues, and publish-subscribe (Pub-Sub) using topics. While both mechanisms decouple message producers from consumers, they differ fun">
+    <link rel="canonical" href="https://salivity.github.io/java/article/jms-queues-vs-topics-point-to-point-vs-pub-sub">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="JMS Queues vs Topics: Point-to-Point vs Pub-Sub - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/jms-queues-vs-topics-point-to-point-vs-pub-sub" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Message Service (JMS) framework supports two primary asynchronous messaging models: point-to-point (PTP) using queues, and publish-subscribe (Pub-Sub) using topics. While both mechanisms decouple message producers from consumers, they differ fun" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="jms-queues-vs-topics-point-to-point-vs-pub-sub">JMS Queues vs
+Topics: Point-to-Point vs Pub-Sub</h1>
+<p>The Java Message Service (JMS) framework supports two primary
+asynchronous messaging models: point-to-point (PTP) using queues, and
+publish-subscribe (Pub-Sub) using topics. While both mechanisms decouple
+message producers from consumers, they differ fundamentally in message
+distribution, consumer concurrency, message retention, and operational
+use cases. Point-to-point queues ensure that each message is processed
+by exactly one consumer, whereas publish-subscribe topics broadcast
+every message to all active subscribers.</p>
+<h3 id="core-message-distribution-patterns">Core Message Distribution
+Patterns</h3>
+<p>In the point-to-point model, producers send messages to a specific
+queue, and consumers receive messages from that queue. Although multiple
+consumers can register with the same queue to share the processing load,
+each individual message is delivered to and consumed by only one
+receiver. Once a consumer acknowledges the message, it is permanently
+removed from the queue. This pattern forms a one-to-one communication
+model between the sender and the ultimate processor.</p>
+<p>In the publish-subscribe model, producers publish messages to a
+topic, and consumers subscribe to that topic. When a message is sent to
+a topic, JMS delivers a copy of that message to every subscribed
+consumer. This creates a one-to-many distribution model where multiple
+independent systems can process the identical event concurrently without
+interfering with each other.</p>
+<h3 id="consumer-dependency-and-message-retention">Consumer Dependency
+and Message Retention</h3>
+<p>Point-to-point queues exhibit zero temporal dependency between
+producers and consumers. If a producer sends a message to a queue when
+no consumers are running, the JMS provider stores the message reliably
+on disk or in memory. The message remains held in the queue until a
+consumer connects, retrieves it, or the message reaches its defined
+expiration time (Time-To-Live).</p>
+<p>In contrast, standard topics feature a strict temporal dependency. By
+default, a subscriber only receives messages published while its
+connection to the topic is active. If a subscriber is offline when a
+message is published, that message is missed entirely. To overcome this
+limitation, JMS provides <em>durable subscriptions</em>, allowing a
+subscriber to register a unique identity so the broker can buffer
+messages published while the client is temporarily disconnected.</p>
+<h3 id="common-implementation-patterns-and-use-cases">Common
+Implementation Patterns and Use Cases</h3>
+<p>Queues are standard for task distribution, transactional workflows,
+and batch processing systems. Typical examples include:</p>
+<ul>
+<li>Processing financial transactions where duplicate processing is
+unacceptable.</li>
+<li>Worker-pool implementations where tasks must be load-balanced evenly
+among multiple worker nodes.</li>
+<li>Order fulfillment pipelines requiring guaranteed execution of
+individual steps.</li>
+</ul>
+<p>Topics are standard for event-driven architectures, state updates,
+and push notifications. Typical examples include:</p>
+<ul>
+<li>Broadcasting market data feeds to multiple analytical engines
+simultaneously.</li>
+<li>Cache-invalidation events sent to multiple microservice
+instances.</li>
+<li>Real-time logging, monitoring, and audit systems where disparate
+components track the same system event.</li>
+</ul>
+<h3 id="key-architectural-distinctions">Key Architectural
+Distinctions</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Point-to-Point (Queue)</th>
+<th style="text-align: left;">Publish-Subscribe (Topic)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Destination Type</strong></td>
+<td style="text-align: left;"><code>javax.jms.Queue</code></td>
+<td style="text-align: left;"><code>javax.jms.Topic</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Consumer Model</strong></td>
+<td style="text-align: left;">Competing consumers (1 message to 1
+consumer)</td>
+<td style="text-align: left;">Broadcast (1 message to <span
+class="math inline">\(N\)</span> subscribers)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Default Retention</strong></td>
+<td style="text-align: left;">Retained until consumed or expired</td>
+<td style="text-align: left;">Ephemeral; delivered only to active
+subscribers</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Offline Handling</strong></td>
+<td style="text-align: left;">Native persistence until a consumer
+appears</td>
+<td style="text-align: left;">Requires explicit durable
+subscriptions</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Intent</strong></td>
+<td style="text-align: left;">Task delegation and execution</td>
+<td style="text-align: left;">Notification and event broadcasting</td>
+</tr>
+</tbody>
+</table></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maven Plugins: How to Bind Goals to Phases - java</title>
+    <meta name="description" content="This article explains the fundamentals of Apache Maven plugins and how they drive the Java build process. You will learn the relationship between build lifecycles, phases, and plugin goals, as well as how to explicitly bind plugin execution goals to spec">
+    <link rel="canonical" href="https://salivity.github.io/java/article/maven-plugins-how-to-bind-goals-to-phases">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Maven Plugins: How to Bind Goals to Phases - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/maven-plugins-how-to-bind-goals-to-phases" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the fundamentals of Apache Maven plugins and how they drive the Java build process. You will learn the relationship between build lifecycles, phases, and plugin goals, as well as how to explicitly bind plugin execution goals to spec" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="maven-plugins-how-to-bind-goals-to-phases">Maven Plugins: How to
+Bind Goals to Phases</h1>
+<p>This article explains the fundamentals of Apache Maven plugins and
+how they drive the Java build process. You will learn the relationship
+between build lifecycles, phases, and plugin goals, as well as how to
+explicitly bind plugin execution goals to specific build phases using
+the <code>pom.xml</code> configuration file to automate custom build
+tasks.</p>
+<h2 id="what-are-maven-plugins">What Are Maven Plugins?</h2>
+<p>In Apache Maven, almost all build actions are executed by plugins.
+Maven itself is essentially an execution framework; it manages project
+dependencies and coordinates lifecycles, but it delegates the actual
+work—such as compiling Java code, running unit tests, creating JAR
+files, and deploying artifacts—to plugins.</p>
+<p>A Maven plugin contains one or more <strong>goals</strong>. A goal
+represents a specific, granular task that performs an action on the
+project. Goals are referenced using the syntax
+<code>plugin-prefix:goal-name</code> (for example,
+<code>compiler:compile</code> or <code>surefire:test</code>).</p>
+<h2 id="maven-lifecycles-and-phases">Maven Lifecycles and Phases</h2>
+<p>To understand goal binding, you must first understand the Maven build
+lifecycle. Maven defines three built-in lifecycles:</p>
+<ul>
+<li><strong>clean</strong>: Handles project cleaning and removing
+previous build outputs.</li>
+<li><strong>default</strong> (or build): Manages the entire deployment
+and build process.</li>
+<li><strong>site</strong>: Handles the generation of project
+documentation and reports.</li>
+</ul>
+<p>Each lifecycle consists of an ordered sequence of
+<strong>phases</strong>. For example, the <code>default</code> lifecycle
+includes sequential phases such as:</p>
+<ol type="1">
+<li><code>validate</code></li>
+<li><code>compile</code></li>
+<li><code>test</code></li>
+<li><code>package</code></li>
+<li><code>verify</code></li>
+<li><code>install</code></li>
+<li><code>deploy</code></li>
+</ol>
+<p>When you run a command like <code>mvn package</code>, Maven executes
+every phase up to and including <code>package</code> in the defined
+order.</p>
+<h2 id="how-goal-binding-works">How Goal Binding Works</h2>
+<p>Phases do not perform work on their own; instead, Maven executes the
+plugin goals that are <strong>bound</strong> to those phases.</p>
+<h3 id="1-default-bindings">1. Default Bindings</h3>
+<p>Depending on the project's <code>&lt;packaging&gt;</code> type (e.g.,
+<code>jar</code>, <code>war</code>, <code>pom</code>), Maven provides
+default bindings. For example, in a project with <code>jar</code>
+packaging:</p>
+<ul>
+<li>The <code>compiler:compile</code> goal is automatically bound to the
+<code>compile</code> phase.</li>
+<li>The <code>surefire:test</code> goal is automatically bound to the
+<code>test</code> phase.</li>
+<li>The <code>jar:jar</code> goal is automatically bound to the
+<code>package</code> phase.</li>
+</ul>
+<h3 id="2-custom-goal-binding">2. Custom Goal Binding</h3>
+<p>When you introduce an external plugin or want an existing plugin to
+run at a specific point in the build, you explicitly bind the goal to a
+phase inside your <code>pom.xml</code> file using the
+<code>&lt;executions&gt;</code> block.</p>
+<p>Here is an example configuring the <code>maven-source-plugin</code>
+to generate a source code archive during the <code>package</code>
+phase:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode xml"><code class="sourceCode xml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">build</span>&gt;</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">plugins</span>&gt;</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">plugin</span>&gt;</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">groupId</span>&gt;org.apache.maven.plugins&lt;/<span class="kw">groupId</span>&gt;</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">artifactId</span>&gt;maven-source-plugin&lt;/<span class="kw">artifactId</span>&gt;</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">version</span>&gt;3.3.0&lt;/<span class="kw">version</span>&gt;</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">executions</span>&gt;</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                &lt;<span class="kw">execution</span>&gt;</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>                    &lt;<span class="kw">id</span>&gt;attach-sources&lt;/<span class="kw">id</span>&gt;</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>                    &lt;<span class="kw">phase</span>&gt;package&lt;/<span class="kw">phase</span>&gt;</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>                    &lt;<span class="kw">goals</span>&gt;</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>                        &lt;<span class="kw">goal</span>&gt;jar-no-fork&lt;/<span class="kw">goal</span>&gt;</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>                    &lt;/<span class="kw">goals</span>&gt;</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>                &lt;/<span class="kw">execution</span>&gt;</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>            &lt;/<span class="kw">executions</span>&gt;</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        &lt;/<span class="kw">plugin</span>&gt;</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    &lt;/<span class="kw">plugins</span>&gt;</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">build</span>&gt;</span></code></pre></div>
+<p>In this configuration:</p>
+<ul>
+<li><code>&lt;execution&gt;</code>: Defines an isolated run
+configuration for the plugin.</li>
+<li><code>&lt;id&gt;</code>: A unique identifier for the execution
+context.</li>
+<li><code>&lt;phase&gt;</code>: Specifies which build phase triggers
+this execution. If omitted, the goal will run during its default phase
+as defined by the plugin author.</li>
+<li><code>&lt;goals&gt;</code>: Lists the specific plugin goals to
+execute when the specified phase is reached.</li>
+</ul>
+<h2 id="execution-order-within-a-phase">Execution Order Within a
+Phase</h2>
+<p>If multiple goals are bound to the same build phase, Maven executes
+them in the order they appear in the <code>pom.xml</code>. Default goals
+defined by Maven packaging are executed prior to custom-configured
+plugins unless overridden. This predictable execution pipeline allows
+developers to construct fully automated, consistent CI/CD workflows
+tailored to any Java application.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

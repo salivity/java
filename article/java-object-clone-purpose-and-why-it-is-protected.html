@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Object clone: Purpose and Why It Is Protected - java</title>
+    <meta name="description" content="This article explores the purpose of the Object.clone() method in Java and the architectural reasoning behind its protected access modifier. It breaks down how the cloning mechanism creates field-by-field copies, why encapsulation demands restricted acce">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-object-clone-purpose-and-why-it-is-protected">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Object clone: Purpose and Why It Is Protected - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-object-clone-purpose-and-why-it-is-protected" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the purpose of the Object.clone() method in Java and the architectural reasoning behind its protected access modifier. It breaks down how the cloning mechanism creates field-by-field copies, why encapsulation demands restricted acce" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-object-clone-purpose-and-why-it-is-protected">Java Object
+clone: Purpose and Why It Is Protected</h1>
+<p>This article explores the purpose of the <code>Object.clone()</code>
+method in Java and the architectural reasoning behind its
+<code>protected</code> access modifier. It breaks down how the cloning
+mechanism creates field-by-field copies, why encapsulation demands
+restricted access by default, and how developers can correctly implement
+or replace this legacy mechanism with safer object-copying patterns.</p>
+<h2 id="the-purpose-of-objectclone">The Purpose of Object.clone()</h2>
+<p>The primary purpose of the <code>Object.clone()</code> method is to
+create and return an exact, field-for-field copy of an existing object.
+When executed, Java allocates memory for a new instance of the same
+class and initializes all its fields with the exact values of the source
+object's corresponding fields without invoking any constructor.</p>
+<p>By default, <code>Object.clone()</code> performs a <strong>shallow
+copy</strong>:</p>
+<ul>
+<li><strong>Primitive fields</strong> (such as <code>int</code>,
+<code>boolean</code>, or <code>double</code>) are duplicated directly by
+value.</li>
+<li><strong>Reference fields</strong> (such as object references or
+arrays) have their memory addresses copied. Consequently, both the
+original object and the newly cloned object refer to the exact same
+underlying instances in heap memory.</li>
+</ul>
+<p>To use <code>clone()</code>, a class must implement the
+<code>java.lang.Cloneable</code> marker interface. If
+<code>super.clone()</code> is invoked on an instance of a class that
+does not implement <code>Cloneable</code>, the runtime throws a
+<code>CloneNotSupportedException</code>.</p>
+<h2 id="why-objectclone-is-marked-protected">Why Object.clone() Is
+Marked Protected</h2>
+<p>In the base <code>java.lang.Object</code> class, <code>clone()</code>
+is declared with <code>protected</code> access rather than
+<code>public</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">protected</span> <span class="kw">native</span> <span class="bu">Object</span> <span class="fu">clone</span><span class="op">()</span> <span class="kw">throws</span> <span class="bu">CloneNotSupportedException</span><span class="op">;</span></span></code></pre></div>
+<p>This design decision serves several critical software design and
+safety purposes:</p>
+<h3 id="1-enforcing-intentional-opt-in">1. Enforcing Intentional
+Opt-In</h3>
+<p>Not all objects are logically meant to be duplicated. For example,
+objects representing thread instances, database connections, file
+streams, or singletons should never be cloned. If <code>clone()</code>
+were <code>public</code> in <code>java.lang.Object</code>, any client
+could clone any object in the Java runtime. By setting the modifier to
+<code>protected</code>, Java ensures that external callers cannot invoke
+<code>clone()</code> on an object unless that object's author explicitly
+decides to support cloning.</p>
+<h3 id="2-preventing-broken-state-via-shallow-copying">2. Preventing
+Broken State via Shallow Copying</h3>
+<p>Because <code>Object.clone()</code> only performs a shallow copy
+natively, exposing it publicly by default would lead to severe bugs and
+thread-safety violations. If an object manages mutable state, modifying
+that state in a shallow-copied clone would inadvertently mutate the
+original object. The <code>protected</code> modifier forces the class
+designer to override <code>clone()</code>, assess the safety of a
+shallow copy versus a deep copy, and handle reference fields
+appropriately before making the method public.</p>
+<h3 id="3-preserving-encapsulation">3. Preserving Encapsulation</h3>
+<p>Marking the method <code>protected</code> allows subclasses to
+inherit the native copying functionality provided by the JVM
+(<code>super.clone()</code>) while preventing arbitrary external classes
+from bypassing the class's established API boundaries. The class retains
+full control over its lifecycle and creation mechanisms.</p>
+<h2 id="how-to-expose-clone-correctly">How to Expose clone()
+Correctly</h2>
+<p>To allow external callers to duplicate an object using
+<code>clone()</code>, a class must:</p>
+<ol type="1">
+<li>Implement the <code>Cloneable</code> interface.</li>
+<li>Override <code>clone()</code> and increase its visibility from
+<code>protected</code> to <code>public</code>.</li>
+<li>Change the return type to the class type itself (leveraging
+covariant return types).</li>
+<li>Perform a deep copy of any internal mutable objects after calling
+<code>super.clone()</code>.</li>
+</ol>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> User <span class="kw">implements</span> <span class="bu">Cloneable</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="bu">String</span> name<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> java<span class="op">.</span><span class="fu">util</span><span class="op">.</span><span class="fu">Date</span> birthDate<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> User <span class="fu">clone</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            User copy <span class="op">=</span> <span class="op">(</span>User<span class="op">)</span> <span class="kw">super</span><span class="op">.</span><span class="fu">clone</span><span class="op">();</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Perform deep copy on mutable reference fields</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>            copy<span class="op">.</span><span class="fu">birthDate</span> <span class="op">=</span> <span class="op">(</span>java<span class="op">.</span><span class="fu">util</span><span class="op">.</span><span class="fu">Date</span><span class="op">)</span> <span class="kw">this</span><span class="op">.</span><span class="fu">birthDate</span><span class="op">.</span><span class="fu">clone</span><span class="op">();</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> copy<span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">CloneNotSupportedException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>            <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">AssertionError</span><span class="op">();</span> <span class="co">// Will not happen since we implement Cloneable</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="modern-alternatives-to-clone">Modern Alternatives to
+clone()</h2>
+<p>Due to the complexities, unchecked exceptions, and lack of
+constructor invocation associated with <code>Object.clone()</code>,
+modern Java development often favors alternative patterns:</p>
+<ul>
+<li><strong>Copy Constructors:</strong>
+<code>public User(User other)</code> allows explicit assignment, works
+cleanly with <code>final</code> fields, and does not require type
+casting or handling <code>CloneNotSupportedException</code>.</li>
+<li><strong>Static Factory Methods:</strong>
+<code>public static User newInstance(User other)</code> provides the
+same advantages as a copy constructor while allowing more descriptive
+naming.</li>
+<li><strong>Serialization/Libraries:</strong> Deep copies can be
+achieved via serialization tools or mapping libraries without
+interacting with Java's native cloning subsystem.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

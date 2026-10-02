@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAAS LoginModule Pluggable Identity Verification - java</title>
+    <meta name="description" content="Java Authentication and Authorization Service (JAAS) provides a flexible, modular framework for user authentication in Java applications. At the core of this architecture is the LoginModule interface, which allows applications to remain decoupled from un">
+    <link rel="canonical" href="https://salivity.github.io/java/article/jaas-login-module-pluggable-identity-verification">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="JAAS LoginModule Pluggable Identity Verification - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/jaas-login-module-pluggable-identity-verification" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java Authentication and Authorization Service (JAAS) provides a flexible, modular framework for user authentication in Java applications. At the core of this architecture is the LoginModule interface, which allows applications to remain decoupled from un" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="jaas-loginmodule-pluggable-identity-verification">JAAS
+LoginModule Pluggable Identity Verification</h1>
+<p>Java Authentication and Authorization Service (JAAS) provides a
+flexible, modular framework for user authentication in Java
+applications. At the core of this architecture is the
+<code>LoginModule</code> interface, which allows applications to remain
+decoupled from underlying authentication technologies. This article
+explains how <code>LoginModule</code> implementations achieve pluggable
+identity verification through dynamic configuration, two-phase commit
+protocols, and coordinated credential management.</p>
+<h3 id="the-decoupled-architecture">The Decoupled Architecture</h3>
+<p>JAAS separates the authentication logic from the application using
+four primary components:</p>
+<ul>
+<li><strong><code>LoginContext</code></strong>: The entry point used by
+the application to initiate authentication.</li>
+<li><strong><code>Configuration</code></strong>: A declarative
+specification (often defined in a <code>login.config</code> file) that
+defines which modules are invoked and their execution rules.</li>
+<li><strong><code>CallbackHandler</code></strong>: An intermediary that
+prompts the user or environment for credentials (such as usernames and
+passwords) without coupling the <code>LoginModule</code> to a specific
+user interface.</li>
+<li><strong><code>Subject</code></strong>: A container representing the
+authenticated entity, populated with <code>Principal</code> objects
+(identities) and credentials (keys, tokens, tickets).</li>
+</ul>
+<p>Because the application interacts exclusively with
+<code>LoginContext</code>, underlying authentication mechanisms—such as
+LDAP, Kerberos, relational databases, or biometric providers—can be
+swapped or updated via configuration without modifying or recompiling
+application code.</p>
+<h3 id="the-two-phase-authentication-lifecycle">The Two-Phase
+Authentication Lifecycle</h3>
+<p><code>LoginModule</code> implementations manage verification using a
+two-phase commit protocol to ensure that composite authentication states
+remain consistent across all configured modules.</p>
+<h4 id="phase-1-authentication-login">Phase 1: Authentication
+(<code>login</code>)</h4>
+<p>When an application calls <code>LoginContext.login()</code>, the
+context invokes the <code>login()</code> method of each configured
+<code>LoginModule</code>. In this phase:</p>
+<ol type="1">
+<li>The module uses the provided <code>CallbackHandler</code> to gather
+credentials.</li>
+<li>The module attempts to verify these credentials against its identity
+store.</li>
+<li>The module saves its authentication state internally (true/false)
+and returns the result. If a fatal error occurs, it throws a
+<code>LoginException</code>.</li>
+</ol>
+<h4 id="phase-2-state-resolution-commit-or-abort">Phase 2: State
+Resolution (<code>commit</code> or <code>abort</code>)</h4>
+<p>Once all relevant modules have executed their <code>login()</code>
+methods, the <code>LoginContext</code> evaluates the overall success
+based on the configured control flags.</p>
+<ul>
+<li><strong><code>commit()</code></strong>: If the overall
+authentication conditions are met, <code>LoginContext</code> calls
+<code>commit()</code> on each module. Modules that successfully
+authenticated in Phase 1 now attach relevant <code>Principal</code>
+objects, public credentials, and private credentials to the
+<code>Subject</code>.</li>
+<li><strong><code>abort()</code></strong>: If the overall authentication
+conditions fail, <code>LoginContext</code> invokes <code>abort()</code>
+across all modules. Any saved authentication states or temporary data
+are discarded, leaving the <code>Subject</code> unmodified.</li>
+</ul>
+<h4 id="session-termination-logout">Session Termination
+(<code>logout</code>)</h4>
+<p>When the application ends the session, calling
+<code>LoginContext.logout()</code> invokes <code>logout()</code> on each
+module. Implementations must remove any <code>Principal</code> objects
+and credentials that they previously attached to the
+<code>Subject</code>.</p>
+<h3 id="stacking-and-control-flags">Stacking and Control Flags</h3>
+<p>JAAS allows multiple <code>LoginModule</code> implementations to be
+chained together in the configuration. The flow of execution and the
+overall result are governed by four standard control flags:</p>
+<ul>
+<li><strong><code>Required</code></strong>: The module must succeed.
+Execution continues down the chain regardless of the outcome.</li>
+<li><strong><code>Requisite</code></strong>: The module must succeed. If
+it fails, control returns immediately to the application without
+evaluating subsequent modules.</li>
+<li><strong><code>Sufficient</code></strong>: If this module succeeds
+and no prior <code>Required</code> or <code>Requisite</code> modules
+failed, authentication succeeds immediately, and subsequent modules are
+ignored.</li>
+<li><strong><code>Optional</code></strong>: The module does not need to
+succeed. Authentication can succeed as long as at least one other module
+in the stack succeeds.</li>
+</ul>
+<h3 id="sharing-state-between-modules">Sharing State Between
+Modules</h3>
+<p>When stacking multiple <code>LoginModule</code> implementations,
+re-prompting users for credentials across different modules is
+inefficient. JAAS addresses this through a <code>sharedState</code> map
+passed into each module's <code>initialize()</code> method.</p>
+<p>A module can retrieve credentials, store them in the
+<code>sharedState</code> map, and allow downstream modules to consume
+them directly. Additionally, modules can read and write
+configuration-defined options from the <code>options</code> map,
+enabling runtime behaviors such as debug logging, credential caching,
+and fallback rules without code changes.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Inner Classes and Effectively Final Variables - java</title>
+    <meta name="description" content="In Java, local inner classes can access variables declared in their enclosing block only if those variables are marked final or are "effectively final"—meaning their values never change after initialization. This article breaks down the underlying mech">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-inner-classes-and-effectively-final-variables">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Inner Classes and Effectively Final Variables - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-inner-classes-and-effectively-final-variables" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, local inner classes can access variables declared in their enclosing block only if those variables are marked final or are "effectively final"—meaning their values never change after initialization. This article breaks down the underlying mech" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-inner-classes-and-effectively-final-variables">Java Inner
+Classes and Effectively Final Variables</h1>
+<p>In Java, local inner classes can access variables declared in their
+enclosing block only if those variables are marked <code>final</code> or
+are "effectively final"—meaning their values never change after
+initialization. This article breaks down the underlying mechanics of how
+Java bridges the gap between stack-allocated local variables and
+heap-allocated objects. You will learn about the process of variable
+capture, how the compiler synthesizes hidden fields and constructor
+parameters, and why the language requires these variables to remain
+immutable.</p>
+<h3 id="the-stack-vs-heap-dilemma">The Stack vs. Heap Dilemma</h3>
+<p>To understand how access works, you must first understand the
+fundamental memory mismatch between methods and objects:</p>
+<ol type="1">
+<li><strong>Local variables</strong> exist on the call stack. They are
+created when the enclosing method or block is invoked and are destroyed
+the moment that block finishes executing.</li>
+<li><strong>Inner class instances</strong> are objects that live on the
+heap. An inner class instance can easily outlive the execution of the
+method that instantiated it (for example, if it is passed to another
+thread or returned as an interface implementation).</li>
+</ol>
+<p>If an inner class held a direct reference to a stack-allocated
+variable, that reference would become a dangling pointer as soon as the
+enclosing method returned.</p>
+<h3 id="the-mechanism-variable-capture">The Mechanism: Variable
+Capture</h3>
+<p>Because direct memory access to stack variables is impossible once
+the stack frame pops, Java solves this problem using a technique called
+<strong>variable capture</strong>.</p>
+<p>Behind the scenes, the Java compiler rewrites your inner class:</p>
+<ol type="1">
+<li><strong>Synthetic Fields:</strong> The compiler automatically
+generates hidden, private final fields inside the local inner class
+corresponding to each accessed local variable.</li>
+<li><strong>Synthetic Constructor Parameters:</strong> The compiler
+alters the local inner class's constructor to accept the values of those
+local variables as extra parameters.</li>
+<li><strong>Value Copying:</strong> When the local inner class is
+instantiated, the enclosing method passes the local variable values into
+this synthetic constructor, which stores them into the generated
+fields.</li>
+</ol>
+<p>When your code inside the inner class refers to the enclosing
+method's variable, the bytecode actually reads the copy stored in its
+own private field.</p>
+<h3 id="why-variables-must-be-effectively-final">Why Variables Must Be
+Effectively Final</h3>
+<p>Because the inner class operates on a <strong>copy</strong> of the
+variable rather than the variable itself, data synchronization problems
+arise if either side modifies the value:</p>
+<ul>
+<li>If the enclosing method modified the local variable after the inner
+class was created, the inner class's copy would become outdated.</li>
+<li>If the inner class could modify the variable, changes would not be
+reflected in the original stack frame (especially if the stack frame
+already closed).</li>
+</ul>
+<p>Java prevents this divergence by requiring captured variables to be
+final or effectively final. By guaranteeing the variable's value never
+changes after assignment, the original value on the stack and the copied
+value in the heap object remain permanently identical. This eliminates
+race conditions, ensures predictable behavior, and avoids the complexity
+of true closures that manipulate stack references.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

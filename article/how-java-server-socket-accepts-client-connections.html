@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java ServerSocket Accepts Client Connections - java</title>
+    <meta name="description" content="In traditional Java I/O (java.net), the ServerSocket class provides a system-level mechanism for listening to and accepting incoming TCP network connections. This article explains the step-by-step process of how ServerSocket binds to a specific port, rel">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-server-socket-accepts-client-connections">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java ServerSocket Accepts Client Connections - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-server-socket-accepts-client-connections" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In traditional Java I/O (java.net), the ServerSocket class provides a system-level mechanism for listening to and accepting incoming TCP network connections. This article explains the step-by-step process of how ServerSocket binds to a specific port, rel" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-serversocket-accepts-client-connections">How Java
+ServerSocket Accepts Client Connections</h1>
+<p>In traditional Java I/O (<code>java.net</code>), the
+<code>ServerSocket</code> class provides a system-level mechanism for
+listening to and accepting incoming TCP network connections. This
+article explains the step-by-step process of how
+<code>ServerSocket</code> binds to a specific port, relies on operating
+system queues, and utilizes the blocking <code>accept()</code> method to
+establish an active <code>Socket</code> instance for bidirectional
+client communication.</p>
+<h3 id="1-socket-creation-and-port-binding">1. Socket Creation and Port
+Binding</h3>
+<p>The connection lifecycle begins when an application instantiates a
+<code>ServerSocket</code>, typically specifying a port number and an
+optional backlog size:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">ServerSocket</span> serverSocket <span class="op">=</span> <span class="kw">new</span> <span class="bu">ServerSocket</span><span class="op">(</span><span class="dv">8080</span><span class="op">);</span></span></code></pre></div>
+<p>Under the hood, Java delegates this operation to the underlying
+operating system via native system calls. The OS creates a native socket
+descriptor (<code>socket()</code>) and associates it with the designated
+local IP address and port (<code>bind()</code>). Once bound, the socket
+is placed into a passive listening state via the OS-level
+<code>listen()</code> system call, waiting for incoming TCP connection
+requests.</p>
+<h3 id="2-the-operating-system-backlog-queue">2. The Operating System
+Backlog Queue</h3>
+<p>Before a Java application actively calls <code>accept()</code>, the
+operating system's networking stack is already capable of receiving
+client connections. When a remote client attempts to connect, the OS
+initiates the standard TCP three-way handshake (SYN, SYN-ACK, ACK).</p>
+<p>During this phase, connections are held in kernel-level queues:</p>
+<ul>
+<li><strong>SYN Queue (Incomplete Connection Queue):</strong> Holds
+connections that have received a SYN packet but have not yet completed
+the handshake.</li>
+<li><strong>Accept Queue (Completed Connection Queue):</strong> Holds
+fully established TCP connections ready to be consumed by the
+application.</li>
+</ul>
+<p>The size of these queues is governed by the <code>backlog</code>
+parameter provided during the <code>ServerSocket</code> instantiation.
+If the accept queue fills up because the application is slow to process
+connections, the operating system will reject or ignore subsequent
+incoming SYN packets.</p>
+<h3 id="3-the-blocking-accept-call">3. The Blocking
+<code>accept()</code> Call</h3>
+<p>To retrieve an established connection from the kernel's accept queue,
+the Java application calls the <code>accept()</code> method:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Socket</span> clientSocket <span class="op">=</span> serverSocket<span class="op">.</span><span class="fu">accept</span><span class="op">();</span></span></code></pre></div>
+<p>In traditional Java I/O, <code>accept()</code> is a blocking
+operation. When invoked, it executes the native <code>accept()</code>
+system call:</p>
+<ul>
+<li><strong>If the queue has pending connections:</strong> The call
+immediately dequeues the oldest established connection from the OS
+accept queue and returns.</li>
+<li><strong>If the queue is empty:</strong> The calling thread enters a
+blocked state (waiting for I/O), giving up CPU cycles until a client
+completes the TCP handshake and an entry becomes available in the
+queue.</li>
+<li><strong>Timeouts:</strong> If a timeout has been configured using
+<code>serverSocket.setSoTimeout(int timeout)</code>, the thread will
+unblock and throw a <code>java.net.SocketTimeoutException</code> if no
+connection arrives before the specified period expires.</li>
+</ul>
+<h3 id="4-instantiation-of-the-client-socket">4. Instantiation of the
+Client <code>Socket</code></h3>
+<p>When <code>accept()</code> unblocks and successfully retrieves a
+connection, it does not use the <code>ServerSocket</code> to exchange
+data. Instead, it constructs a new <code>java.net.Socket</code> instance
+representing the dedicated endpoint for that specific client.</p>
+<p>This new <code>Socket</code> object encapsulates a distinct file
+descriptor provided by the OS, mapped to a unique four-tuple: source IP,
+source port, destination IP, and destination port. The original
+<code>ServerSocket</code> remains unaffected and continues listening on
+its bound port for subsequent connection requests.</p>
+<h3 id="5-thread-management-and-concurrency">5. Thread Management and
+Concurrency</h3>
+<p>Because traditional Java I/O is inherently blocking, the newly
+created <code>Socket</code> blocks during subsequent read and write
+operations via <code>InputStream</code> and
+<code>OutputStream</code>.</p>
+<p>To maintain server throughput and allow the <code>ServerSocket</code>
+to immediately return to listening for other incoming clients,
+applications typically hand off the newly returned <code>Socket</code>
+to a separate worker thread or a thread pool (such as an
+<code>ExecutorService</code>). This ensures that the thread running
+<code>serverSocket.accept()</code> is freed immediately to handle the
+next incoming connection from the queue.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

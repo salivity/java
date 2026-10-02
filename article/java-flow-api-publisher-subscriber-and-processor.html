@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Flow API: Publisher, Subscriber, and Processor - java</title>
+    <meta name="description" content="The Java Flow API, introduced in Java 9, provides an official implementation of the Reactive Streams specification to handle asynchronous, non-blocking data streams with backpressure. This article examines the four core interfaces within the java.util.co">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-flow-api-publisher-subscriber-and-processor">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Flow API: Publisher, Subscriber, and Processor - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-flow-api-publisher-subscriber-and-processor" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Flow API, introduced in Java 9, provides an official implementation of the Reactive Streams specification to handle asynchronous, non-blocking data streams with backpressure. This article examines the four core interfaces within the java.util.co" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-flow-api-publisher-subscriber-and-processor">Java Flow API:
+Publisher, Subscriber, and Processor</h1>
+<p>The Java Flow API, introduced in Java 9, provides an official
+implementation of the Reactive Streams specification to handle
+asynchronous, non-blocking data streams with backpressure. This article
+examines the four core interfaces within the
+<code>java.util.concurrent.Flow</code> class—Publisher, Subscriber,
+Subscription, and Processor—explaining their distinct responsibilities
+and how they collaborate to manage data flow predictably without
+overwhelming downstream consumers.</p>
+<h3 id="publisher-the-data-source">Publisher: The Data Source</h3>
+<p>The <code>Flow.Publisher&lt;T&gt;</code> acts as the provider or
+producer of data. Its primary responsibility is to emit items of type
+<code>T</code> to registered subscribers based on their requested
+demand.</p>
+<p>A Publisher exposes a single method:</p>
+<ul>
+<li><code>void subscribe(Flow.Subscriber&lt;? super T&gt; subscriber)</code>:
+Registers a new subscriber to receive events.</li>
+</ul>
+<p>The Publisher does not push data arbitrarily. Instead, it respects
+the rate at which the subscriber can process items, ensuring that the
+source does not flood the receiving end with unmanageable volumes of
+data.</p>
+<h3 id="subscriber-the-data-consumer">Subscriber: The Data Consumer</h3>
+<p>The <code>Flow.Subscriber&lt;T&gt;</code> is the recipient or
+consumer of the stream. It receives items sequentially, handles errors,
+and reacts to stream completion.</p>
+<p>The interface defines four lifecycle callback methods:</p>
+<ul>
+<li><code>void onSubscribe(Flow.Subscription subscription)</code>:
+Invoked automatically by the Publisher when registration succeeds,
+passing a <code>Subscription</code> token.</li>
+<li><code>void onNext(T item)</code>: Invoked whenever a new data item
+is delivered.</li>
+<li><code>void onError(Throwable throwable)</code>: Invoked when the
+Publisher encounters an unrecoverable error, terminating the
+stream.</li>
+<li><code>void onComplete()</code>: Invoked when the Publisher has
+finished sending all items, signaling normal stream completion.</li>
+</ul>
+<p>The Subscriber is responsible for initiating data requests through
+the <code>Subscription</code> it receives during setup.</p>
+<h3 id="subscription-the-backpressure-controller">Subscription: The
+Backpressure Controller</h3>
+<p>The <code>Flow.Subscription</code> represents the active connection
+between a single Publisher and a single Subscriber. It serves as the
+primary mechanism for backpressure, placing the control of data velocity
+directly into the consumer's hands.</p>
+<p>The interface includes two control methods:</p>
+<ul>
+<li><code>void request(long n)</code>: Instructs the Publisher to emit
+up to <code>n</code> additional items. The Publisher must not send more
+items than requested.</li>
+<li><code>void cancel()</code>: Informs the Publisher to stop sending
+data and clean up resources, terminating the connection.</li>
+</ul>
+<p>By requiring the Subscriber to explicitly invoke
+<code>request(n)</code>, the system prevents consumer memory
+exhaustion.</p>
+<h3 id="processor-the-intermediate-transformer">Processor: The
+Intermediate Transformer</h3>
+<p>The <code>Flow.Processor&lt;T, R&gt;</code> extends both
+<code>Flow.Subscriber&lt;T&gt;</code> and
+<code>Flow.Publisher&lt;R&gt;</code>. It acts as a middleman or
+transformation stage in a reactive pipeline, consuming data of type
+<code>T</code>, applying operations such as filtering, mapping, or
+aggregating, and publishing the resulting data of type <code>R</code> to
+downstream subscribers.</p>
+<p>Because it fulfills both contracts, a Processor must properly forward
+backpressure demands upstream while honoring the delivery expectations
+of downstream consumers.</p>
+<h3 id="how-the-components-interact">How the Components Interact</h3>
+<p>The standard lifecycle between these components follows a structured
+sequence:</p>
+<ol type="1">
+<li>A <code>Subscriber</code> attaches to a <code>Publisher</code> using
+<code>publisher.subscribe(subscriber)</code>.</li>
+<li>The <code>Publisher</code> creates a <code>Subscription</code> and
+passes it to the consumer via
+<code>subscriber.onSubscribe(subscription)</code>.</li>
+<li>The <code>Subscriber</code> requests data by calling
+<code>subscription.request(n)</code>.</li>
+<li>The <code>Publisher</code> delivers the requested items via
+<code>subscriber.onNext(item)</code>.</li>
+<li>Steps 3 and 4 repeat until the stream concludes with
+<code>subscriber.onComplete()</code>, fails via
+<code>subscriber.onError(throwable)</code>, or is canceled via
+<code>subscription.cancel()</code>.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

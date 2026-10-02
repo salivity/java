@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding module-info.java in Java Modules - java</title>
+    <meta name="description" content="This article provides an overview of the module-info.java file, the foundational descriptor of the Java Platform Module System (JPMS) introduced in Java 9. It examines the file's role in establishing boundaries, managing explicit dependencies, controllin">
+    <link rel="canonical" href="https://salivity.github.io/java/article/understanding-module-info-java-in-java-modules">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Understanding module-info.java in Java Modules - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/understanding-module-info-java-in-java-modules" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an overview of the module-info.java file, the foundational descriptor of the Java Platform Module System (JPMS) introduced in Java 9. It examines the file's role in establishing boundaries, managing explicit dependencies, controllin" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="understanding-module-infojava-in-java-modules">Understanding
+module-info.java in Java Modules</h1>
+<p>This article provides an overview of the
+<code>module-info.java</code> file, the foundational descriptor of the
+Java Platform Module System (JPMS) introduced in Java 9. It examines the
+file's role in establishing boundaries, managing explicit dependencies,
+controlling encapsulation, and configuring service providers to build
+secure and maintainable modular Java applications.</p>
+<h3 id="the-central-role-of-module-infojava">The Central Role of
+module-info.java</h3>
+<p>The <code>module-info.java</code> file serves as the blueprint for a
+Java module. Located in the root directory of the module's source
+hierarchy, this descriptor is compiled into a
+<code>module-info.class</code> binary alongside standard source code.
+Through this file, a developer explicitly dictates what the module needs
+to run, what it exposes to other modules, and what it keeps strictly
+private, replacing the historically fragile and flat classpath model
+with a structured graph of dependencies.</p>
+<h3 id="explicit-dependency-management">Explicit Dependency
+Management</h3>
+<p>In standard Java development prior to modularity, missing classes or
+version conflicts often resulted in runtime failures such as
+<code>NoClassDefFoundError</code>. The <code>module-info.java</code>
+file prevents this through the <code>requires</code> directive:</p>
+<ul>
+<li><strong><code>requires &lt;module&gt;</code>:</strong> Declares that
+this module depends on another module at both compile-time and runtime.
+If a required module is missing, the Java compiler or runtime halts
+immediately with a clear error.</li>
+<li><strong><code>requires transitive &lt;module&gt;</code>:</strong>
+Passes a dependency downstream, allowing any module that depends on this
+module to automatically read the specified transitive module without
+declaring it explicitly.</li>
+<li><strong><code>requires static &lt;module&gt;</code>:</strong> Marks
+a dependency as mandatory at compile time but optional at runtime.</li>
+</ul>
+<h3 id="strong-encapsulation">Strong Encapsulation</h3>
+<p>By default, everything inside a module is private and inaccessible to
+other modules, even if the classes and methods are marked
+<code>public</code>. The descriptor controls visibility using
+encapsulation directives:</p>
+<ul>
+<li><strong><code>exports &lt;package&gt;</code>:</strong> Makes all
+public types and members within a specific package accessible to other
+modules. Any package not explicitly exported remains strictly
+internal.</li>
+<li><strong><code>exports &lt;package&gt; to &lt;module&gt;</code>:</strong>
+Implements qualified exports, restricting access to a specific package
+exclusively to designated partner modules.</li>
+<li><strong><code>opens &lt;package&gt;</code>:</strong> Permits deep
+reflection into the specified package at runtime, essential for
+frameworks like Spring, Hibernate, or Jackson that require access to
+private fields. An entire module can also be declared as
+<code>open module</code> to permit reflection across all its
+packages.</li>
+</ul>
+<h3 id="service-provider-architecture">Service Provider
+Architecture</h3>
+<p>The <code>module-info.java</code> file natively integrates with the
+Java <code>ServiceLoader</code> API, decoupling service consumers from
+their implementations without requiring external configuration
+files:</p>
+<ul>
+<li><strong><code>uses &lt;interface/abstract class&gt;</code>:</strong>
+Signals that the module consumes a specific service interface.</li>
+<li><strong><code>provides &lt;interface&gt; with &lt;implementation&gt;</code>:</strong>
+Declares that the module provides a concrete implementation of a service
+interface.</li>
+</ul>
+<h3 id="summary-of-benefits">Summary of Benefits</h3>
+<p>By serving as a formal, machine-readable contract,
+<code>module-info.java</code> delivers reliable configuration and strong
+encapsulation. It enables early detection of missing dependencies,
+protects internal implementation details from unauthorized access, and
+allows tools like <code>jlink</code> to produce minimal, custom runtime
+images containing only the necessary modules.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

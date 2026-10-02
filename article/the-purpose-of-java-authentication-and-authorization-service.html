@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Purpose of Java Authentication and Authorization Service - java</title>
+    <meta name="description" content="The Java Authentication and Authorization Service (JAAS) is a foundational security framework built into the Java platform designed to control access to resources and verify the identities of users or systems executing code. This article explains the cor">
+    <link rel="canonical" href="https://salivity.github.io/java/article/the-purpose-of-java-authentication-and-authorization-service">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="The Purpose of Java Authentication and Authorization Service - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/the-purpose-of-java-authentication-and-authorization-service" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Authentication and Authorization Service (JAAS) is a foundational security framework built into the Java platform designed to control access to resources and verify the identities of users or systems executing code. This article explains the cor" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="the-purpose-of-java-authentication-and-authorization-service">The
+Purpose of Java Authentication and Authorization Service</h1>
+<p>The Java Authentication and Authorization Service (JAAS) is a
+foundational security framework built into the Java platform designed to
+control access to resources and verify the identities of users or
+systems executing code. This article explains the core purpose of JAAS,
+how it decouples application logic from underlying security
+technologies, and the primary components that drive its authentication
+and access-control mechanisms.</p>
+<h3 id="the-core-purpose-of-jaas">The Core Purpose of JAAS</h3>
+<p>JAAS serves two main purposes: <strong>authentication</strong> and
+<strong>authorization</strong>.</p>
+<ol type="1">
+<li><strong>Authentication:</strong> Determining the identity of the
+user, system, or process currently executing a Java program.</li>
+<li><strong>Authorization:</strong> Ensuring that the authenticated
+identity possesses the necessary permissions to access specific
+resources or execute privileged operations.</li>
+</ol>
+<p>Prior to JAAS, the Java security model focused primarily on
+<em>code-centric</em> authorization, verifying the origin and digital
+signature of the code itself rather than the user running it. JAAS
+introduced <em>user-centric</em> security, bridging the gap between who
+executes the application and what the application is permitted to
+do.</p>
+<h3 id="decoupling-security-via-a-pluggable-architecture">Decoupling
+Security via a Pluggable Architecture</h3>
+<p>A primary objective of JAAS is provider independence. By adopting the
+Pluggable Authentication Module (PAM) architecture, JAAS separates the
+application logic from specific authentication mechanisms.</p>
+<p>Applications interact with JAAS via abstract APIs rather than
+integrating directly with individual technologies such as LDAP,
+Kerberos, relational databases, or smart card readers. If an
+organization migrates its identity management system—for instance,
+switching from local database authentication to Active Directory—the
+underlying Java application requires no code modifications.
+Administrators only update a JAAS configuration file to plug in the new
+authentication module.</p>
+<h3 id="key-components-of-jaas">Key Components of JAAS</h3>
+<p>To achieve flexible authentication and access control, JAAS utilizes
+several core components:</p>
+<ul>
+<li><strong>Subject:</strong> Represents the source of a request. Once
+authenticated, a <code>Subject</code> contains one or more
+<code>Principal</code> instances (identities, such as usernames or role
+names) and credentials (such as passwords, tokens, or encryption
+keys).</li>
+<li><strong>Principal:</strong> Represents a specific identity or role
+associated with a <code>Subject</code>. A single user might have
+multiple principals, such as a user ID, a group ID, and an
+administrative role.</li>
+<li><strong>LoginContext:</strong> The primary interface used by the
+application to invoke the authentication process. It reads configuration
+files to determine which authentication modules to load.</li>
+<li><strong>LoginModule:</strong> The pluggable backend component that
+performs the actual verification using a specific protocol or repository
+(e.g., <code>Krb5LoginModule</code> for Kerberos).</li>
+<li><strong>CallbackHandler:</strong> An interface used by a
+<code>LoginModule</code> to gather credentials from the user (such as
+prompting for a username and password) without coupling the module to
+the user interface.</li>
+</ul>
+<h3 id="dynamic-authorization-enforcement">Dynamic Authorization
+Enforcement</h3>
+<p>Once authentication succeeds, JAAS integrates directly with Java's
+standard security manager policies to enforce authorization. Security
+administrators define permissions in policy files based on
+<code>Principal</code> identities.</p>
+<p>When a thread attempts a privileged action, JAAS associates the
+authenticated <code>Subject</code> with the thread's execution context
+using methods like <code>Subject.doAs()</code>. The Java runtime checks
+whether the authenticated <code>Principal</code> has explicit permission
+to perform the action, restricting unauthorized users from accessing
+file systems, network connections, or sensitive application
+features.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

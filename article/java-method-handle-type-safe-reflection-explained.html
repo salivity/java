@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java MethodHandle: Type-Safe Reflection Explained - java</title>
+    <meta name="description" content="Java's MethodHandle API, introduced in Java 7 under the java.lang.invoke package, provides a direct, low-level, and strongly typed reference to an executable method, constructor, or field. This article explains what a MethodHandle is, compares it with tr">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-method-handle-type-safe-reflection-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java MethodHandle: Type-Safe Reflection Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-method-handle-type-safe-reflection-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's MethodHandle API, introduced in Java 7 under the java.lang.invoke package, provides a direct, low-level, and strongly typed reference to an executable method, constructor, or field. This article explains what a MethodHandle is, compares it with tr" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-methodhandle-type-safe-reflection-explained">Java
+MethodHandle: Type-Safe Reflection Explained</h1>
+<p>Java's <code>MethodHandle</code> API, introduced in Java 7 under the
+<code>java.lang.invoke</code> package, provides a direct, low-level, and
+strongly typed reference to an executable method, constructor, or field.
+This article explains what a <code>MethodHandle</code> is, compares it
+with traditional Core Reflection, and details how it guarantees type
+safety and near-native performance during reflective operations.</p>
+<h2 id="what-is-a-methodhandle">What Is a MethodHandle?</h2>
+<p>A <code>MethodHandle</code> is a typed, directly executable reference
+to an underlying method, constructor, field, or similar low-level
+operation. Unlike traditional reflection objects from
+<code>java.lang.reflect</code>, a <code>MethodHandle</code> does not
+just represent metadata; it acts as an invokable pointer to code with
+minimal runtime overhead. It was introduced primarily to support dynamic
+JVM languages via the <code>invokedynamic</code> bytecode instruction,
+but it also serves as a modern replacement for standard reflection.</p>
+<p>To obtain a <code>MethodHandle</code>, you use the
+<code>MethodHandles.Lookup</code> factory class. The lookup object
+enforces Java's access control rules at the moment of creation rather
+than on every invocation:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>MethodHandles<span class="op">.</span><span class="fu">Lookup</span> lookup <span class="op">=</span> MethodHandles<span class="op">.</span><span class="fu">lookup</span><span class="op">();</span></span></code></pre></div>
+<h2 id="how-methodhandle-provides-type-safety">How MethodHandle Provides
+Type Safety</h2>
+<p>Traditional reflection (<code>java.lang.reflect.Method</code>)
+sacrifices type safety because its
+<code>invoke(Object obj, Object... args)</code> method requires passing
+arguments as an <code>Object[]</code> and returns an
+<code>Object</code>. This design leads to automatic boxing and unboxing,
+loss of generic type context, and deferred type verification that can
+cause runtime <code>ClassCastException</code> or
+<code>IllegalArgumentException</code> errors.</p>
+<p><code>MethodHandle</code> enforces type safety through the
+<code>MethodType</code> class and strict signature verification
+methods.</p>
+<h3 id="1-explicit-signatures-with-methodtype">1. Explicit Signatures
+with MethodType</h3>
+<p>Before looking up a method, you must explicitly construct its
+signature using <code>MethodType</code>. A <code>MethodType</code>
+instance is an immutable representation of the exact return type and
+parameter types required by the method:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Represents a method returning a String and accepting an int and a double: String myMethod(int, double)</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>MethodType methodType <span class="op">=</span> MethodType<span class="op">.</span><span class="fu">methodType</span><span class="op">(</span><span class="bu">String</span><span class="op">.</span><span class="fu">class</span><span class="op">,</span> <span class="dt">int</span><span class="op">.</span><span class="fu">class</span><span class="op">,</span> <span class="dt">double</span><span class="op">.</span><span class="fu">class</span><span class="op">);</span></span></code></pre></div>
+<p>Because the signature is defined as concrete classes (including
+explicit primitives, not wrappers), the JVM preserves exact parameter
+and return semantics without forced conversions.</p>
+<h3 id="2-strict-type-verification-via-invokeexact">2. Strict Type
+Verification via <code>invokeExact</code></h3>
+<p>A <code>MethodHandle</code> can be invoked using two primary
+methods:</p>
+<ul>
+<li><strong><code>invokeExact</code></strong>: Demands that the argument
+types and return type match the target <code>MethodType</code> perfectly
+at the call site. If there is any mismatch—even an implicit widening
+conversion (such as passing an <code>int</code> where a
+<code>long</code> is expected) or unboxing mismatch—the call fails at
+the bytecode level with a <code>WrongMethodTypeException</code>.</li>
+<li><strong><code>invoke</code></strong>: Allows loose type conversions
+(such as auto-boxing, unboxing, and widening) similar to standard Java
+method invocation, but it strictly adapts types according to defined JVM
+conversion rules before execution.</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">invoke</span><span class="op">.</span><span class="im">MethodHandle</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">invoke</span><span class="op">.</span><span class="im">MethodHandles</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">invoke</span><span class="op">.</span><span class="im">MethodType</span><span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MethodHandleExample <span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">String</span> <span class="fu">greet</span><span class="op">(</span><span class="bu">String</span> name<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">&quot;Hello, &quot;</span> <span class="op">+</span> name<span class="op">;</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="kw">throws</span> <span class="bu">Throwable</span> <span class="op">{</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        MethodHandles<span class="op">.</span><span class="fu">Lookup</span> lookup <span class="op">=</span> MethodHandles<span class="op">.</span><span class="fu">lookup</span><span class="op">();</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Define signature: returns String, accepts String</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>        MethodType type <span class="op">=</span> MethodType<span class="op">.</span><span class="fu">methodType</span><span class="op">(</span><span class="bu">String</span><span class="op">.</span><span class="fu">class</span><span class="op">,</span> <span class="bu">String</span><span class="op">.</span><span class="fu">class</span><span class="op">);</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Find virtual method on MethodHandleExample</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>        MethodHandle handle <span class="op">=</span> lookup<span class="op">.</span><span class="fu">findVirtual</span><span class="op">(</span>MethodHandleExample<span class="op">.</span><span class="fu">class</span><span class="op">,</span> <span class="st">&quot;greet&quot;</span><span class="op">,</span> type<span class="op">);</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>        MethodHandleExample instance <span class="op">=</span> <span class="kw">new</span> <span class="fu">MethodHandleExample</span><span class="op">();</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>        <span class="co">// invokeExact requires exact match: instance receiver followed by String parameter</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>        <span class="bu">String</span> result <span class="op">=</span> <span class="op">(</span><span class="bu">String</span><span class="op">)</span> handle<span class="op">.</span><span class="fu">invokeExact</span><span class="op">(</span>instance<span class="op">,</span> <span class="st">&quot;World&quot;</span><span class="op">);</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>result<span class="op">);</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Notice that the return value <code>(String)</code> cast is not merely
+a downcast; the compiler uses the cast to enforce the return type
+signature at the call site for <code>invokeExact</code>.</p>
+<h2 id="advantages-over-standard-core-reflection">Advantages Over
+Standard Core Reflection</h2>
+<h3 id="access-checks-at-creation-time">Access Checks at Creation
+Time</h3>
+<p>Standard reflection performs security checks and accessibility
+verification (e.g., whether a method is <code>public</code> or
+<code>private</code>) on every single <code>Method.invoke()</code> call.
+In contrast, <code>MethodHandles.Lookup</code> performs these checks
+only once when the handle is constructed. Once obtained, the
+<code>MethodHandle</code> can be invoked repeatedly without access-check
+overhead.</p>
+<h3 id="jit-optimization-and-inlining">JIT Optimization and
+Inlining</h3>
+<p>Because <code>MethodHandle</code> types are resolved explicitly, the
+JVM's Just-In-Time (JIT) compiler can optimize them significantly better
+than standard reflection. When a <code>MethodHandle</code> is stored in
+a <code>static final</code> field, the JIT compiler can treat it as a
+constant and inline the invocation directly into compiled machine code,
+yielding performance nearly identical to a direct method call.</p>
+<h3 id="composition-and-transformation">Composition and
+Transformation</h3>
+<p><code>MethodHandle</code> instances can be composed and transformed
+programmatically. You can bind specific arguments, adapt return types,
+insert pre-processing steps, or swap parameter orders using static
+utility methods in <code>MethodHandles</code> (such as
+<code>bindTo</code>, <code>filterArguments</code>, or
+<code>permuteArguments</code>), all while maintaining strict type safety
+across the transformation pipeline.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

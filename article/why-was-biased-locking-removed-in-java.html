@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Was Biased Locking Removed in Java? - java</title>
+    <meta name="description" content="Biased locking was an optimization introduced in Java 6 to eliminate the overhead of synchronization when an object was accessed primarily by a single thread. While highly effective for legacy applications relying on older collections, evolution in CPU h">
+    <link rel="canonical" href="https://salivity.github.io/java/article/why-was-biased-locking-removed-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Was Biased Locking Removed in Java? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/why-was-biased-locking-removed-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Biased locking was an optimization introduced in Java 6 to eliminate the overhead of synchronization when an object was accessed primarily by a single thread. While highly effective for legacy applications relying on older collections, evolution in CPU h" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-was-biased-locking-removed-in-java">Why Was Biased Locking
+Removed in Java?</h1>
+<p>Biased locking was an optimization introduced in Java 6 to eliminate
+the overhead of synchronization when an object was accessed primarily by
+a single thread. While highly effective for legacy applications relying
+on older collections, evolution in CPU hardware and modern programming
+patterns gradually reduced its benefits while elevating its costs. In
+JDK 15, JEP 374 disabled and deprecated biased locking, setting the
+stage for its eventual removal due to heavy safepoint overhead during
+lock revocation, declining performance gains from cheaper modern atomic
+operations, and the massive maintenance burden it imposed on the HotSpot
+runtime.</p>
+<h2 id="the-original-purpose-of-biased-locking">The Original Purpose of
+Biased Locking</h2>
+<p>In early versions of Java, foundational APIs like
+<code>Vector</code>, <code>StringBuffer</code>, and
+<code>Hashtable</code> synchronized every operation by default. Even
+when these classes were used in single-threaded environments, threads
+continuously paid the performance cost of atomic Compare-And-Swap (CAS)
+operations to acquire and release object monitors.</p>
+<p>Biased locking solved this by assuming an object would only ever be
+locked by one thread. The first thread to acquire the lock would "bias"
+the object's header (the mark word) toward itself. Subsequent locking
+and unlocking actions by this same thread required only a cheap identity
+check against the thread ID stored in the mark word, completely
+bypassing atomic operations and memory bus synchronization.</p>
+<h2 id="cheaper-atomic-cpu-operations">Cheaper Atomic CPU
+Operations</h2>
+<p>Biased locking was designed in an era where atomic CPU
+operations—such as the <code>LOCK CMPXCHG</code> instruction on x86
+architectures—were computationally expensive and significantly impacted
+the CPU memory bus.</p>
+<p>As modern multi-core processor architectures advanced, the hardware
+penalty for executing atomic instructions dropped substantially. The gap
+between a plain store/check operation (used by biased locking) and an
+uncontended CAS operation shrank so dramatically that the raw
+performance improvement gained from biasing became negligible for most
+modern workloads.</p>
+<h2 id="the-shift-in-modern-java-concurrency">The Shift in Modern Java
+Concurrency</h2>
+<p>Modern Java programming practices shifted away from monolithic
+synchronization. Developers rarely rely on synchronized legacy
+collections, preferring:</p>
+<ul>
+<li>Unsynchronized alternatives like <code>ArrayList</code> and
+<code>StringBuilder</code> for thread-local logic.</li>
+<li>High-performance concurrency constructs from the
+<code>java.util.concurrent</code> package (such as
+<code>ConcurrentHashMap</code> and lock-free data structures) for
+multi-threaded workflows.</li>
+</ul>
+<p>Because applications now rarely synchronize on objects accessed by
+only one thread, the scenarios where biased locking provided a
+noticeable advantage largely disappeared.</p>
+<h2 id="the-performance-cost-of-revocation">The Performance Cost of
+Revocation</h2>
+<p>Biased locking was only fast as long as a single thread locked the
+object. If another thread attempted to acquire a biased lock, the bias
+had to be "revoked" before the lock could be upgraded to a lightweight
+or heavyweight monitor.</p>
+<p>Revoking a bias was exceptionally expensive. It required:</p>
+<ol type="1">
+<li>Bringing all threads in the JVM to a global safepoint (a
+"stop-the-world" pause).</li>
+<li>Inspecting the thread stacks to determine if the biasing thread was
+still holding the lock.</li>
+<li>Updating the object header to remove the bias or re-bias it.</li>
+<li>Resuming the application.</li>
+</ol>
+<p>In applications with reactive architectures, thread pools, or
+frequent handoffs of objects between worker threads, these revocation
+pauses caused unpredictable tail-latency spikes and severe throughput
+degradation. The cost of frequent revocations often far exceeded the
+micro-benchmarked gains of uncontended locks.</p>
+<h2 id="code-complexity-and-future-jvm-innovations">Code Complexity and
+Future JVM Innovations</h2>
+<p>Biased locking was deeply integrated into HotSpot's synchronization
+subsystem, complicating the C++ codebase across the interpreter, the
+C1/C2 JIT compilers, and memory management subsystems.</p>
+<p>Maintaining this complex logic consumed valuable engineering
+resources and actively hindered newer JVM initiatives:</p>
+<ul>
+<li><strong>Project Loom (Virtual Threads):</strong> Virtual threads
+detach the concept of a Java thread from an OS thread, creating a
+mismatch with the thread-affinity assumptions built into biased
+locking.</li>
+<li><strong>Project Lilliput:</strong> Aimed at shrinking Java object
+headers from 64/128 bits down to 32 bits or less, Lilliput required
+reclaiming bits in the mark word that had been dedicated to tracking
+bias state and thread IDs.</li>
+</ul>
+<p>By deprecating and removing biased locking, the OpenJDK team
+eliminated complex edge cases, stopped-the-world revocation pauses, and
+technical debt, simplifying the JVM's synchronization engine for modern
+multi-threaded architectures.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

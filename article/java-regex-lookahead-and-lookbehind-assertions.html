@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Regex Lookahead and Lookbehind Assertions - java</title>
+    <meta name="description" content="This article explains how lookahead and lookbehind assertions—collectively known as lookarounds—function within Java regular expressions. Lookarounds are zero-width mechanisms that determine whether a match should succeed based on what follows or pre">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-regex-lookahead-and-lookbehind-assertions">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Regex Lookahead and Lookbehind Assertions - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-regex-lookahead-and-lookbehind-assertions" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how lookahead and lookbehind assertions—collectively known as lookarounds—function within Java regular expressions. Lookarounds are zero-width mechanisms that determine whether a match should succeed based on what follows or pre" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-regex-lookahead-and-lookbehind-assertions">Java Regex
+Lookahead and Lookbehind Assertions</h1>
+<p>This article explains how lookahead and lookbehind
+assertions—collectively known as lookarounds—function within Java
+regular expressions. Lookarounds are zero-width mechanisms that
+determine whether a match should succeed based on what follows or
+precedes the current position in the target text, without including
+those characters in the final match result. You will learn the syntax,
+evaluation logic, and Java-specific implementation rules for both
+positive and negative lookaround assertions.</p>
+<h2 id="the-concept-of-zero-width-assertions">The Concept of Zero-Width
+Assertions</h2>
+<p>Standard regular expression tokens consume characters as the matching
+engine moves from left to right across an input string. Once a character
+is consumed, it becomes part of the matched substring, and the engine's
+match pointer advances past it.</p>
+<p>Lookarounds are zero-width assertions. Instead of consuming text,
+they assert whether a condition is true at a specific boundary or
+position. The engine pauses at the current index, looks ahead or behind
+to test the subpattern, and then resets the index back to the starting
+point. If the condition is met, the engine continues processing the
+remainder of the pattern; if it fails, the engine backtracks or abandons
+the match at that position.</p>
+<h2 id="lookahead-assertions">Lookahead Assertions</h2>
+<p>Lookahead assertions evaluate text to the right of the current
+matching index.</p>
+<h3 id="positive-lookahead-x">Positive Lookahead:
+<code>(?=X)</code></h3>
+<p>A positive lookahead succeeds only if the subpattern <code>X</code>
+matches the text immediately following the current position.</p>
+<ul>
+<li><strong>Syntax:</strong> <code>(?=pattern)</code></li>
+<li><strong>Example:</strong> <code>\d+(?=px)</code></li>
+<li><strong>Evaluation:</strong> When applied to <code>"1920px"</code>,
+the engine matches <code>1920</code> using <code>\d+</code>. It then
+encounters <code>(?=px)</code> and checks if <code>"px"</code>
+immediately follows. Because it does, the assertion succeeds. The final
+match returned is <code>1920</code>. The letters <code>"px"</code> are
+verified but not consumed.</li>
+</ul>
+<h3 id="negative-lookahead-x">Negative Lookahead:
+<code>(?!X)</code></h3>
+<p>A negative lookahead succeeds only if the subpattern <code>X</code>
+does not match the text immediately following the current position.</p>
+<ul>
+<li><strong>Syntax:</strong> <code>(?!pattern)</code></li>
+<li><strong>Example:</strong> <code>\d+(?!px)</code></li>
+<li><strong>Evaluation:</strong> When applied to <code>"100em"</code>,
+the digits <code>100</code> are matched. The engine checks if
+<code>"px"</code> follows. Because <code>"em"</code> follows instead of
+<code>"px"</code>, the negative condition evaluates to true, and
+<code>100</code> is returned as a valid match.</li>
+</ul>
+<h2 id="lookbehind-assertions">Lookbehind Assertions</h2>
+<p>Lookbehind assertions evaluate text to the left of the current
+matching index.</p>
+<h3 id="positive-lookbehind-x">Positive Lookbehind:
+<code>(?&lt;=X)</code></h3>
+<p>A positive lookbehind succeeds only if the subpattern <code>X</code>
+matches the text immediately preceding the current position.</p>
+<ul>
+<li><strong>Syntax:</strong> <code>(?&lt;=pattern)</code></li>
+<li><strong>Example:</strong> <code>(?&lt;=\$)\d+</code></li>
+<li><strong>Evaluation:</strong> When applied to <code>"$50"</code>, the
+engine encounters <code>(?&lt;=\$)</code>. It inspects the character
+immediately before the digits. Since <code>$</code> is present, the
+assertion passes, and the engine consumes and returns <code>50</code>.
+The currency symbol is excluded from the match.</li>
+</ul>
+<h3 id="negative-lookbehind-x">Negative Lookbehind:
+<code>(?&lt;!X)</code></h3>
+<p>A negative lookbehind succeeds only if the subpattern <code>X</code>
+does not match the text immediately preceding the current position.</p>
+<ul>
+<li><strong>Syntax:</strong> <code>(?&lt;!pattern)</code></li>
+<li><strong>Example:</strong> <code>(?&lt;!\$)\d+</code></li>
+<li><strong>Evaluation:</strong> When applied to <code>"€50"</code>, the
+engine checks the character preceding <code>50</code>. Since it is
+<code>€</code> and not <code>$</code>, the negative assertion succeeds,
+returning <code>50</code>.</li>
+</ul>
+<h2 id="java-specific-evaluation-constraints">Java-Specific Evaluation
+Constraints</h2>
+<p>The <code>java.util.regex</code> engine handles lookarounds with
+specific rules regarding pattern length and backtracking:</p>
+<ol type="1">
+<li><p><strong>Finite Length Requirement for Lookbehind:</strong> Unlike
+lookahead assertions, Java's implementation of lookbehind requires that
+the pattern inside <code>(?&lt;=...)</code> or <code>(?&lt;!...)</code>
+has an obvious maximum length.</p>
+<ul>
+<li>Unbounded quantifiers such as <code>*</code> and <code>+</code> will
+throw a <code>PatternSyntaxException</code> at compile time (e.g.,
+<code>(?&lt;=\w+)</code> is invalid).</li>
+<li>Bounded quantifiers with fixed or maximum limits are permitted
+(e.g., <code>(?&lt;=\w{1,5})</code> is valid).</li>
+<li>Alternation of strings with different lengths is allowed as long as
+each alternative is finite (e.g.,
+<code>(?&lt;=cat|dog|bird)</code>).</li>
+</ul></li>
+<li><p><strong>Order of Execution:</strong> The Java regex engine
+evaluates lookaround assertions at the exact point they appear in the
+regular expression sequence. If placed at the start of a pattern, the
+lookaround checks the prefix; if placed at the end, it checks the
+suffix. Placing multiple lookarounds side by side acts as a logical AND
+condition, requiring all assertions to pass at that specific index for
+the match to proceed.</p></li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

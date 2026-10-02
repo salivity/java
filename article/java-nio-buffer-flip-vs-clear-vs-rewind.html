@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java NIO Buffer flip vs clear vs rewind - java</title>
+    <meta name="description" content="Java NIO buffers rely on internal state variables—primarily position, limit, and capacity—to manage sequential data processing without reallocating memory. The flip(), clear(), and rewind() methods are essential state-management utilities that alter">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-nio-buffer-flip-vs-clear-vs-rewind">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java NIO Buffer flip vs clear vs rewind - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-nio-buffer-flip-vs-clear-vs-rewind" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java NIO buffers rely on internal state variables—primarily position, limit, and capacity—to manage sequential data processing without reallocating memory. The flip(), clear(), and rewind() methods are essential state-management utilities that alter" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-nio-buffer-flip-vs-clear-vs-rewind">Java NIO Buffer flip vs
+clear vs rewind</h1>
+<p>Java NIO buffers rely on internal state variables—primarily
+<code>position</code>, <code>limit</code>, and <code>capacity</code>—to
+manage sequential data processing without reallocating memory. The
+<code>flip()</code>, <code>clear()</code>, and <code>rewind()</code>
+methods are essential state-management utilities that alter these
+tracking pointers. Understanding how these methods manipulate the
+buffer's position and limit is critical for correctly transitioning
+between reading, writing, and re-reading data in Java NIO channels.</p>
+<h3 id="buffer-state-variables">Buffer State Variables</h3>
+<p>To understand these methods, you must understand the two primary
+pointers:</p>
+<ul>
+<li><strong>Position:</strong> The index of the next element to be read
+or written.</li>
+<li><strong>Limit:</strong> The first element that should not be read or
+written.</li>
+<li><strong>Capacity:</strong> The total size of the allocated memory
+block.</li>
+</ul>
+<hr />
+<h3 id="the-flip-method">The <code>flip()</code> Method</h3>
+<p>The <code>flip()</code> method switches a buffer from <strong>writing
+mode to reading mode</strong>.</p>
+<p>When you write data into a buffer (via a
+<code>Channel.read(buffer)</code> or manual <code>put()</code>
+operations), the <code>position</code> advances forward while the
+<code>limit</code> stays at <code>capacity</code>. Once writing is
+finished, you must flip the buffer to read that data back out.</p>
+<p><strong>What <code>flip()</code> does:</strong></p>
+<ol type="1">
+<li>Sets <code>limit</code> to the current <code>position</code>.</li>
+<li>Resets <code>position</code> to <code>0</code>.</li>
+<li>Discards any previously set mark.</li>
+</ol>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Example: Writing data, then reading it</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">ByteBuffer</span> buffer <span class="op">=</span> <span class="bu">ByteBuffer</span><span class="op">.</span><span class="fu">allocate</span><span class="op">(</span><span class="dv">1024</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">put</span><span class="op">((</span><span class="dt">byte</span><span class="op">)</span> <span class="dv">10</span><span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">put</span><span class="op">((</span><span class="dt">byte</span><span class="op">)</span> <span class="dv">20</span><span class="op">);</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">flip</span><span class="op">();</span> <span class="co">// limit becomes 2, position becomes 0</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="dt">byte</span> a <span class="op">=</span> buffer<span class="op">.</span><span class="fu">get</span><span class="op">();</span> <span class="co">// reads 10, position becomes 1</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="dt">byte</span> b <span class="op">=</span> buffer<span class="op">.</span><span class="fu">get</span><span class="op">();</span> <span class="co">// reads 20, position becomes 2</span></span></code></pre></div>
+<hr />
+<h3 id="the-clear-method">The <code>clear()</code> Method</h3>
+<p>The <code>clear()</code> method prepares a buffer for a <strong>new
+cycle of writing</strong>.</p>
+<p>Contrary to its name, <code>clear()</code> does not wipe or zero out
+the underlying data array. Instead, it resets the internal indices so
+you can overwrite existing data from the start of the buffer.</p>
+<p><strong>What <code>clear()</code> does:</strong></p>
+<ol type="1">
+<li>Sets <code>position</code> to <code>0</code>.</li>
+<li>Sets <code>limit</code> to <code>capacity</code>.</li>
+<li>Discards any previously set mark.</li>
+</ol>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Example: Resetting for new writes</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">clear</span><span class="op">();</span> <span class="co">// position becomes 0, limit becomes 1024</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">put</span><span class="op">((</span><span class="dt">byte</span><span class="op">)</span> <span class="dv">99</span><span class="op">);</span> <span class="co">// overwrites the first byte</span></span></code></pre></div>
+<p>Use <code>clear()</code> when you have fully processed the data in
+the buffer and are ready to fill it again. If you only partially read
+the buffer and want to keep unread data before writing again, use
+<code>compact()</code> instead.</p>
+<hr />
+<h3 id="the-rewind-method">The <code>rewind()</code> Method</h3>
+<p>The <code>rewind()</code> method prepares a buffer for
+<strong>re-reading the same data</strong>.</p>
+<p>If you have already read data from a buffer but need to process it a
+second time—such as verifying a checksum or writing to multiple
+channels—<code>rewind()</code> resets the read position without losing
+track of where the data ends.</p>
+<p><strong>What <code>rewind()</code> does:</strong></p>
+<ol type="1">
+<li>Sets <code>position</code> to <code>0</code>.</li>
+<li>Leaves <code>limit</code> unchanged.</li>
+<li>Discards any previously set mark.</li>
+</ol>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Example: Re-reading data</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">rewind</span><span class="op">();</span> <span class="co">// position resets to 0; limit remains untouched</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> <span class="op">(</span>buffer<span class="op">.</span><span class="fu">hasRemaining</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>buffer<span class="op">.</span><span class="fu">get</span><span class="op">());</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<hr />
+<h3 id="quick-comparison">Quick Comparison</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Position</th>
+<th style="text-align: left;">Limit</th>
+<th style="text-align: left;">Typical Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>flip()</code></td>
+<td style="text-align: left;"><code>0</code></td>
+<td style="text-align: left;">Previous <code>position</code></td>
+<td style="text-align: left;">Switching from writing/filling to
+reading/draining.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>clear()</code></td>
+<td style="text-align: left;"><code>0</code></td>
+<td style="text-align: left;"><code>capacity</code></td>
+<td style="text-align: left;">Resetting the buffer to begin writing new
+data from scratch.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rewind()</code></td>
+<td style="text-align: left;"><code>0</code></td>
+<td style="text-align: left;">Unchanged</td>
+<td style="text-align: left;">Re-reading or re-writing the same data
+segment.</td>
+</tr>
+</tbody>
+</table></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

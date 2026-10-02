@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purpose of serialVersionUID in Java - java</title>
+    <meta name="description" content="This article explains the purpose, mechanics, and importance of the serialVersionUID field in Java. You will learn how the Java runtime environment uses this identifier during object serialization and deserialization, the risks associated with omitting a">
+    <link rel="canonical" href="https://salivity.github.io/java/article/purpose-of-serial-version-uid-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Purpose of serialVersionUID in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/purpose-of-serial-version-uid-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the purpose, mechanics, and importance of the serialVersionUID field in Java. You will learn how the Java runtime environment uses this identifier during object serialization and deserialization, the risks associated with omitting a" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="purpose-of-serialversionuid-in-java">Purpose of serialVersionUID
+in Java</h1>
+<p>This article explains the purpose, mechanics, and importance of the
+<code>serialVersionUID</code> field in Java. You will learn how the Java
+runtime environment uses this identifier during object serialization and
+deserialization, the risks associated with omitting an explicit
+declaration, and the best practices for managing class version
+compatibility across distributed systems or persistent storage.</p>
+<h2 id="what-is-serialversionuid">What is serialVersionUID?</h2>
+<p>In Java, <code>serialVersionUID</code> is a unique universal
+identifier (<code>long</code> value) used to version-stamp classes that
+implement the <code>java.io.Serializable</code> interface. It acts as a
+contract between the serialized byte stream and the receiving Java
+Virtual Machine (JVM) to confirm that the sender and receiver of an
+object maintain compatible class definitions.</p>
+<p>A typical declaration looks like this:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span> <span class="dt">static</span> <span class="dt">final</span> <span class="dt">long</span> serialVersionUID <span class="op">=</span> <span class="dv">1L</span><span class="op">;</span></span></code></pre></div>
+<h2 id="the-role-of-serialversionuid-in-serialization">The Role of
+serialVersionUID in Serialization</h2>
+<p>When an object is serialized, its class name and
+<code>serialVersionUID</code> are written to the output stream along
+with its data. During deserialization, the JVM reads this identifier
+from the incoming stream and compares it with the
+<code>serialVersionUID</code> of the corresponding class loaded in the
+current runtime.</p>
+<ul>
+<li><strong>Matching IDs:</strong> If the two IDs match, the JVM
+attempts to reconstruct the object, handling any compatible class
+evolution gracefully.</li>
+<li><strong>Mismatched IDs:</strong> If the IDs differ, the JVM aborts
+the deserialization immediately and throws an
+<code>InvalidClassException</code>. This prevents data corruption or
+undefined behavior that might arise from loading data into an
+incompatible class structure.</li>
+</ul>
+<h2 id="explicit-vs-default-implicit-generation">Explicit vs. Default
+(Implicit) Generation</h2>
+<p>Declaring <code>serialVersionUID</code> is optional according to the
+language specification, but strongly recommended.</p>
+<h3 id="default-generation">Default Generation</h3>
+<p>If a class does not explicitly declare a
+<code>serialVersionUID</code>, the Java serialization runtime
+automatically computes one at runtime. This hash is calculated based on
+various aspects of the class, including its fields, methods,
+constructors, interfaces, and compiler implementation details.</p>
+<p>Relying on the default value is dangerous because even benign
+changes—such as adding a private helper method or switching
+compilers—can change the calculated hash, rendering previously
+serialized objects unreadable.</p>
+<h3 id="explicit-declaration">Explicit Declaration</h3>
+<p>Declaring the identifier explicitly gives the developer full control
+over version compatibility:</p>
+<ul>
+<li><strong>Maintain Compatibility:</strong> If you make minor,
+backward-compatible updates to a class (such as adding a non-essential
+field), keep the <code>serialVersionUID</code> unchanged. The JVM will
+deserialize the older serialized data into the new class structure
+without errors.</li>
+<li><strong>Break Compatibility:</strong> If you make structural,
+incompatible changes (such as changing the type of a field or altering
+the class hierarchy), update the <code>serialVersionUID</code> to an
+incremented or new value. This explicitly tells the JVM to reject older,
+incompatible instances.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

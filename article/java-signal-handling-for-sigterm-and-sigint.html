@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Signal Handling for SIGTERM and SIGINT - java</title>
+    <meta name="description" content="Java applications interact with underlying operating system interrupts such as SIGINT and SIGTERM through a combination of native OS signal handlers and internal JVM abstractions. This article explains how the Java Virtual Machine (JVM) traps OS-level si">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-signal-handling-for-sigterm-and-sigint">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Signal Handling for SIGTERM and SIGINT - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-signal-handling-for-sigterm-and-sigint" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java applications interact with underlying operating system interrupts such as SIGINT and SIGTERM through a combination of native OS signal handlers and internal JVM abstractions. This article explains how the Java Virtual Machine (JVM) traps OS-level si" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-signal-handling-for-sigterm-and-sigint">Java Signal
+Handling for SIGTERM and SIGINT</h1>
+<p>Java applications interact with underlying operating system
+interrupts such as <code>SIGINT</code> and <code>SIGTERM</code> through
+a combination of native OS signal handlers and internal JVM
+abstractions. This article explains how the Java Virtual Machine (JVM)
+traps OS-level signals, how it bridges the native kernel interrupts to
+the runtime environment via the Signal Dispatcher thread, and how
+developers can handle these events using standard JVM shutdown hooks or
+internal signal APIs to ensure graceful termination.</p>
+<h2 id="how-the-jvm-intercepts-os-signals">How the JVM Intercepts OS
+Signals</h2>
+<p>Operating system interrupts are low-level messages sent by the kernel
+to a process to notify it of asynchronous events. Common examples
+include <code>SIGINT</code> (generated when a user presses
+<code>Ctrl+C</code>) and <code>SIGTERM</code> (the standard termination
+signal sent by process managers, Docker, or Kubernetes).</p>
+<p>During startup, the JVM registers native signal handlers with the
+operating system using standard POSIX system calls (like
+<code>sigaction</code> on Linux and macOS) or console control handlers
+on Windows. When an OS-level interrupt like <code>SIGTERM</code> or
+<code>SIGINT</code> occurs:</p>
+<ol type="1">
+<li>The OS kernel stops the targeted process's execution thread and
+transfers control to the registered JVM native C/C++ handler.</li>
+<li>The JVM native handler acknowledges the signal without executing
+complex Java code directly within the OS interrupt context, avoiding
+kernel-level deadlocks and re-entrancy issues.</li>
+<li>The signal is enqueued into an internal JVM event queue, and the JVM
+awakens a dedicated background thread known as the <strong>Signal
+Dispatcher</strong>.</li>
+</ol>
+<h2 id="the-signal-dispatcher-thread">The Signal Dispatcher Thread</h2>
+<p>The Signal Dispatcher is an internal JVM thread that continuously
+waits for pending signal notifications. Once notified by the native
+handler:</p>
+<ul>
+<li>It translates the OS signal into appropriate runtime actions.</li>
+<li>For default termination signals (<code>SIGINT</code>,
+<code>SIGTERM</code>, <code>SIGHUP</code>), the Signal Dispatcher
+initiates the standard JVM shutdown sequence.</li>
+<li>For signals tied to custom handlers (registered via low-level APIs),
+the thread invokes the registered handler directly.</li>
+</ul>
+<p>Because the Signal Dispatcher executes within the safe boundary of
+managed JVM threads, it can execute regular Java code safely without
+corrupting the native execution stack.</p>
+<h2 id="handling-interrupts-with-standard-shutdown-hooks">Handling
+Interrupts with Standard Shutdown Hooks</h2>
+<p>The recommended and portable way to respond to OS interrupts in Java
+is by registering a shutdown hook using the standard
+<code>Runtime</code> API.</p>
+<p>When the Signal Dispatcher receives <code>SIGINT</code> or
+<code>SIGTERM</code>, it begins the JVM shutdown sequence. During this
+phase, all registered shutdown hooks run concurrently:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Runtime</span><span class="op">.</span><span class="fu">getRuntime</span><span class="op">().</span><span class="fu">addShutdownHook</span><span class="op">(</span><span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Termination signal received. Releasing resources...&quot;</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Perform cleanup: close sockets, flush logs, finish pending jobs</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">}));</span></span></code></pre></div>
+<h3 id="characteristics-of-shutdown-hooks">Characteristics of Shutdown
+Hooks:</h3>
+<ul>
+<li><strong>Portability:</strong> Works consistently across all
+operating systems and Java versions.</li>
+<li><strong>Graceful Termination:</strong> Allows background threads and
+frameworks (such as Spring Boot) to close database connections and
+finish active transactions.</li>
+<li><strong>Limitation:</strong> Cannot intercept uncatchable signals
+like <code>SIGKILL</code> (<code>kill -9</code>), which terminate the
+process instantly at the kernel level without notifying the JVM.</li>
+</ul>
+<h2 id="direct-signal-handling-via-sunmiscsignal">Direct Signal Handling
+via <code>sun.misc.Signal</code></h2>
+<p>For scenarios requiring low-level signal interception—such as
+preventing process termination upon receiving <code>SIGINT</code> or
+reloading configurations on <code>SIGHUP</code>—Java provides internal
+classes within the <code>sun.misc</code> package:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">sun</span><span class="op">.</span><span class="im">misc</span><span class="op">.</span><span class="im">Signal</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">sun</span><span class="op">.</span><span class="im">misc</span><span class="op">.</span><span class="im">SignalHandler</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> SignalCaptureExample <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        SignalHandler handler <span class="op">=</span> sig <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Caught signal: &quot;</span> <span class="op">+</span> sig<span class="op">.</span><span class="fu">getName</span><span class="op">()</span> <span class="op">+</span> <span class="st">&quot; (&quot;</span> <span class="op">+</span> sig<span class="op">.</span><span class="fu">getNumber</span><span class="op">()</span> <span class="op">+</span> <span class="st">&quot;)&quot;</span><span class="op">);</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Custom handling logic goes here instead of default shutdown</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">};</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Register handlers for SIGINT and SIGTERM</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        Signal<span class="op">.</span><span class="fu">handle</span><span class="op">(</span><span class="kw">new</span> <span class="fu">Signal</span><span class="op">(</span><span class="st">&quot;INT&quot;</span><span class="op">),</span> handler<span class="op">);</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        Signal<span class="op">.</span><span class="fu">handle</span><span class="op">(</span><span class="kw">new</span> <span class="fu">Signal</span><span class="op">(</span><span class="st">&quot;TERM&quot;</span><span class="op">),</span> handler<span class="op">);</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Keep the application running</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> <span class="op">(</span><span class="kw">true</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>            <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>                <span class="bu">Thread</span><span class="op">.</span><span class="fu">sleep</span><span class="op">(</span><span class="dv">1000</span><span class="op">);</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">InterruptedException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="caveats-of-sunmiscsignal">Caveats of
+<code>sun.misc.Signal</code>:</h3>
+<ul>
+<li><strong>Encapsulation:</strong> In modern Java (Java 9+),
+<code>sun.misc</code> is encapsulated under the Java Module System.
+Accessing it may require
+<code>--add-exports jdk.unsupported/sun.misc=ALL-UNNAMED</code>.</li>
+<li><strong>Platform Specificity:</strong> Signal names and availability
+differ between POSIX-compliant systems and Windows.</li>
+<li><strong>Dispatcher Blocking:</strong> Code inside a
+<code>SignalHandler</code> runs directly on the Signal Dispatcher
+thread; long-running or blocking operations will stall all subsequent
+signal processing.</li>
+</ul>
+<h2 id="best-practices-for-os-signal-handling">Best Practices for OS
+Signal Handling</h2>
+<ol type="1">
+<li><strong>Keep Cleanup Logic Non-Blocking:</strong> Shutdown hooks
+should complete quickly to prevent container orchestrators (like
+Kubernetes) from escalating from <code>SIGTERM</code> to a hard
+<code>SIGKILL</code> after a timeout.</li>
+<li><strong>Avoid Deadlocks:</strong> Do not rely on complex thread
+synchronization or non-daemon worker threads that may themselves be
+shutting down during an interrupt.</li>
+<li><strong>Prefer Standard Hooks:</strong> Use
+<code>Runtime.getRuntime().addShutdownHook()</code> unless there is a
+specific need to suppress default termination or handle non-terminating
+signals like <code>SIGHUP</code> or <code>SIGUSR1</code>.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

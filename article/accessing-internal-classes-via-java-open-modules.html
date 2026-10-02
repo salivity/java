@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accessing Internal Classes via Java Open Modules - java</title>
+    <meta name="description" content="The Java Platform Module System (JPMS) enforces strong encapsulation by default, preventing external code from accessing internal APIs even through reflection. To accommodate frameworks and libraries that rely on runtime inspection, Java introduces the o">
+    <link rel="canonical" href="https://salivity.github.io/java/article/accessing-internal-classes-via-java-open-modules">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Accessing Internal Classes via Java Open Modules - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/accessing-internal-classes-via-java-open-modules" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Platform Module System (JPMS) enforces strong encapsulation by default, preventing external code from accessing internal APIs even through reflection. To accommodate frameworks and libraries that rely on runtime inspection, Java introduces the o" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="accessing-internal-classes-via-java-open-modules">Accessing
+Internal Classes via Java Open Modules</h1>
+<p>The Java Platform Module System (JPMS) enforces strong encapsulation
+by default, preventing external code from accessing internal APIs even
+through reflection. To accommodate frameworks and libraries that rely on
+runtime inspection, Java introduces the <code>opens</code> directive and
+the <code>open module</code> declaration. These mechanisms grant
+runtime-only deep reflective access to internal classes, methods, and
+fields without exposing those types at compile time.</p>
+<h2 id="strong-encapsulation-and-the-reflection-barrier">Strong
+Encapsulation and the Reflection Barrier</h2>
+<p>Prior to Java 9, standard reflection using
+<code>setAccessible(true)</code> could bypass member visibility
+modifiers, allowing code to inspect and manipulate private elements
+across any package. With the introduction of JPMS, encapsulation
+operates at the module boundary.</p>
+<p>If a package is not exported or opened:</p>
+<ul>
+<li><strong>Compile-time access</strong> is completely blocked.</li>
+<li><strong>Standard reflection</strong> fails. Attempting to call
+<code>setAccessible(true)</code> on non-public types or internal members
+throws an <code>InaccessibleObjectException</code>.</li>
+</ul>
+<p>To allow frameworks like Spring, Hibernate, or serialization tools to
+operate without making internal APIs permanently public at compile time,
+Java provides explicit reflection-specific declarations in the
+<code>module-info.java</code> file.</p>
+<h2 id="the-opens-directive">The <code>opens</code> Directive</h2>
+<p>The <code>opens</code> keyword allows deep reflection on a specific
+package while keeping it hidden from compile-time dependencies.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Allows any module to reflectively access com.example.service.internal</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    opens com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span><span class="op">.</span><span class="fu">internal</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>When a package is declared with <code>opens</code>:</p>
+<ol type="1">
+<li><strong>Compile Time:</strong> The package remains completely
+hidden. Other modules cannot import its classes or compile against them
+directly.</li>
+<li><strong>Runtime:</strong> The JVM treats the package as open for
+reflection. External modules can load classes via reflection, inspect
+private and package-private elements, and invoke
+<code>setAccessible(true)</code> without triggering security
+violations.</li>
+</ol>
+<h3 id="qualified-opens">Qualified Opens</h3>
+<p>For finer control, a module can restrict reflective access to
+specific trusted modules using a qualified <code>opens ... to</code>
+clause:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Only the framework module can reflectively inspect this package</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    opens com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span><span class="op">.</span><span class="fu">internal</span> to org<span class="op">.</span><span class="fu">hibernate</span><span class="op">.</span><span class="fu">orm</span><span class="op">.</span><span class="fu">core</span><span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>With this declaration, any module other than the specified target
+attempting deep reflection on the package will encounter an
+<code>InaccessibleObjectException</code>.</p>
+<h2 id="open-modules">Open Modules</h2>
+<p>When an entire module consists primarily of entities, models, or
+components intended for dependency injection and object-relational
+mapping, declaring individual packages can become tedious. Java allows
+the entire module to be declared as an <code>open module</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>open module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">application</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    requires java<span class="op">.</span><span class="fu">base</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    requires java<span class="op">.</span><span class="fu">sql</span><span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>An <code>open module</code> automatically opens all of its packages
+for deep runtime reflection to all other modules. However, it still
+maintains compile-time encapsulation; external modules can only compile
+against packages that are explicitly declared with
+<code>exports</code>.</p>
+<h2 id="how-the-jvm-handles-the-access-at-runtime">How the JVM Handles
+the Access at Runtime</h2>
+<p>When reflection targets a class member via
+<code>Method.invoke()</code>, <code>Field.set()</code>, or
+<code>AccessibleObject.setAccessible()</code>, the JVM performs a
+module-level check:</p>
+<ol type="1">
+<li>It checks whether the target class's module is open to the caller's
+module.</li>
+<li>It verifies this status programmatically using methods such as
+<code>Module.isOpen(String packageName, Module other)</code>.</li>
+<li>If the package containing the target class is opened (either to all
+modules or specifically to the caller's module), the runtime access
+check passes.</li>
+<li>If the package is only <code>exported</code> rather than
+<code>opened</code>, reflection can only access public members of public
+classes; non-public elements remain blocked.</li>
+<li>If the package is neither exported nor opened, all reflective
+attempts fail immediately.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

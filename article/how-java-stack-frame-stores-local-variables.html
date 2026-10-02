@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Stack Frame Stores Local Variables - java</title>
+    <meta name="description" content="In the Java Virtual Machine (JVM), every method invocation creates a new stack frame containing an operand stack, frame data, and a local variable array. This local variable array is organized as a zero-indexed sequence of 32-bit slots designed to store">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-stack-frame-stores-local-variables">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Stack Frame Stores Local Variables - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-stack-frame-stores-local-variables" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In the Java Virtual Machine (JVM), every method invocation creates a new stack frame containing an operand stack, frame data, and a local variable array. This local variable array is organized as a zero-indexed sequence of 32-bit slots designed to store" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-stack-frame-stores-local-variables">How Java Stack
+Frame Stores Local Variables</h1>
+<p>In the Java Virtual Machine (JVM), every method invocation creates a
+new stack frame containing an operand stack, frame data, and a local
+variable array. This local variable array is organized as a zero-indexed
+sequence of 32-bit slots designed to store method parameters and locally
+declared variables throughout execution. The total size of the array is
+calculated at compile time and remains fixed throughout the method's
+lifecycle, with storage behavior determined by whether the method is
+static or an instance method, the data types being used, and the scope
+of variables within the code.</p>
+<h3 id="slot-sizing-and-data-types">Slot Sizing and Data Types</h3>
+<p>The JVM addresses the local variable array in individual units called
+slots, each sized at 32 bits. The storage allocation depends on the data
+type:</p>
+<ul>
+<li><strong>Single-Slot Types:</strong> Primitives such as
+<code>boolean</code>, <code>byte</code>, <code>char</code>,
+<code>short</code>, <code>int</code>, and <code>float</code>, as well as
+object references (<code>reference</code> types) and return addresses,
+consume exactly one slot.</li>
+<li><strong>Double-Slot Types:</strong> 64-bit primitives, specifically
+<code>long</code> and <code>double</code>, consume two consecutive
+slots. These values are addressed using the index of the first (lower)
+slot.</li>
+</ul>
+<h3 id="argument-storage-instance-vs-static-methods">Argument Storage:
+Instance vs. Static Methods</h3>
+<p>When a method is called, the JVM populates the beginning of the local
+variable array with arguments before the method body begins executing.
+The arrangement depends on whether the method requires an object
+context:</p>
+<ul>
+<li><strong>Instance Methods:</strong> Slot <code>0</code> is
+automatically reserved for the hidden parameter <code>this</code>, which
+holds a reference to the invoking object. Explicit method parameters are
+then placed sequentially into slots <code>1</code> through
+<code>n</code> from left to right.</li>
+<li><strong>Static Methods:</strong> Because static methods do not
+operate on an instance, there is no <code>this</code> reference.
+Parameter mapping starts immediately at slot <code>0</code> and proceeds
+left to right.</li>
+</ul>
+<p>If any parameter is a <code>long</code> or a <code>double</code>, it
+occupies two slots, causing subsequent parameters to skip an index
+accordingly.</p>
+<h3 id="local-variable-placement-and-slot-reuse">Local Variable
+Placement and Slot Reuse</h3>
+<p>Variables declared inside the method body are assigned to the slots
+immediately following the method arguments. The compiler allocates
+indices based on declaration order and variable lifecycles.</p>
+<p>To conserve memory within the stack frame, the JVM implements slot
+reuse. When a local variable goes out of scope—such as exiting a loop or
+a nested block—its slot becomes eligible for reassignment. If a new
+variable is declared later in the method, the compiler will often assign
+it to the newly vacated slot rather than expanding the array.</p>
+<h3 id="compile-time-size-determination">Compile-Time Size
+Determination</h3>
+<p>The total capacity of the local variable array is never altered at
+runtime. During compilation, the Java compiler analyzes all parameters,
+local variables, and overlapping scopes to determine the minimum number
+of slots required. This value is recorded in the <code>Code</code>
+attribute of the compiled class file as <code>max_locals</code>,
+allowing the JVM to allocate the exact memory required for the array as
+soon as the stack frame is pushed onto the call stack.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

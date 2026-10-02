@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collections.unmodifiableList vs List.of in Java - java</title>
+    <meta name="description" content="In modern Java, both Collections.unmodifiableList and List.of are used to prevent modifications to collections, but they serve fundamentally different architectural purposes. While Collections.unmodifiableList provides a read-only wrapper around an exist">
+    <link rel="canonical" href="https://salivity.github.io/java/article/collections-unmodifiable-list-vs-list-of-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Collections.unmodifiableList vs List.of in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/collections-unmodifiable-list-vs-list-of-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In modern Java, both Collections.unmodifiableList and List.of are used to prevent modifications to collections, but they serve fundamentally different architectural purposes. While Collections.unmodifiableList provides a read-only wrapper around an exist" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="collectionsunmodifiablelist-vs-listof-in-java">Collections.unmodifiableList
+vs List.of in Java</h1>
+<p>In modern Java, both <code>Collections.unmodifiableList</code> and
+<code>List.of</code> are used to prevent modifications to collections,
+but they serve fundamentally different architectural purposes. While
+<code>Collections.unmodifiableList</code> provides a read-only wrapper
+around an existing, potentially mutable backing list,
+<code>List.of</code> produces a truly immutable, standalone collection
+with strict constraints on null values and optimized memory usage.
+Choosing the correct approach depends on whether you require a dynamic
+read-only view of mutable data or a fixed, thread-safe snapshot.</p>
+<h2 id="unmodifiable-view-vs-truly-immutable">Unmodifiable View vs.
+Truly Immutable</h2>
+<p>The primary distinction between the two approaches lies in how they
+handle mutability:</p>
+<ul>
+<li><strong><code>Collections.unmodifiableList</code> (A View):</strong>
+This method does not create an independent copy. It wraps an existing
+list in an adapter that throws an
+<code>UnsupportedOperationException</code> if modification methods like
+<code>add()</code> or <code>remove()</code> are invoked directly on the
+wrapper. However, if the underlying list changes, those changes are
+immediately visible through the unmodifiable wrapper. Consequently, it
+is not truly immutable.</li>
+<li><strong><code>List.of</code> (Truly Immutable):</strong> Introduced
+in Java 9, <code>List.of</code> produces an internal, proprietary
+implementation that cannot be modified under any circumstances. It does
+not wrap an external collection; instead, it holds its own elements.
+There is no underlying reference that can be altered to change its
+state.</li>
+</ul>
+<h2 id="null-value-handling">Null Value Handling</h2>
+<p>Null handling differs strictly between the two options:</p>
+<ul>
+<li><strong><code>Collections.unmodifiableList</code>:</strong> It
+permits <code>null</code> values as long as the underlying list permits
+them (e.g., an <code>ArrayList</code>).</li>
+<li><strong><code>List.of</code>:</strong> It strictly prohibits
+<code>null</code> elements. Passing <code>null</code> to
+<code>List.of</code> immediately results in a
+<code>NullPointerException</code>. This enforces modern Java best
+practices regarding null safety.</li>
+</ul>
+<h2 id="memory-and-performance">Memory and Performance</h2>
+<p><code>List.of</code> is substantially more efficient in terms of
+memory footprint and execution speed:</p>
+<ul>
+<li><strong>Optimized Internal Representations:</strong> For lists with
+zero, one, or two elements, <code>List.of</code> uses specialized
+internal classes (<code>List0</code>, <code>List1</code>,
+<code>List2</code>) that avoid allocating an internal array altogether,
+storing elements directly in fields.</li>
+<li><strong>Reduced Overhead:</strong> Using
+<code>Collections.unmodifiableList</code> requires allocating both the
+underlying collection (such as an <code>ArrayList</code>) and the
+wrapper object itself, leading to higher garbage collection overhead and
+memory consumption.</li>
+</ul>
+<h2 id="defensive-copying-with-listcopyof">Defensive Copying with
+List.copyOf</h2>
+<p>Before Java 10, creating a safe, unmodifiable copy of an existing
+collection required manual duplication:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">List</span><span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> defensiveCopy <span class="op">=</span> <span class="bu">Collections</span><span class="op">.</span><span class="fu">unmodifiableList</span><span class="op">(</span><span class="kw">new</span> <span class="bu">ArrayList</span><span class="op">&lt;&gt;(</span>originalList<span class="op">));</span></span></code></pre></div>
+<p>Java 10 introduced
+<code>List.copyOf(Collection&lt;? extends E&gt; coll)</code>, which
+combines the safety of an immutable list with performance optimizations.
+If the collection passed to <code>List.copyOf</code> is already an
+unmodifiable list produced by the factory methods, it returns the
+collection itself without re-allocating memory.</p>
+<h2 id="choosing-the-right-approach">Choosing the Right Approach</h2>
+<ul>
+<li><strong>Use <code>List.of</code>:</strong> When instantiating new,
+fixed collections with known elements, or when designing APIs where data
+integrity, immutability, and thread safety are required.</li>
+<li><strong>Use <code>List.copyOf</code>:</strong> When you need a
+defensive, immutable snapshot of an existing collection.</li>
+<li><strong>Use <code>Collections.unmodifiableList</code>:</strong>
+Primarily when maintaining legacy codebases prior to Java 9, when you
+intentionally need to expose a live, read-only window into a list that
+updates elsewhere, or when elements must contain <code>null</code>
+values.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

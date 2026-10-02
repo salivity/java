@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purpose of Remembered Set in G1 Garbage Collector - java</title>
+    <meta name="description" content="The Remembered Set (RSet) is a core data structure in the Java Garbage-First (G1) garbage collector designed to enable independent, regional garbage collection. This article explains the fundamental purpose of the RSet, how it tracks cross-region object">
+    <link rel="canonical" href="https://salivity.github.io/java/article/purpose-of-remembered-set-in-g-1-garbage-collector">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Purpose of Remembered Set in G1 Garbage Collector - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/purpose-of-remembered-set-in-g-1-garbage-collector" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Remembered Set (RSet) is a core data structure in the Java Garbage-First (G1) garbage collector designed to enable independent, regional garbage collection. This article explains the fundamental purpose of the RSet, how it tracks cross-region object" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="purpose-of-remembered-set-in-g1-garbage-collector">Purpose of
+Remembered Set in G1 Garbage Collector</h1>
+<p>The Remembered Set (RSet) is a core data structure in the Java
+Garbage-First (G1) garbage collector designed to enable independent,
+regional garbage collection. This article explains the fundamental
+purpose of the RSet, how it tracks cross-region object references, and
+why it is essential for minimizing Stop-The-World (STW) pause times in
+the Java Virtual Machine (JVM).</p>
+<h2 id="the-architecture-of-g1-gc">The Architecture of G1 GC</h2>
+<p>The G1 garbage collector divides the Java heap into hundreds or
+thousands of uniform, non-contiguous memory blocks called regions. Each
+region can be assigned a role dynamically: Eden, Survivor, or Old
+generation.</p>
+<p>Instead of scanning the entire heap during a collection phase, G1
+targets specific sets of regions (the Collection Set, or CSet) that
+contain the most reclaimable memory. To safely collect a region, the
+collector must identify all live objects within it. This requires
+knowing whether any object in an uncollected region holds a reference to
+an object in the region being collected.</p>
+<h2 id="the-problem-cross-region-references">The Problem: Cross-Region
+References</h2>
+<p>Without a tracking mechanism, determining whether an object inside a
+target region is still reachable would require scanning every other
+region in the entire heap. Doing so would negate the primary performance
+benefit of region-based collection and cause long, unpredictable garbage
+collection pauses.</p>
+<h2 id="the-role-of-the-remembered-set">The Role of the Remembered
+Set</h2>
+<p>The Remembered Set solves this problem by maintaining a "points-into"
+record for each region. Each region has its own dedicated RSet that
+tracks all memory locations outside of itself that contain references
+pointing into it.</p>
+<p>When G1 collects a target region:</p>
+<ol type="1">
+<li>It reads the region's RSet to identify all incoming external
+references.</li>
+<li>It treats these external references as additional root objects.</li>
+<li>It determines object liveness inside the region without scanning any
+outside regions.</li>
+</ol>
+<h2 id="how-the-remembered-set-operates">How the Remembered Set
+Operates</h2>
+<p>The RSet works in conjunction with a global data structure called the
+<strong>Card Table</strong> and a mechanism called <strong>Write
+Barriers</strong>:</p>
+<ul>
+<li><strong>Card Table:</strong> The entire heap is divided into
+512-byte segments called "cards."</li>
+<li><strong>Write Barriers:</strong> Whenever a thread modifies an
+object reference to point to another object, the JVM executes a small
+piece of code called a write barrier. If the source and target objects
+reside in different regions, the write barrier marks the source card as
+"dirty."</li>
+<li><strong>Concurrent Updating:</strong> Background threads (concurrent
+refine threads) process these dirty cards and record the reference
+locations into the target region's RSet.</li>
+</ul>
+<p>Depending on the density of incoming references, an RSet stores data
+using varying granularities (sparse, fine, or coarse) to balance
+tracking precision with memory consumption.</p>
+<h2 id="key-benefits-and-trade-offs">Key Benefits and Trade-offs</h2>
+<h3 id="benefits">Benefits</h3>
+<ul>
+<li><strong>Bounded Pause Times:</strong> G1 can collect any individual
+region or group of regions without a full-heap scan.</li>
+<li><strong>Predictable Latency:</strong> Independent collections allow
+G1 to meet user-defined pause-time targets
+(<code>-XX:MaxGCPauseMillis</code>).</li>
+</ul>
+<h3 id="trade-offs">Trade-offs</h3>
+<ul>
+<li><strong>Memory Overhead:</strong> RSets consume memory (often
+between 1% and 10% of total heap space, depending on the application's
+object reference graph).</li>
+<li><strong>Write Barrier Cost:</strong> Mutator threads spend slight
+CPU overhead intercepting reference updates to keep RSet records
+current.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

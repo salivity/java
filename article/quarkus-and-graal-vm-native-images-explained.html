@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quarkus and GraalVM Native Images Explained - java</title>
+    <meta name="description" content="Quarkus is a Kubernetes-native Java framework designed to optimize traditional Java applications for modern containerized, cloud, and serverless environments. By offloading resource-heavy tasks like dynamic class loading and reflection to the build phase">
+    <link rel="canonical" href="https://salivity.github.io/java/article/quarkus-and-graal-vm-native-images-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Quarkus and GraalVM Native Images Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/quarkus-and-graal-vm-native-images-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Quarkus is a Kubernetes-native Java framework designed to optimize traditional Java applications for modern containerized, cloud, and serverless environments. By offloading resource-heavy tasks like dynamic class loading and reflection to the build phase" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="quarkus-and-graalvm-native-images-explained">Quarkus and GraalVM
+Native Images Explained</h1>
+<p>Quarkus is a Kubernetes-native Java framework designed to optimize
+traditional Java applications for modern containerized, cloud, and
+serverless environments. By offloading resource-heavy tasks like dynamic
+class loading and reflection to the build phase and integrating directly
+with GraalVM for ahead-of-time (AOT) compilation, Quarkus produces
+lightweight native executables. This technical shift eliminates typical
+Java Virtual Machine (JVM) warmup overhead, reduces memory consumption
+to a fraction of traditional runtimes, and achieves startup times
+measured in milliseconds.</p>
+<h2 id="the-problem-with-traditional-java-startup">The Problem with
+Traditional Java Startup</h2>
+<p>Standard Java enterprise frameworks rely heavily on dynamic behaviors
+at runtime. When a conventional JVM application boots up, it must:</p>
+<ul>
+<li>Scan the entire classpath to find annotations, configurations, and
+classes.</li>
+<li>Parse metadata and construct dependency injection graphs.</li>
+<li>Run a Just-In-Time (JIT) compiler that initially interprets bytecode
+and gradually optimizes frequently executed code paths into native
+machine code.</li>
+</ul>
+<p>While this architecture allows for dynamic adaptability and peak
+long-term performance, it results in slow startup times (often several
+seconds) and a high initial memory footprint (Resident Set Size). These
+characteristics pose major challenges in cloud-native paradigms, such as
+auto-scaling microservices and serverless architectures where fast cold
+starts are essential.</p>
+<h2 id="what-is-quarkus">What Is Quarkus?</h2>
+<p>Quarkus is a full-stack, Kubernetes-native Java framework engineered
+specifically to address these runtime inefficiencies. It embraces
+standard Java APIs and libraries (such as Jakarta EE, MicroProfile,
+Hibernate, and RESTEasy) while introducing a "build-time first"
+philosophy.</p>
+<p>Instead of waiting for the application to start up to discover
+classes and process annotations, Quarkus moves these tasks to the build
+stage. During compilation, Quarkus pre-computes the metamodel, builds
+the dependency injection wiring, and produces an optimized bytecode
+profile. This work reduces both the CPU instructions and memory needed
+when the application is launched.</p>
+<h2 id="how-quarkus-utilizes-graalvm-native-images">How Quarkus Utilizes
+GraalVM Native Images</h2>
+<p>GraalVM is an advanced high-performance runtime platform that
+includes a feature called <code>native-image</code>. This tool performs
+Ahead-Of-Time (AOT) compilation to translate Java bytecode directly into
+a platform-specific standalone binary (such as a Linux ELF executable).
+Quarkus maximizes the effectiveness of GraalVM through three core
+mechanisms:</p>
+<h3 id="1-build-time-static-analysis">1. Build-Time Static Analysis</h3>
+<p>GraalVM's AOT compiler uses closed-world assumptions, meaning it
+needs to know every class, method, and field that will be accessed at
+runtime. Standard Java relies heavily on dynamic class loading and
+reflection, which are difficult for GraalVM to detect automatically
+without complex configuration files. Quarkus resolves this by doing the
+dynamic analysis upfront, generating all required reflection, proxy, and
+resource metadata configurations automatically during the build
+process.</p>
+<h3 id="2-aggressive-dead-code-elimination">2. Aggressive Dead Code
+Elimination</h3>
+<p>Because Quarkus pre-determines the exact code paths needed by the
+application, GraalVM can aggressively discard unused code. Any classes,
+methods, or framework dependencies not actively reachable by the
+application are pruned away. This drastically reduces the size of the
+final binary and ensures that only the code required to run the service
+is packaged.</p>
+<h3 id="3-inclusion-of-substrate-vm">3. Inclusion of Substrate VM</h3>
+<p>Native images compiled by GraalVM do not run on a standard JVM.
+Instead, they embed a minimal runtime known as Substrate VM. Substrate
+VM handles essential runtime tasks such as memory management, thread
+scheduling, and garbage collection, but omits the JIT compiler, bytecode
+interpreter, and dynamic class loader. Because the machine code is
+already compiled, the operating system executes the binary directly.</p>
+<h2 id="the-benefits-of-native-execution">The Benefits of Native
+Execution</h2>
+<p>The combination of Quarkus and GraalVM native images provides
+significant operational advantages:</p>
+<ul>
+<li><strong>Sub-Second Cold Starts:</strong> Native executables skip
+bytecode interpretation and JIT compilation entirely, allowing
+microservices to start and handle requests in tens of milliseconds.</li>
+<li><strong>Low Memory Footprint:</strong> By removing the JVM runtime
+overhead and eliminating unused code, native applications consume tens
+of megabytes of RAM instead of hundreds of megabytes.</li>
+<li><strong>Higher Density and Cost Savings:</strong> Applications run
+efficiently in environments with high deployment densities, such as
+Kubernetes clusters, lowering infrastructure and memory costs.</li>
+<li><strong>Optimal for Serverless:</strong> Instant boot times make
+Java a viable, competitive choice for Function-as-a-Service (FaaS)
+deployments like AWS Lambda or Google Cloud Functions.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

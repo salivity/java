@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dependency Inversion Principle in Java Modules - java</title>
+    <meta name="description" content="The Dependency Inversion Principle (DIP) is a foundational software design concept that dictates how high-level and low-level software components interact without becoming tightly coupled. In Java modular architectures, applying DIP ensures that core bus">
+    <link rel="canonical" href="https://salivity.github.io/java/article/dependency-inversion-principle-in-java-modules">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Dependency Inversion Principle in Java Modules - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/dependency-inversion-principle-in-java-modules" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Dependency Inversion Principle (DIP) is a foundational software design concept that dictates how high-level and low-level software components interact without becoming tightly coupled. In Java modular architectures, applying DIP ensures that core bus" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="dependency-inversion-principle-in-java-modules">Dependency
+Inversion Principle in Java Modules</h1>
+<p>The Dependency Inversion Principle (DIP) is a foundational software
+design concept that dictates how high-level and low-level software
+components interact without becoming tightly coupled. In Java modular
+architectures, applying DIP ensures that core business logic remains
+independent of infrastructure concerns such as databases, external APIs,
+and UI frameworks. By structuring code so that high-level modules and
+low-level implementations both depend on shared abstractions, teams
+achieve decoupled architectures that are easier to test, maintain, and
+scale over time.</p>
+<h3 id="the-mechanics-of-dependency-inversion">The Mechanics of
+Dependency Inversion</h3>
+<p>In traditional software design, high-level policy modules directly
+call and depend on low-level utility modules. For example, an
+<code>OrderService</code> (high-level) directly instantiates and calls
+an <code>OrderRepository</code> (low-level). This creates direct
+source-code coupling: any change to the repository's API, underlying
+database driver, or data access mechanism directly impacts the business
+logic.</p>
+<p>DIP changes the direction of this dependency graph. Instead of the
+high-level module depending on a concrete implementation, the high-level
+module defines an abstraction—typically a Java
+<code>interface</code>—representing the contract it requires. The
+low-level module then implements this interface.</p>
+<p>Under this model:</p>
+<ol type="1">
+<li>High-level modules do not depend on low-level modules; both depend
+on abstractions.</li>
+<li>Abstractions do not depend on details; details depend on
+abstractions.</li>
+</ol>
+<p>Consequently, while runtime control flow still moves from the
+high-level component to the low-level component, the compile-time
+source-code dependency is inverted. The high-level module owns or
+co-locates the interface, and the concrete implementation points
+backward toward the abstraction.</p>
+<h3 id="applying-dip-to-java-modules">Applying DIP to Java Modules</h3>
+<p>In a multi-module Java application (such as one managed by Maven,
+Gradle, or the Java Platform Module System), DIP governs how modules
+declare compile-time dependencies on each other.</p>
+<h4 id="1-inverting-module-dependencies-via-interfaces">1. Inverting
+Module Dependencies via Interfaces</h4>
+<p>Consider an e-commerce application split into modules:</p>
+<ul>
+<li><code>order-core</code> (High-level business rules)</li>
+<li><code>order-persistence</code> (Low-level database access)</li>
+</ul>
+<p>Without DIP, <code>order-core</code> must declare a dependency on
+<code>order-persistence</code> to access database entities and
+queries.</p>
+<p>With DIP, <code>order-core</code> defines the interface:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">package</span><span class="im"> com</span><span class="op">.</span><span class="im">example</span><span class="op">.</span><span class="im">order</span><span class="op">.</span><span class="im">core</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> OrderStorage <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">save</span><span class="op">(</span>Order order<span class="op">);</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The <code>order-core</code> module implements its business rules
+against <code>OrderStorage</code> without knowing how records are
+stored. The <code>order-persistence</code> module declares a
+compile-time dependency on <code>order-core</code> (or a shared
+contracts module) and supplies the implementation:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">package</span><span class="im"> com</span><span class="op">.</span><span class="im">example</span><span class="op">.</span><span class="im">order</span><span class="op">.</span><span class="im">persistence</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">com</span><span class="op">.</span><span class="im">example</span><span class="op">.</span><span class="im">order</span><span class="op">.</span><span class="im">core</span><span class="op">.</span><span class="im">Order</span><span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">com</span><span class="op">.</span><span class="im">example</span><span class="op">.</span><span class="im">order</span><span class="op">.</span><span class="im">core</span><span class="op">.</span><span class="im">OrderStorage</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> SqlOrderStorage <span class="kw">implements</span> OrderStorage <span class="op">{</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">save</span><span class="op">(</span>Order order<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="co">// SQL execution logic</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Now, <code>order-persistence</code> depends on
+<code>order-core</code>, shielding core domain logic from changes in
+persistence technology.</p>
+<h4 id="2-jpms-integration-with-service-providers">2. JPMS Integration
+with Service Providers</h4>
+<p>In the Java Platform Module System (JPMS), DIP can be enforced
+strictly at the runtime and compile-time boundaries using
+<code>provides</code> and <code>uses</code> directives in
+<code>module-info.java</code>.</p>
+<p>The core module specifies that it consumes a service:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">order</span><span class="op">.</span><span class="fu">core</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    exports com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">order</span><span class="op">.</span><span class="fu">core</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    uses com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">order</span><span class="op">.</span><span class="fu">core</span><span class="op">.</span><span class="fu">OrderStorage</span><span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The implementation module provides the implementation without the
+core module ever needing a compile-time reference to it:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">order</span><span class="op">.</span><span class="fu">persistence</span> <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    requires com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">order</span><span class="op">.</span><span class="fu">core</span><span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    provides com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">order</span><span class="op">.</span><span class="fu">core</span><span class="op">.</span><span class="fu">OrderStorage</span> </span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>        with com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">order</span><span class="op">.</span><span class="fu">persistence</span><span class="op">.</span><span class="fu">SqlOrderStorage</span><span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>At runtime, Java's <code>ServiceLoader</code> or a dependency
+injection container (such as Spring or CDI) resolves and binds the
+implementation to the interface.</p>
+<h3 id="architectural-benefits-of-dip-guided-coupling">Architectural
+Benefits of DIP-Guided Coupling</h3>
+<ul>
+<li><strong>Independent Deployability:</strong> Implementation modules
+can be replaced, upgraded, or refactored without recompiling high-level
+modules. Switching from a relational database to a document store
+requires adding a new implementation module rather than altering core
+logic.</li>
+<li><strong>Isolated Testing:</strong> Because high-level modules
+interact exclusively with interfaces, unit tests can substitute real
+implementations with lightweight stubs or mocks without relying on
+integration environments or test containers.</li>
+<li><strong>Alignment with Clean and Hexagonal Architecture:</strong>
+DIP serves as the structural foundation for Ports and Adapters
+(Hexagonal Architecture). The business domain defines the "ports"
+(interfaces), and external systems connect via "adapters"
+(implementations), keeping the domain free of external framework
+dependencies.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Carrier Threads Run Java Virtual Threads - java</title>
+    <meta name="description" content="Java virtual threads are lightweight concurrency primitives designed to dramatically increase application throughput by decoupling Java threads from underlying operating system threads. Instead of assigning each thread directly to an OS thread, the Java">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-carrier-threads-run-java-virtual-threads">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Carrier Threads Run Java Virtual Threads - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-carrier-threads-run-java-virtual-threads" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java virtual threads are lightweight concurrency primitives designed to dramatically increase application throughput by decoupling Java threads from underlying operating system threads. Instead of assigning each thread directly to an OS thread, the Java" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-carrier-threads-run-java-virtual-threads">How Carrier
+Threads Run Java Virtual Threads</h1>
+<p>Java virtual threads are lightweight concurrency primitives designed
+to dramatically increase application throughput by decoupling Java
+threads from underlying operating system threads. Instead of assigning
+each thread directly to an OS thread, the Java runtime manages virtual
+threads internally and executes them on a small pool of standard
+platform threads known as carrier threads. This article explains how the
+Java runtime schedules virtual threads using an internal
+<code>ForkJoinPool</code>, how threads mount and unmount from carrier
+threads during blocking operations, and how thread state is preserved
+across transitions.</p>
+<h2 id="the-role-of-carrier-threads">The Role of Carrier Threads</h2>
+<p>A carrier thread is simply a standard platform thread (which maps 1:1
+to an operating system thread) that temporarily "carries" a virtual
+thread to execute its bytecode. The virtual thread represents the actual
+task, holding its own call stack and execution state, while the carrier
+thread provides the physical CPU execution context.</p>
+<p>From the perspective of running code, the virtual thread is unaware
+of which carrier thread is executing it. The
+<code>Thread.currentThread()</code> API returns the virtual thread
+instance, not the underlying carrier thread.</p>
+<h2 id="the-work-stealing-scheduler">The Work-Stealing Scheduler</h2>
+<p>By default, the Java runtime schedules virtual threads using a
+dedicated <code>ForkJoinPool</code> configured in FIFO (first-in,
+first-out) mode. The scheduler operates with a parallelism level
+matching the number of available CPU cores by default, though this can
+be tuned via system properties.</p>
+<p>Each worker thread in this pool acts as a carrier thread. Tasks
+submitted to the scheduler are the continuation tasks of virtual
+threads. When a virtual thread is ready to execute, its continuation is
+placed into the scheduler's task queues, where carrier threads pick it
+up using standard work-stealing algorithms.</p>
+<h2 id="mounting-and-execution">Mounting and Execution</h2>
+<p>The process of binding a virtual thread to a carrier thread is called
+<strong>mounting</strong>:</p>
+<ol type="1">
+<li><strong>Scheduling:</strong> When a virtual thread transitions to a
+runnable state, it is enqueued in the scheduler.</li>
+<li><strong>Mounting:</strong> An available carrier thread picks up the
+virtual thread. The runtime loads the virtual thread's stack frames from
+the Java heap onto the carrier thread's native execution stack.</li>
+<li><strong>Execution:</strong> The carrier thread runs the virtual
+thread's bytecode instructions until the task either finishes or
+encounters a blocking operation.</li>
+</ol>
+<h2 id="unmounting-during-blocking-operations">Unmounting During
+Blocking Operations</h2>
+<p>The primary advantage of virtual threads is their ability to yield
+execution when encountering blocking calls without blocking the
+underlying OS thread:</p>
+<ol type="1">
+<li><strong>Yielding:</strong> When a virtual thread performs a blocking
+I/O operation, waits for a lock, or invokes <code>Thread.sleep()</code>,
+the runtime intercepts the operation via low-level continuation
+primitives.</li>
+<li><strong>State Preservation:</strong> The virtual thread yields. Its
+call stack frames are evacuated from the carrier thread's native stack
+and saved back into the heap.</li>
+<li><strong>Unmounting:</strong> The virtual thread detaches from the
+carrier thread.</li>
+<li><strong>Reusing the Carrier:</strong> The carrier thread is now
+completely free to take another runnable virtual thread from the
+scheduler's queue and execute it immediately.</li>
+</ol>
+<h2 id="resuming-and-remounting">Resuming and Remounting</h2>
+<p>When the event the virtual thread was waiting for finishes (such as
+network data arriving on a non-blocking socket poll), the runtime marks
+the virtual thread as runnable again.</p>
+<p>The virtual thread is resubmitted to the <code>ForkJoinPool</code>
+work queue. When any carrier thread becomes available, it mounts the
+virtual thread, restores its execution stack from the heap, and resumes
+execution from the exact instruction where it yielded. Notably, a
+virtual thread does not have thread affinity; it may resume execution on
+a completely different carrier thread than the one it started on.</p>
+<h2 id="thread-pinning-exceptions">Thread Pinning Exceptions</h2>
+<p>In certain edge cases, a virtual thread cannot be unmounted when it
+blocks, a state known as <strong>pinning</strong>. Pinning occurs
+when:</p>
+<ul>
+<li>The virtual thread executes inside a <code>synchronized</code> block
+or method.</li>
+<li>The virtual thread executes a native method or a foreign function
+call.</li>
+</ul>
+<p>When a pinned virtual thread blocks, it cannot evacuate its stack to
+the heap. Consequently, its carrier thread remains blocked alongside it,
+temporarily reducing the scheduler's capacity until the operation
+completes or the scheduler compensates by creating additional carrier
+threads. Replacing <code>synchronized</code> blocks with
+<code>java.util.concurrent.locks.ReentrantLock</code> resolves this
+limitation and ensures normal unmounting behavior.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

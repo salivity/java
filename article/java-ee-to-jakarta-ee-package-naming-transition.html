@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java EE to Jakarta EE Package Naming Transition - java</title>
+    <meta name="description" content="The transition from Java EE to Jakarta EE marked one of the most significant architectural shifts in enterprise Java history, primarily defined by the mandatory renaming of package namespaces from javax. to jakarta.. When Oracle transferred governance of">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-ee-to-jakarta-ee-package-naming-transition">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java EE to Jakarta EE Package Naming Transition - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-ee-to-jakarta-ee-package-naming-transition" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The transition from Java EE to Jakarta EE marked one of the most significant architectural shifts in enterprise Java history, primarily defined by the mandatory renaming of package namespaces from javax. to jakarta.. When Oracle transferred governance of" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-ee-to-jakarta-ee-package-naming-transition">Java EE to
+Jakarta EE Package Naming Transition</h1>
+<p>The transition from Java EE to Jakarta EE marked one of the most
+significant architectural shifts in enterprise Java history, primarily
+defined by the mandatory renaming of package namespaces from
+<code>javax.*</code> to <code>jakarta.*</code>. When Oracle transferred
+governance of Java EE to the Eclipse Foundation, trademark constraints
+prevented the community from modifying existing <code>javax</code>
+packages. Consequently, Jakarta EE 9 executed a clean break by adopting
+the <code>jakarta.*</code> namespace across all standard APIs. This
+change required the entire Java ecosystem—including enterprise
+frameworks, runtimes, and application developers—to undertake
+substantial code updates, configuration revisions, and dependency
+realignments to maintain compatibility with modern Java platforms.</p>
+<h3 id="the-origin-of-the-namespace-conflict">The Origin of the
+Namespace Conflict</h3>
+<p>In 2017, Oracle contributed Java EE to the open-source community
+under the stewardship of the Eclipse Foundation. While the technology
+specifications, codebases, and TCKs (Technology Compatibility Kits) were
+handed over, Oracle retained the legal rights to the "Java"
+trademark.</p>
+<p>Negotiations between Oracle and the Eclipse Foundation concluded with
+an agreement that the community could not evolve specifications within
+the <code>javax.*</code> namespace. While existing APIs could remain
+untouched for legacy maintenance, any new features, bug fixes, or
+behavioral changes had to occur under a new namespace. To avoid creating
+a confusing, fragmented hybrid where legacy classes remained under
+<code>javax.*</code> while new additions moved elsewhere, the Jakarta EE
+Working Group opted for a complete, uniform migration to
+<code>jakarta.*</code>.</p>
+<h3 id="the-big-bang-shift-in-jakarta-ee-9">The "Big Bang" Shift in
+Jakarta EE 9</h3>
+<p>Jakarta EE 8 served as a transitional baseline, maintaining identical
+specifications and package names (<code>javax.*</code>) to Java EE 8 to
+prove the viability of the Eclipse Foundation's release process.</p>
+<p>The structural break occurred in Jakarta EE 9 with the execution of
+the "Big Bang" approach. Rather than phasing the change over several
+releases, every enterprise package was renamed simultaneously. Key
+examples include:</p>
+<ul>
+<li><code>javax.servlet.*</code> transitioned to
+<code>jakarta.servlet.*</code></li>
+<li><code>javax.persistence.*</code> transitioned to
+<code>jakarta.persistence.*</code></li>
+<li><code>javax.ws.rs.*</code> transitioned to
+<code>jakarta.ws.rs.*</code></li>
+<li><code>javax.inject.*</code> transitioned to
+<code>jakarta.inject.*</code></li>
+<li><code>javax.annotation.*</code> transitioned to
+<code>jakarta.annotation.*</code></li>
+</ul>
+<p>Certain foundational APIs that resided within the core Java Standard
+Edition (Java SE), such as <code>javax.sql.*</code> and
+<code>javax.crypto.*</code>, remained unchanged because they were
+outside the scope of the enterprise transfer.</p>
+<h3 id="impact-on-frameworks-and-runtimes">Impact on Frameworks and
+Runtimes</h3>
+<p>Because the namespace change broke binary compatibility, third-party
+libraries and runtime environments had to create distinct versions to
+support either the legacy or the modern specifications:</p>
+<ul>
+<li><strong>Application Servers and Web Containers:</strong> Apache
+Tomcat 9 (using <code>javax.servlet</code>) and Tomcat 10 (using
+<code>jakarta.servlet</code>) diverged, as did Jetty 11/12 and WildFly
+variants.</li>
+<li><strong>Frameworks:</strong> Spring Framework 6.0 and Spring Boot
+3.0 made the transition mandatory, dropping all support for
+<code>javax.*</code> enterprise packages in favor of
+<code>jakarta.*</code>.</li>
+<li><strong>Object-Relational Mapping (ORM):</strong> Hibernate ORM 6
+transitioned entirely to the <code>jakarta.persistence</code>
+namespace.</li>
+</ul>
+<h3 id="consequences-for-application-developers">Consequences for
+Application Developers</h3>
+<p>The package migration introduced a hard boundary in Java
+development:</p>
+<ol type="1">
+<li><strong>Source Code Changes:</strong> Developers must rewrite all
+enterprise imports across their application codebases.</li>
+<li><strong>Configuration Descriptors:</strong> Deployment descriptors,
+such as <code>web.xml</code>, <code>persistence.xml</code>, and
+<code>beans.xml</code>, required updated XML namespaces and schema
+references to point to the Eclipse Foundation specifications instead of
+Sun/Oracle schemas.</li>
+<li><strong>Transitive Dependencies:</strong> Applications cannot easily
+mix libraries; a single third-party dependency still utilizing
+<code>javax.*</code> can fail at runtime in a modern
+<code>jakarta.*</code> container unless managed through bytecode
+transformation tools or compatibility layers.</li>
+</ol>
+<p>To ease this friction, migration tools such as the Eclipse
+Transformer, OpenRewrite recipes, and built-in IDE refactoring actions
+were developed to automate import and configuration updates, allowing
+organizations to modernize legacy enterprise codebases for current
+runtimes.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flyweight Pattern and Java Integer.valueOf Caching - java</title>
+    <meta name="description" content="This article explores the Flyweight design pattern and its practical implementation in Java's core library. You will learn the structural mechanics of the Flyweight pattern, how the Java Virtual Machine uses it to optimize memory consumption through Inte">
+    <link rel="canonical" href="https://salivity.github.io/java/article/flyweight-pattern-and-java-integer-value-of-caching">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Flyweight Pattern and Java Integer.valueOf Caching - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/flyweight-pattern-and-java-integer-value-of-caching" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the Flyweight design pattern and its practical implementation in Java's core library. You will learn the structural mechanics of the Flyweight pattern, how the Java Virtual Machine uses it to optimize memory consumption through Inte" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="flyweight-pattern-and-java-integervalueof-caching">Flyweight
+Pattern and Java Integer.valueOf Caching</h1>
+<p>This article explores the Flyweight design pattern and its practical
+implementation in Java's core library. You will learn the structural
+mechanics of the Flyweight pattern, how the Java Virtual Machine uses it
+to optimize memory consumption through <code>Integer.valueOf()</code>,
+and the behavior of the internal <code>IntegerCache</code>.</p>
+<h2 id="understanding-the-flyweight-design-pattern">Understanding the
+Flyweight Design Pattern</h2>
+<p>The Flyweight pattern is a structural design pattern focused on
+minimizing memory usage by sharing common object state among multiple
+instances instead of instantiating redundant objects.</p>
+<p>The pattern divides an object's state into two categories:</p>
+<ul>
+<li><strong>Intrinsic State:</strong> Constant, immutable data stored
+internally within the flyweight object. This data is context-independent
+and can be safely shared across different contexts.</li>
+<li><strong>Extrinsic State:</strong> Variable, context-dependent data
+provided by the client at runtime. This data is not stored inside the
+shared flyweight instance.</li>
+</ul>
+<p>By centralizing and reusing intrinsic state, applications that
+require millions of small, similar objects can drastically reduce heap
+memory footprint and garbage collection overhead.</p>
+<h2 id="the-memory-challenge-of-object-boxing-in-java">The Memory
+Challenge of Object Boxing in Java</h2>
+<p>In Java, primitive types (such as <code>int</code>) are efficient and
+stored on the stack or inlined in objects. However, working with Java
+collections and generics requires wrapper objects (such as
+<code>Integer</code>).</p>
+<p>Before Java 5, converting an <code>int</code> to an
+<code>Integer</code> required explicit allocation:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> num <span class="op">=</span> <span class="kw">new</span> <span class="bu">Integer</span><span class="op">(</span><span class="dv">42</span><span class="op">);</span> <span class="co">// Allocates a new object every time</span></span></code></pre></div>
+<p>Creating many wrapper instances wastes memory. Each 32-bit
+<code>Integer</code> object incurs a 16-byte object header overhead, 4
+bytes for the primitive value, and 4 bytes of padding to align to 8-byte
+boundaries, totaling 24 bytes per instance—six times the memory of a raw
+4-byte <code>int</code>.</p>
+<h2 id="how-integervalueof-implements-flyweight">How
+<code>Integer.valueOf()</code> Implements Flyweight</h2>
+<p>Java addresses this memory overhead by applying the Flyweight pattern
+inside <code>Integer.valueOf(int i)</code> using an internal static
+cache known as <code>IntegerCache</code>.</p>
+<p>When autoboxing converts a primitive <code>int</code> to an
+<code>Integer</code>, the compiler substitutes the direct assignment
+with a call to <code>Integer.valueOf()</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> a <span class="op">=</span> <span class="dv">100</span><span class="op">;</span> <span class="co">// Compiled as: Integer a = Integer.valueOf(100);</span></span></code></pre></div>
+<h3 id="the-integercache-implementation">The <code>IntegerCache</code>
+Implementation</h3>
+<p>The static nested class <code>java.lang.Integer.IntegerCache</code>
+initializes a cache array upon class loading. By default, it caches
+instances representing numbers from <code>-128</code> to
+<code>127</code> (inclusive).</p>
+<p>The implementation of <code>Integer.valueOf()</code> inspects the
+incoming value against this range:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">static</span> <span class="bu">Integer</span> <span class="fu">valueOf</span><span class="op">(</span><span class="dt">int</span> i<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>i <span class="op">&gt;=</span> IntegerCache<span class="op">.</span><span class="fu">low</span> <span class="op">&amp;&amp;</span> i <span class="op">&lt;=</span> IntegerCache<span class="op">.</span><span class="fu">high</span><span class="op">)</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> IntegerCache<span class="op">.</span><span class="fu">cache</span><span class="op">[</span>i <span class="op">+</span> <span class="op">(-</span>IntegerCache<span class="op">.</span><span class="fu">low</span><span class="op">)];</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="kw">new</span> <span class="bu">Integer</span><span class="op">(</span>i<span class="op">);</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this implementation:</p>
+<ul>
+<li><strong>Flyweight Factory:</strong> The
+<code>Integer.valueOf()</code> method.</li>
+<li><strong>Flyweight Pool:</strong> The internal
+<code>IntegerCache.cache</code> array holding pre-instantiated
+<code>Integer</code> objects.</li>
+<li><strong>Intrinsic State:</strong> The immutable <code>int</code>
+value held within each <code>Integer</code> instance.</li>
+</ul>
+<p>If the requested value falls within the cached range, the factory
+returns an existing reference from the pool. Only when the value is
+outside the cache bounds does it allocate a new instance on the
+heap.</p>
+<h2 id="practical-implications">Practical Implications</h2>
+<p>The Flyweight implementation in <code>Integer.valueOf()</code>
+introduces distinct runtime behaviors:</p>
+<h3 id="1-reference-equality--vs-value-equality-equals">1. Reference
+Equality (<code>==</code>) vs. Value Equality
+(<code>.equals()</code>)</h3>
+<p>Because instances inside the <code>-128</code> to <code>127</code>
+range are shared flyweights, reference comparison evaluates to
+<code>true</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> a <span class="op">=</span> <span class="dv">127</span><span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> b <span class="op">=</span> <span class="dv">127</span><span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>a <span class="op">==</span> b<span class="op">);</span> <span class="co">// true (same cached instance)</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> x <span class="op">=</span> <span class="dv">128</span><span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> y <span class="op">=</span> <span class="dv">128</span><span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>x <span class="op">==</span> y<span class="op">);</span> <span class="co">// false (different heap objects)</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>x<span class="op">.</span><span class="fu">equals</span><span class="op">(</span>y<span class="op">));</span> <span class="co">// true (equivalent values)</span></span></code></pre></div>
+<p>Direct comparison with <code>==</code> must be avoided for object
+wrappers, as code relying on reference identity becomes brittle across
+differing numerical values.</p>
+<h3 id="2-tuning-the-flyweight-cache">2. Tuning the Flyweight Cache</h3>
+<p>The lower bound of the cache is fixed at <code>-128</code>, but the
+upper bound can be adjusted via the JVM flag
+<code>-XX:AutoBoxCacheMax=&lt;size&gt;</code> to suit applications that
+heavily process larger numerical identifiers:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-XX:AutoBoxCacheMax</span><span class="op">=</span>10000 MyApplication</span></code></pre></div>
+<p>By leveraging the Flyweight pattern via
+<code>Integer.valueOf()</code>, Java strikes a balance between
+object-oriented flexibility and memory efficiency.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

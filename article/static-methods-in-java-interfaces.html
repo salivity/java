@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Static Methods in Java Interfaces - java</title>
+    <meta name="description" content="Since the release of Java 8, static methods can be declared and fully implemented within interfaces. This article provides a clear overview of how static methods function in modern Java interfaces, the syntax required to define and invoke them, the essen">
+    <link rel="canonical" href="https://salivity.github.io/java/article/static-methods-in-java-interfaces">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Static Methods in Java Interfaces - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/static-methods-in-java-interfaces" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Since the release of Java 8, static methods can be declared and fully implemented within interfaces. This article provides a clear overview of how static methods function in modern Java interfaces, the syntax required to define and invoke them, the essen" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="static-methods-in-java-interfaces">Static Methods in Java
+Interfaces</h1>
+<p>Since the release of Java 8, static methods can be declared and fully
+implemented within interfaces. This article provides a clear overview of
+how static methods function in modern Java interfaces, the syntax
+required to define and invoke them, the essential rules governing their
+inheritance, and the architectural benefits they offer over traditional
+utility classes.</p>
+<h2 id="declaring-static-methods-in-an-interface">Declaring Static
+Methods in an Interface</h2>
+<p>Prior to Java 8, interfaces could only contain abstract methods and
+constant fields (<code>public static final</code>). Java 8 introduced
+static methods along with default methods, allowing interfaces to
+provide concrete behavior.</p>
+<p>To define a static method in an interface, use the
+<code>static</code> keyword and provide a complete method body:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> Vehicle <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">drive</span><span class="op">();</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Static utility method inside an interface</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">static</span> <span class="dt">boolean</span> <span class="fu">isValidVin</span><span class="op">(</span><span class="bu">String</span> vin<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> vin <span class="op">!=</span> <span class="kw">null</span> <span class="op">&amp;&amp;</span> vin<span class="op">.</span><span class="fu">length</span><span class="op">()</span> <span class="op">==</span> <span class="dv">17</span><span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="how-to-call-an-interface-static-method">How to Call an Interface
+Static Method</h2>
+<p>Static methods belong exclusively to the interface type, not to
+instances of the interface or classes implementing it. They must be
+invoked directly using the interface name:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Main <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="dt">boolean</span> valid <span class="op">=</span> Vehicle<span class="op">.</span><span class="fu">isValidVin</span><span class="op">(</span><span class="st">&quot;1HGCR2F83HA000000&quot;</span><span class="op">);</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Is VIN valid? &quot;</span> <span class="op">+</span> valid<span class="op">);</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="key-rules-and-characteristics">Key Rules and
+Characteristics</h2>
+<ol type="1">
+<li><strong>Mandatory Method Body:</strong> A static method in an
+interface cannot be abstract; it must provide a complete
+implementation.</li>
+<li><strong>No Inheritance:</strong> Static methods are not inherited by
+classes that implement the interface. Calling
+<code>Car.isValidVin(...)</code> or
+<code>myCarInstance.isValidVin(...)</code> results in a compilation
+error.</li>
+<li><strong>Cannot Be Overridden:</strong> Implementing classes cannot
+override an interface's static method. A class may define its own static
+method with the same signature, but this is considered method hiding,
+not overriding.</li>
+<li><strong>Access Modifiers:</strong>
+<ul>
+<li>In Java 8, interface static methods are implicitly
+<code>public</code>.</li>
+<li>Starting in Java 9, interfaces can also declare
+<code>private static</code> methods, which are useful for sharing helper
+logic between multiple static or default methods inside the same
+interface.</li>
+</ul></li>
+</ol>
+<h2 id="why-use-static-methods-in-interfaces">Why Use Static Methods in
+Interfaces?</h2>
+<ul>
+<li><strong>Cohesive API Design:</strong> Group utility and factory
+methods directly with the type they operate on, rather than creating
+separate companion utility classes (such as <code>Collections</code> for
+<code>Collection</code>).</li>
+<li><strong>Encapsulation:</strong> Keep helper logic closely bound to
+the interface definition.</li>
+<li><strong>Factory Methods:</strong> Easily provide standard instances
+or builders (for example, <code>Stream.of()</code> or
+<code>List.of()</code> in modern Java).</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

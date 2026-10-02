@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Separating UI and Logic in JavaFX Using FXML - java</title>
+    <meta name="description" content="This article explores how FXML functions as an XML-based markup language within the JavaFX framework to strictly decouple user interface (UI) design from application logic. By breaking down the mechanisms of this separation—including controller binding">
+    <link rel="canonical" href="https://salivity.github.io/java/article/separating-ui-and-logic-in-java-fx-using-fxml">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Separating UI and Logic in JavaFX Using FXML - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/separating-ui-and-logic-in-java-fx-using-fxml" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores how FXML functions as an XML-based markup language within the JavaFX framework to strictly decouple user interface (UI) design from application logic. By breaking down the mechanisms of this separation—including controller binding" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="separating-ui-and-logic-in-javafx-using-fxml">Separating UI and
+Logic in JavaFX Using FXML</h1>
+<p>This article explores how FXML functions as an XML-based markup
+language within the JavaFX framework to strictly decouple user interface
+(UI) design from application logic. By breaking down the mechanisms of
+this separation—including controller binding, the <code>@FXML</code>
+annotation, and visual design tooling—the following sections illustrate
+how FXML establishes a clean Model-View-Controller (MVC) architecture,
+enhances team collaboration, and simplifies code maintenance in desktop
+application development.</p>
+<h3 id="declarative-ui-vs-imperative-logic">Declarative UI vs.
+Imperative Logic</h3>
+<p>In traditional Java desktop development, user interfaces were
+constructed imperatively by instantiating layout panes, buttons, and
+text fields directly within Java code. This approach tightly coupled
+visual layout with operational logic, often resulting in bloated classes
+that were difficult to read, maintain, and refactor.</p>
+<p>FXML solves this problem by providing a declarative, XML-based format
+exclusively dedicated to defining the view hierarchy. Instead of writing
+lines of Java code to configure node positions, paddings, and styles,
+developers write structured XML tags representing UI components. The
+imperative application logic remains strictly inside standard Java
+classes, allowing the structure of the interface to exist completely
+independent of its runtime behavior.</p>
+<h3 id="the-role-of-the-controller-class">The Role of the Controller
+Class</h3>
+<p>The bridge between the declarative FXML file (the View) and the
+application's business rules (the Model) is the Controller. An FXML
+document specifies its associated controller via the
+<code>fx:controller</code> attribute on the root layout node:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode xml"><code class="sourceCode xml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">VBox</span> <span class="ot">fx:controller=</span><span class="st">&quot;com.example.AppController&quot;</span> <span class="ot">xmlns:fx=</span><span class="st">&quot;http://javafx.com/fxml&quot;</span>&gt;</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">Button</span> <span class="ot">fx:id=</span><span class="st">&quot;submitButton&quot;</span> <span class="ot">text=</span><span class="st">&quot;Submit&quot;</span> <span class="ot">onAction=</span><span class="st">&quot;#handleSubmit&quot;</span> /&gt;</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">VBox</span>&gt;</span></code></pre></div>
+<p>When the <code>FXMLLoader</code> parses the document at runtime, it
+instantiates the declared controller class. This architecture
+establishes a unidirectional connection where the FXML file points to
+the logic handler, leaving the Java controller class free of manual
+node-creation code.</p>
+<h3
+id="component-and-event-injection-with-the-fxml-annotation">Component
+and Event Injection with the <code>@FXML</code> Annotation</h3>
+<p>FXML uses the <code>@FXML</code> annotation to inject declared UI
+components and event handlers directly into private or protected fields
+within the controller.</p>
+<ul>
+<li><strong>Element Mapping:</strong> By assigning an <code>fx:id</code>
+to an element in the FXML file, developers can bind that node to a field
+of the same name in the controller using
+<code>@FXML private Button submitButton;</code>. This eliminates the
+need for manual lookups or casting.</li>
+<li><strong>Event Binding:</strong> Event handlers, such as mouse clicks
+or key presses, are declared directly in markup attributes like
+<code>onAction="#handleSubmit"</code>. The controller then simply
+defines a corresponding method annotated with <code>@FXML</code>:</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="at">@FXML</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span> <span class="dt">void</span> <span class="fu">handleSubmit</span><span class="op">(</span><span class="bu">ActionEvent</span> event<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Application logic executed on click</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>This mechanism keeps event registration declarative and readable
+while confining executable code to the controller.</p>
+<h3
+id="facilitating-workflow-separation-and-visual-tooling">Facilitating
+Workflow Separation and Visual Tooling</h3>
+<p>Separating layout from code enables parallel workflows between UI
+designers and software developers. Because FXML files are standard XML,
+designers can construct and modify complex interfaces using visual
+layout editors, such as Scene Builder, without writing a single line of
+Java.</p>
+<p>Designers can alter layouts, add CSS styling, and reorganize
+components without breaking the backend logic, provided the
+<code>fx:id</code> attributes and event handler names remain intact.
+Conversely, developers can build unit tests, implement service layers,
+and manipulate data models independently of visual design changes.</p>
+<h3 id="enhancing-maintainability-and-mvc-architecture">Enhancing
+Maintainability and MVC Architecture</h3>
+<p>Adopting FXML enforces the separation of concerns fundamental to the
+Model-View-Controller pattern:</p>
+<ul>
+<li><strong>View:</strong> Represented by the FXML files and linked CSS
+stylesheets, responsible strictly for layout and presentation.</li>
+<li><strong>Controller:</strong> Intermediary Java classes managing UI
+state, event handling, and view updates.</li>
+<li><strong>Model:</strong> Backend domain logic, services, and data
+structures.</li>
+</ul>
+<p>This architectural clarity makes JavaFX applications far easier to
+scale. UI redesigns require edits only to the markup,
+internationalization (using resource bundles) can be applied directly
+within the FXML document, and overall system readability is preserved
+across the application lifecycle.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

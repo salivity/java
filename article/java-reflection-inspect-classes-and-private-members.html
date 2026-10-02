@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Reflection: Inspect Classes and Private Members - java</title>
+    <meta name="description" content="The Java Reflection API allows programs to examine and modify their own runtime behavior, enabling developers to discover internal class structures, inspect metadata, and bypass standard access control mechanisms. By querying the Java Virtual Machine (JV">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-reflection-inspect-classes-and-private-members">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Reflection: Inspect Classes and Private Members - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-reflection-inspect-classes-and-private-members" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Reflection API allows programs to examine and modify their own runtime behavior, enabling developers to discover internal class structures, inspect metadata, and bypass standard access control mechanisms. By querying the Java Virtual Machine (JV" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-reflection-inspect-classes-and-private-members">Java
+Reflection: Inspect Classes and Private Members</h1>
+<p>The Java Reflection API allows programs to examine and modify their
+own runtime behavior, enabling developers to discover internal class
+structures, inspect metadata, and bypass standard access control
+mechanisms. By querying the Java Virtual Machine (JVM) for an object's
+underlying <code>Class</code> instance, applications can dynamically
+uncover declared constructors, fields, and methods, and even read or
+execute <code>private</code> members that are otherwise inaccessible
+under standard compilation rules.</p>
+<h3 id="inspecting-classes-at-runtime">Inspecting Classes at
+Runtime</h3>
+<p>Runtime inspection begins with obtaining an instance of
+<code>java.lang.Class</code>. This can be achieved through three primary
+entry points:</p>
+<ul>
+<li>Using the class literal: <code>MyClass.class</code></li>
+<li>Calling <code>getClass()</code> on an existing instance:
+<code>obj.getClass()</code></li>
+<li>Loading by fully qualified name dynamically:
+<code>Class.forName("com.example.MyClass")</code></li>
+</ul>
+<p>Once the <code>Class</code> object is loaded, the reflection API
+provides methods to inspect its structure:</p>
+<ul>
+<li><strong><code>getFields()</code> vs.
+<code>getDeclaredFields()</code></strong>: <code>getFields()</code>
+returns all public fields, including inherited ones.
+<code>getDeclaredFields()</code> returns all fields declared directly by
+the class, including <code>private</code>, <code>protected</code>, and
+package-private fields, but excludes inherited fields.</li>
+<li><strong><code>getMethods()</code> vs.
+<code>getDeclaredMethods()</code></strong>: Similar to fields,
+<code>getDeclaredMethods()</code> retrieves every method declared
+directly within the class, regardless of its access modifier.</li>
+<li><strong><code>getDeclaredConstructors()</code></strong>: Retrieves
+all constructors defined within the class.</li>
+</ul>
+<p>These methods return reflection objects—<code>Field</code>,
+<code>Method</code>, and <code>Constructor</code>—from the
+<code>java.lang.reflect</code> package, each carrying metadata such as
+return types, parameter types, annotations, and modifiers (determined
+via <code>Modifier.toString(member.getModifiers())</code>).</p>
+<h3 id="invoking-private-members">Invoking Private Members</h3>
+<p>Under standard execution, calling a <code>private</code> method or
+reading a <code>private</code> field outside its declaring class
+triggers a compile-time or runtime access error. Java's Reflection API
+circumvents this using the <code>AccessibleObject</code> class, which is
+the superclass of <code>Field</code>, <code>Method</code>, and
+<code>Constructor</code>.</p>
+<h4 id="reading-and-writing-private-fields">Reading and Writing Private
+Fields</h4>
+<p>To access a private field, obtain its <code>Field</code> definition
+using <code>getDeclaredField(String name)</code> and call
+<code>setAccessible(true)</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>MyClass target <span class="op">=</span> <span class="kw">new</span> <span class="fu">MyClass</span><span class="op">();</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Field</span> privateField <span class="op">=</span> MyClass<span class="op">.</span><span class="fu">class</span><span class="op">.</span><span class="fu">getDeclaredField</span><span class="op">(</span><span class="st">&quot;secretKey&quot;</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Suppress Java language access control checks</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>privateField<span class="op">.</span><span class="fu">setAccessible</span><span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Read value</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="bu">Object</span> value <span class="op">=</span> privateField<span class="op">.</span><span class="fu">get</span><span class="op">(</span>target<span class="op">);</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">// Modify value</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>privateField<span class="op">.</span><span class="fu">set</span><span class="op">(</span>target<span class="op">,</span> <span class="st">&quot;newSecretValue&quot;</span><span class="op">);</span></span></code></pre></div>
+<h4 id="invoking-private-methods">Invoking Private Methods</h4>
+<p>To execute a private method, retrieve the <code>Method</code> object
+via
+<code>getDeclaredMethod(String name, Class&lt;?&gt;... parameterTypes)</code>,
+set it to accessible, and call <code>invoke()</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>MyClass target <span class="op">=</span> <span class="kw">new</span> <span class="fu">MyClass</span><span class="op">();</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Method</span> privateMethod <span class="op">=</span> MyClass<span class="op">.</span><span class="fu">class</span><span class="op">.</span><span class="fu">getDeclaredMethod</span><span class="op">(</span><span class="st">&quot;calculateHash&quot;</span><span class="op">,</span> <span class="bu">String</span><span class="op">.</span><span class="fu">class</span><span class="op">);</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Suppress access checks</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>privateMethod<span class="op">.</span><span class="fu">setAccessible</span><span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Execute the method</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="bu">Object</span> result <span class="op">=</span> privateMethod<span class="op">.</span><span class="fu">invoke</span><span class="op">(</span>target<span class="op">,</span> <span class="st">&quot;inputData&quot;</span><span class="op">);</span></span></code></pre></div>
+<h3 id="how-setaccessibletrue-works-internally">How
+<code>setAccessible(true)</code> Works Internally</h3>
+<p>When code attempts to read a field or invoke a method directly, the
+JVM checks the caller's access privileges against the member's access
+modifiers (<code>public</code>, <code>protected</code>,
+<code>private</code>).</p>
+<p>Calling <code>setAccessible(true)</code> toggles an internal boolean
+flag within the reflection object's implementation. When this flag is
+set, the standard JVM access check routines are skipped during
+subsequent <code>get()</code>, <code>set()</code>, or
+<code>invoke()</code> calls, allowing direct access to the memory
+reference or method pointer.</p>
+<h3 id="restrictions-in-modern-java-java-9">Restrictions in Modern Java
+(Java 9+)</h3>
+<p>Starting with Java 9 and the introduction of the Java Platform Module
+System (JPMS), strong encapsulation restricts deep reflection. If a
+class belongs to a named module, calling
+<code>setAccessible(true)</code> on its private members will throw an
+<code>InaccessibleObjectException</code> unless the module explicitly
+exports or opens that package to the caller using the <code>opens</code>
+directive in its <code>module-info.java</code> file.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

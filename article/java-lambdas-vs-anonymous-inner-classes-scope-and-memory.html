@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Lambdas vs Anonymous Inner Classes: Scope and Memory - java</title>
+    <meta name="description" content="Java lambda expressions and anonymous inner classes provide concise ways to pass behavior as data, but they differ fundamentally in their internal execution models. This article explores how lambdas and anonymous inner classes handle memory consumption a">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-lambdas-vs-anonymous-inner-classes-scope-and-memory">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Lambdas vs Anonymous Inner Classes: Scope and Memory - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-lambdas-vs-anonymous-inner-classes-scope-and-memory" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java lambda expressions and anonymous inner classes provide concise ways to pass behavior as data, but they differ fundamentally in their internal execution models. This article explores how lambdas and anonymous inner classes handle memory consumption a" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-lambdas-vs-anonymous-inner-classes-scope-and-memory">Java
+Lambdas vs Anonymous Inner Classes: Scope and Memory</h1>
+<p>Java lambda expressions and anonymous inner classes provide concise
+ways to pass behavior as data, but they differ fundamentally in their
+internal execution models. This article explores how lambdas and
+anonymous inner classes handle memory consumption and lexical scope in
+Java. While anonymous inner classes rely on separate class definitions
+and dedicated heap allocations, lambda expressions leverage modern JVM
+bytecode mechanics to reduce memory overhead and offer transparent
+lexical scoping for cleaner, more predictable code.</p>
+<h3 id="memory-allocation-and-performance">Memory Allocation and
+Performance</h3>
+<p>The most significant architectural divergence between anonymous inner
+classes and lambda expressions lies in compilation and runtime memory
+management.</p>
+<h4 id="anonymous-inner-classes">Anonymous Inner Classes</h4>
+<ul>
+<li><strong>Class Generation:</strong> Every anonymous inner class
+generates a distinct bytecode file at compile time (e.g.,
+<code>OuterClass$1.class</code>). When loaded, each class requires its
+own metadata entry in the JVM's Metaspace, consuming permanent memory
+resources.</li>
+<li><strong>Heap Allocation:</strong> Each time an anonymous inner class
+expression executes, a new instance of that class is allocated on the
+heap. Even if the anonymous class captures no variables from its
+enclosing scope, a new object header and instance are created,
+increasing pressure on the garbage collector.</li>
+</ul>
+<h4 id="lambda-expressions">Lambda Expressions</h4>
+<ul>
+<li><strong>Bytecode Translation:</strong> Lambdas do not generate
+separate <code>.class</code> files. Instead, Java compiles a lambda into
+a private synthetic method within the enclosing class and uses the
+<code>invokedynamic</code> (Indy) instruction to bind it at
+runtime.</li>
+<li><strong><code>LambdaMetafactory</code>:</strong> When the
+<code>invokedynamic</code> call site is first reached, the JVM invokes
+<code>LambdaMetafactory</code> to dynamically link the call to an
+instance of the target functional interface.</li>
+<li><strong>Instance Caching:</strong> For non-capturing lambdas
+(lambdas that do not reference enclosing instance fields or local
+variables), the JVM typically generates and caches a single singleton
+instance. Subsequent executions reuse this instance without allocating
+new heap memory. Even capturing lambdas incur lower initialization
+overhead than inner classes due to streamlined dynamic call-site
+linkage.</li>
+</ul>
+<h3 id="lexical-scope-and-identifier-resolution">Lexical Scope and
+Identifier Resolution</h3>
+<p>Lexical scoping determines how variables, references, and keywords
+resolve within the body of the expression.</p>
+<h4 id="the-this-and-super-keywords">The <code>this</code> and
+<code>super</code> Keywords</h4>
+<ul>
+<li><strong>Anonymous Inner Classes:</strong> An anonymous inner class
+introduces an entirely new scope. Consequently, the <code>this</code>
+keyword refers to the instance of the anonymous inner class itself. To
+access the enclosing class instance, you must qualify the reference
+explicitly (e.g., <code>OuterClass.this</code>).</li>
+<li><strong>Lambda Expressions:</strong> Lambdas are strictly lexically
+scoped; they do not introduce a new scope level. Inside a lambda
+expression, <code>this</code> and <code>super</code> resolve to the
+exact same objects they resolve to in the surrounding context. There is
+no concept of a lambda instance referring to itself via
+<code>this</code>.</li>
+</ul>
+<h4 id="variable-shadowing">Variable Shadowing</h4>
+<ul>
+<li><strong>Anonymous Inner Classes:</strong> Because an anonymous inner
+class introduces its own scope, it can shadow local variables from the
+enclosing method. You can declare a local variable inside an anonymous
+inner class with the exact same name as a variable in the enclosing
+method:</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> count <span class="op">=</span> <span class="dv">10</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Runnable</span> r <span class="op">=</span> <span class="kw">new</span> <span class="bu">Runnable</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> count <span class="op">=</span> <span class="dv">20</span><span class="op">;</span> <span class="co">// Allowed: shadows outer count</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">run</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="kw">this</span><span class="op">.</span><span class="fu">count</span><span class="op">);</span> <span class="co">// Prints 20</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<ul>
+<li><strong>Lambda Expressions:</strong> Because a lambda exists within
+the enclosing lexical scope, declaring a parameter or local variable
+with the same name as an enclosing local variable causes a compile-time
+error:</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> count <span class="op">=</span> <span class="dv">10</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Runnable</span> r <span class="op">=</span> <span class="op">()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> count <span class="op">=</span> <span class="dv">20</span><span class="op">;</span> <span class="co">// Compile-time error: variable &#39;count&#39; is already defined in scope</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>count<span class="op">);</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<h3 id="variable-capture-and-lifetime">Variable Capture and
+Lifetime</h3>
+<p>Both mechanisms require captured local variables to be
+<code>final</code> or effectively final. However, they package these
+variables differently:</p>
+<ul>
+<li><strong>Anonymous Inner Classes:</strong> The compiler synthesizes
+hidden fields inside the generated class file to store copies of
+captured variables. The instantiated object maintains references to
+these copies for the duration of its lifecycle on the heap, which can
+inadvertently keep outer enclosing instances from being garbage
+collected if inner class instances leak.</li>
+<li><strong>Lambda Expressions:</strong> Captured variables are passed
+as arguments to the lambda's synthetic implementation method via the
+dynamic call site. The runtime representation of a lambda avoids
+retaining implicit references to the enclosing instance unless instance
+members are explicitly referenced within the lambda body.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

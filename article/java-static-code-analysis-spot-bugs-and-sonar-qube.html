@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Static Code Analysis: SpotBugs and SonarQube - java</title>
+    <meta name="description" content="Static code analysis is an automated software quality assurance practice that examines source code or compiled binaries without executing the program. This article explains the fundamentals of static code analysis in the Java ecosystem and breaks down th">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-static-code-analysis-spot-bugs-and-sonar-qube">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Static Code Analysis: SpotBugs and SonarQube - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-static-code-analysis-spot-bugs-and-sonar-qube" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Static code analysis is an automated software quality assurance practice that examines source code or compiled binaries without executing the program. This article explains the fundamentals of static code analysis in the Java ecosystem and breaks down th" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-static-code-analysis-spotbugs-and-sonarqube">Java Static
+Code Analysis: SpotBugs and SonarQube</h1>
+<p>Static code analysis is an automated software quality assurance
+practice that examines source code or compiled binaries without
+executing the program. This article explains the fundamentals of static
+code analysis in the Java ecosystem and breaks down the internal
+mechanics of how two industry-standard tools—SpotBugs and
+SonarQube—inspect Java applications to detect bugs, security
+vulnerabilities, and design flaws before deployment.</p>
+<h2 id="understanding-static-code-analysis">Understanding Static Code
+Analysis</h2>
+<p>Static code analysis acts as an automated code reviewer. By scanning
+code during development, build automation, or CI/CD pipelines, static
+analysis identifies critical issues early in the Software Development
+Life Cycle (SDLC). Common findings include:</p>
+<ul>
+<li><strong>Security Vulnerabilities:</strong> SQL injection points,
+hardcoded credentials, and insecure cryptographic algorithms.</li>
+<li><strong>Reliability Defects:</strong> Null pointer dereferences,
+unclosed resource streams, and concurrency race conditions.</li>
+<li><strong>Maintainability and Design Issues:</strong> Code smells,
+circular dependencies, excessive cyclomatic complexity, and
+non-compliance with coding standards.</li>
+</ul>
+<p>To find these issues, analyzers convert code into structured
+mathematical models—such as Abstract Syntax Trees (ASTs), Control Flow
+Graphs (CFGs), and Data Flow Graphs (DFGs)—and run predefined rule sets
+against them.</p>
+<h2 id="how-spotbugs-inspects-java-code">How SpotBugs Inspects Java
+Code</h2>
+<p>SpotBugs, the spiritual successor to FindBugs, is a specialized
+defect-detection tool that takes a distinctive approach: <strong>it
+analyzes compiled Java bytecode (<code>.class</code> files), not
+<code>.java</code> source files.</strong></p>
+<h3 id="1-bytecode-parsing-and-graph-building">1. Bytecode Parsing and
+Graph Building</h3>
+<p>SpotBugs leverages libraries like ObjectWeb ASM or BCEL (Byte Code
+Engineering Library) to read compiled JVM bytecode. By targeting
+bytecode instead of raw source code, SpotBugs gains access to the exact
+instructions the Java Virtual Machine (JVM) executes, including
+structural optimizations applied by the compiler.</p>
+<h3 id="2-pattern-matching-via-bug-detectors">2. Pattern Matching via
+Bug Detectors</h3>
+<p>SpotBugs organizes checks into discrete "Detector" classes. Each
+detector is configured to identify specific anti-patterns or bytecode
+instruction sequences. For example, to detect unclosed streams, a
+detector monitors method invocations on classes implementing
+<code>AutoCloseable</code> and flags paths that exit without invoking
+<code>.close()</code>.</p>
+<h3 id="3-dataflow-and-control-flow-analysis">3. Dataflow and Control
+Flow Analysis</h3>
+<p>SpotBugs performs intra-procedural dataflow analysis. It models the
+JVM operand stack and local variable arrays across different execution
+branches within a method. This allows SpotBugs to trace values:</p>
+<ul>
+<li><strong>Null Value Tracking:</strong> It calculates whether a
+reference can evaluate to <code>null</code> before a method
+invocation.</li>
+<li><strong>Type Invariant Checking:</strong> It identifies impossible
+casts or operations that will fail at runtime.</li>
+</ul>
+<p>Because it operates on bytecode, SpotBugs can also analyze
+third-party JAR dependencies even if original source code is
+unavailable.</p>
+<h2 id="how-sonarqube-inspects-java-code">How SonarQube Inspects Java
+Code</h2>
+<p>SonarQube provides broad platform analysis covering security, bugs,
+technical debt, and test coverage. Unlike SpotBugs, SonarQube utilizes a
+<strong>hybrid approach that combines source code parsing with bytecode
+resolution</strong> via its dedicated Java analyzer plugin.</p>
+<h3 id="1-lexing-parsing-and-ast-construction">1. Lexing, Parsing, and
+AST Construction</h3>
+<p>SonarQube reads the original <code>.java</code> files using a custom
+front-end parser. The source code is tokenized and transformed into an
+Abstract Syntax Tree (AST). The AST represents the exact structural
+grammar of the written code, capturing formatting, comments,
+annotations, and code structures.</p>
+<h3 id="2-semantic-analysis-and-symbol-resolution">2. Semantic Analysis
+and Symbol Resolution</h3>
+<p>Syntax alone lacks context; knowing a variable is named
+<code>conn</code> does not explain its type or behavior. SonarQube’s
+semantic engine reads compiled classpaths alongside source code to
+resolve symbols. It determines the fully qualified types of all
+variables, methods, and superclasses, allowing it to evaluate class
+hierarchies, overridden methods, and method contracts.</p>
+<h3 id="3-symbolic-execution-engine">3. Symbolic Execution Engine</h3>
+<p>For deep security and bug analysis (especially in injection flaws and
+logic traps), SonarQube uses a symbolic execution engine. This engine
+simulates program execution across different control paths:</p>
+<ul>
+<li>It tracks symbolic states rather than actual values.</li>
+<li>It traces user-controlled inputs ("sources") across method calls to
+sensitive operations like database queries or file outputs
+("sinks").</li>
+<li>If untrusted data reaches a sink without passing through a
+sanitizing function, the engine flags a taint analysis
+vulnerability.</li>
+</ul>
+<h3 id="4-code-metrics-and-rule-matching">4. Code Metrics and Rule
+Matching</h3>
+<p>Alongside structural and flow models, SonarQube calculates
+quantitative metrics directly from the AST. It computes Cognitive
+Complexity, lines of code, duplicated blocks, and test coverage
+integration. Rule engines run AST visitor patterns to detect stylistic
+flaws, deprecated API usage, and architectural boundary violations.</p>
+<h2 id="summary-of-differences">Summary of Differences</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">SpotBugs</th>
+<th style="text-align: left;">SonarQube</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Primary Target</strong></td>
+<td style="text-align: left;">Java Bytecode (<code>.class</code>)</td>
+<td style="text-align: left;">Java Source (<code>.java</code>) +
+Classpath Bytecode</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Core Strength</strong></td>
+<td style="text-align: left;">Fast, focused defect and concurrency
+detection</td>
+<td style="text-align: left;">Broad code quality, security hotspots,
+technical debt metrics</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Analysis Scope</strong></td>
+<td style="text-align: left;">Primarily intra-procedural (within single
+methods/classes)</td>
+<td style="text-align: left;">Intra-procedural, inter-procedural, and
+system-level semantic checks</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Integration</strong></td>
+<td style="text-align: left;">Developer IDEs, build plugins (Maven,
+Gradle)</td>
+<td style="text-align: left;">CI/CD gatekeeper, web dashboard, IDE via
+SonarLint</td>
+</tr>
+</tbody>
+</table></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

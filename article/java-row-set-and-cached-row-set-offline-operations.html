@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java RowSet and CachedRowSet Offline Operations - java</title>
+    <meta name="description" content="This article explains the purpose of Java's RowSet interface and examines how the CachedRowSet implementation operates in a disconnected, offline mode. You will learn the limitations of traditional ResultSet objects, the advantages provided by the RowSet">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-row-set-and-cached-row-set-offline-operations">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java RowSet and CachedRowSet Offline Operations - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-row-set-and-cached-row-set-offline-operations" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the purpose of Java's RowSet interface and examines how the CachedRowSet implementation operates in a disconnected, offline mode. You will learn the limitations of traditional ResultSet objects, the advantages provided by the RowSet" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-rowset-and-cachedrowset-offline-operations">Java RowSet and
+CachedRowSet Offline Operations</h1>
+<p>This article explains the purpose of Java's <code>RowSet</code>
+interface and examines how the <code>CachedRowSet</code> implementation
+operates in a disconnected, offline mode. You will learn the limitations
+of traditional <code>ResultSet</code> objects, the advantages provided
+by the <code>RowSet</code> framework, and the step-by-step lifecycle of
+fetching, modifying, and synchronizing database records without
+maintaining an active database connection.</p>
+<h2 id="the-purpose-of-the-rowset-interface">The Purpose of the RowSet
+Interface</h2>
+<p>Introduced in the <code>javax.sql</code> package, the
+<code>RowSet</code> interface extends <code>java.sql.ResultSet</code> to
+make tabular data more flexible, component-friendly, and easier to use
+across distributed architectures. While a standard JDBC
+<code>ResultSet</code> maintains an open connection to the database and
+is tightly coupled to the underlying driver, the <code>RowSet</code>
+interface introduces significant design improvements:</p>
+<ul>
+<li><strong>JavaBeans Compliance:</strong> <code>RowSet</code>
+implementations follow the JavaBeans model. They provide standard getter
+and setter methods, support properties, and implement an event-listener
+model that notifies registered components when the cursor moves or data
+changes.</li>
+<li><strong>Scrollability and Updatability by Default:</strong> Unlike
+basic <code>ResultSet</code> objects, which are often forward-only and
+read-only depending on driver capabilities, standard <code>RowSet</code>
+implementations are scrollable and updatable by default.</li>
+<li><strong>Connected vs. Disconnected Modes:</strong> The interface
+supports two operational models. Connected implementations (such as
+<code>JdbcRowSet</code>) keep a persistent connection open, acting as
+wrappers around traditional <code>ResultSet</code> objects. Disconnected
+implementations (such as <code>CachedRowSet</code>,
+<code>WebRowSet</code>, and <code>FilteredRowSet</code>) fetch their
+data into memory and immediately sever the database connection.</li>
+</ul>
+<h2 id="how-cachedrowset-operates-offline">How CachedRowSet Operates
+Offline</h2>
+<p><code>CachedRowSet</code> is the foundational disconnected
+<code>RowSet</code> implementation. It stores tabular data entirely in
+memory, eliminating the need to keep physical database connections open
+during long-running client operations or user interactions.</p>
+<p>The offline operation of <code>CachedRowSet</code> follows a distinct
+four-phase lifecycle:</p>
+<h3 id="1-connection-and-population">1. Connection and Population</h3>
+<p>To retrieve data, <code>CachedRowSet</code> configures its connection
+properties (such as JDBC URL, username, and password) and executes a
+query via its <code>execute()</code> method. Alternatively, it can be
+populated directly from an existing <code>ResultSet</code> using the
+<code>populate(ResultSet rs)</code> method.</p>
+<p>Once the data is copied from the database into the memory of the
+<code>CachedRowSet</code>, the underlying physical database connection,
+statement, and original <code>ResultSet</code> are closed
+immediately.</p>
+<h3 id="2-in-memory-manipulation">2. In-Memory Manipulation</h3>
+<p>Because the connection is closed, the application works entirely in
+an "offline" state. The client can perform all standard navigation and
+modification tasks locally:</p>
+<ul>
+<li>Navigate bidirectionally (<code>next()</code>,
+<code>previous()</code>, <code>absolute()</code>).</li>
+<li>Read values using standard accessor methods.</li>
+<li>Update existing rows using <code>updateString()</code>,
+<code>updateInt()</code>, etc., followed by
+<code>updateRow()</code>.</li>
+<li>Insert new rows using <code>moveToInsertRow()</code>, setting
+values, and invoking <code>insertRow()</code>.</li>
+<li>Delete rows using <code>deleteRow()</code>.</li>
+</ul>
+<p>During this phase, <code>CachedRowSet</code> tracks both the original
+values retrieved from the database and the modified values in internal
+data structures.</p>
+<h3 id="3-serialization-and-network-transport">3. Serialization and
+Network Transport</h3>
+<p>Because standard <code>ResultSet</code> objects maintain an active
+network socket with the database, they cannot be serialized across a
+network. In contrast, <code>CachedRowSet</code> objects are
+serializable. This allows an enterprise backend to query a database,
+populate a <code>CachedRowSet</code>, close the connection, and send the
+data across network boundaries (such as via RMI or HTTP) to thin clients
+or remote services for display and editing.</p>
+<h3 id="4-reconnection-and-synchronization">4. Reconnection and
+Synchronization</h3>
+<p>Once offline modifications are complete, the client pushes changes
+back to the database by invoking the <code>acceptChanges()</code>
+method. This triggers an automated synchronization process:</p>
+<ol type="1">
+<li><strong>Re-establishing Connection:</strong> The
+<code>CachedRowSet</code> uses its internal metadata to reopen a
+connection to the data source.</li>
+<li><strong>Conflict Detection:</strong> It employs a
+<code>SyncProvider</code> (such as the default
+<code>RIOptimisticProvider</code>) to detect concurrency conflicts using
+optimistic locking. It compares the original values cached during the
+initial query against the current values present in the database.</li>
+<li><strong>Data Propagation:</strong> If no other transaction has
+modified the target records in the database, the
+<code>CachedRowSet</code> executes the necessary <code>UPDATE</code>,
+<code>INSERT</code>, or <code>DELETE</code> SQL statements to apply the
+changes.</li>
+<li><strong>Conflict Handling:</strong> If another user altered the
+underlying records while the <code>CachedRowSet</code> was offline, a
+<code>SyncProviderException</code> is thrown, allowing the application
+to resolve conflicts using compensation logic.</li>
+<li><strong>Connection Closure:</strong> The temporary database
+connection is automatically closed once synchronization finishes.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

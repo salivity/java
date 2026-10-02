@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java 8 StampedLock Functional Design Explained - java</title>
+    <meta name="description" content="Introduced in Java 8 under the java.util.concurrent.locks package, StampedLock provides an advanced synchronization mechanism designed as a high-performance alternative to ReentrantReadWriteLock. Its functional design revolves around issuing capability-b">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-8-stamped-lock-functional-design-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java 8 StampedLock Functional Design Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-8-stamped-lock-functional-design-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Introduced in Java 8 under the java.util.concurrent.locks package, StampedLock provides an advanced synchronization mechanism designed as a high-performance alternative to ReentrantReadWriteLock. Its functional design revolves around issuing capability-b" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-8-stampedlock-functional-design-explained">Java 8
+StampedLock Functional Design Explained</h1>
+<p>Introduced in Java 8 under the
+<code>java.util.concurrent.locks</code> package,
+<code>StampedLock</code> provides an advanced synchronization mechanism
+designed as a high-performance alternative to
+<code>ReentrantReadWriteLock</code>. Its functional design revolves
+around issuing capability-based tokens—called "stamps"—that represent
+the acquisition and state of a lock. By offering pessimistic write,
+pessimistic read, and a lightweight optimistic read mode,
+<code>StampedLock</code> significantly reduces thread contention and
+improves throughput in read-heavy concurrent applications.</p>
+<h3 id="the-stamp-mechanism">The Stamp Mechanism</h3>
+<p>At the core of <code>StampedLock</code>'s design is a 64-bit integer
+(<code>long</code>) known as a stamp. Whenever a thread acquires a lock
+or enters an optimistic reading state, the lock generates and returns a
+non-zero stamp value. This stamp acts as an access token and state
+snapshot:</p>
+<ul>
+<li>A non-zero value represents successful access or a valid lock
+state.</li>
+<li>A value of zero (<code>0L</code>) indicates a failure to acquire the
+lock.</li>
+<li>Releasing a lock or converting lock states requires passing the
+exact stamp obtained during acquisition.</li>
+</ul>
+<h3 id="three-operational-modes">Three Operational Modes</h3>
+<p>The functional architecture of <code>StampedLock</code> supports
+three distinct access modes:</p>
+<h4 id="1-writing-mode">1. Writing Mode</h4>
+<p>Acquired via <code>writeLock()</code>, this mode is completely
+exclusive. When a thread holds a write lock, no other thread can acquire
+either a read lock or a write lock. The method returns a stamp that must
+be supplied to <code>unlockWrite(long stamp)</code> to release the
+lock.</p>
+<h4 id="2-pessimistic-reading-mode">2. Pessimistic Reading Mode</h4>
+<p>Acquired via <code>readLock()</code>, this mode provides
+non-exclusive shared access. Multiple threads can hold read locks
+simultaneously as long as no thread holds a write lock. Any thread
+attempting to obtain a write lock will block until all active read locks
+are released using <code>unlockRead(long stamp)</code>.</p>
+<h4 id="3-optimistic-reading-mode">3. Optimistic Reading Mode</h4>
+<p>The signature feature of <code>StampedLock</code> is optimistic
+reading, accessed via <code>tryOptimisticRead()</code>. Unlike
+traditional locking:</p>
+<ul>
+<li>It does not block writers and does not use true synchronization
+barriers or CPU-heavy atomic operations.</li>
+<li>It returns an observation stamp representing the current version of
+the lock state.</li>
+<li>The reading thread copies the shared state into local variables and
+then calls <code>validate(long stamp)</code>.</li>
+<li>If <code>validate()</code> returns <code>true</code>, no write lock
+was acquired during the read operation, confirming data
+consistency.</li>
+<li>If <code>validate()</code> returns <code>false</code>, a write lock
+intervened, signaling the reader to retry or fall back to a pessimistic
+<code>readLock()</code>.</li>
+</ul>
+<h3 id="conditional-lock-conversions">Conditional Lock Conversions</h3>
+<p><code>StampedLock</code> incorporates built-in support for upgrading
+and downgrading locks without completely releasing and reacquiring them.
+Methods such as <code>tryConvertToWriteLock(long stamp)</code>,
+<code>tryConvertToReadLock(long stamp)</code>, and
+<code>tryConvertToOptimisticRead(long stamp)</code> evaluate the current
+state and transition the holder to the target mode if conditions allow,
+returning a new valid stamp upon success or zero upon failure.</p>
+<h3 id="key-architectural-characteristics">Key Architectural
+Characteristics</h3>
+<ul>
+<li><strong>Non-Reentrancy:</strong> Unlike <code>ReentrantLock</code>
+and <code>ReentrantReadWriteLock</code>, <code>StampedLock</code> is
+non-reentrant. If a thread that already holds a lock attempts to acquire
+it again, it will cause a deadlock. This design trade-off eliminates the
+overhead of tracking lock ownership counts per thread.</li>
+<li><strong>Custom Queuing Engine:</strong> Instead of extending
+<code>AbstractQueuedSynchronizer</code> (AQS), <code>StampedLock</code>
+implements an internal CLH-based wait queue with customized
+state-machine transitions directly optimized for stamp management and
+optimistic reads.</li>
+<li><strong>No Direct <code>Condition</code> Support:</strong> Due to
+its non-reentrant, token-based design, <code>StampedLock</code> does not
+support <code>Condition</code> objects associated with standard Java
+locks.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

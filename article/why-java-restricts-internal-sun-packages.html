@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Java Restricts Internal Sun Packages - java</title>
+    <meta name="description" content="Recent Java releases have systematically restricted and strongly encapsulated internal packages, such as sun. and com.sun., to improve platform security, enhance maintainability, and ensure long-term ecosystem stability. This transition—driven primaril">
+    <link rel="canonical" href="https://salivity.github.io/java/article/why-java-restricts-internal-sun-packages">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Java Restricts Internal Sun Packages - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/why-java-restricts-internal-sun-packages" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Recent Java releases have systematically restricted and strongly encapsulated internal packages, such as sun. and com.sun., to improve platform security, enhance maintainability, and ensure long-term ecosystem stability. This transition—driven primaril" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-java-restricts-internal-sun-packages">Why Java Restricts
+Internal Sun Packages</h1>
+<p>Recent Java releases have systematically restricted and strongly
+encapsulated internal packages, such as <code>sun.*</code> and
+<code>com.sun.*</code>, to improve platform security, enhance
+maintainability, and ensure long-term ecosystem stability. This
+transition—driven primarily by the Java Platform Module System (JPMS)
+introduced in Java 9 and enforced rigorously in versions like Java 16
+and 17—marks a deliberate shift away from allowing third-party code to
+rely on non-standard, internal implementation details. Understanding
+this architectural evolution requires looking at the historical reliance
+on these packages, the security risks they introduce, and the emergence
+of modern standard alternatives.</p>
+<h3 id="the-problem-of-historical-technical-debt">The Problem of
+Historical Technical Debt</h3>
+<p>When Java was first developed, packages under the <code>sun.*</code>
+namespace were designated as private implementation details intended
+strictly for the internal workings of the Java Development Kit (JDK).
+They were never part of the official Java standard specification.
+Developers were explicitly warned not to use them because they were
+subject to change or deletion without notice across different platforms
+or updates.</p>
+<p>Despite these warnings, developers frequently bypassed access rules
+to use classes like <code>sun.misc.Unsafe</code> for high-performance
+operations, off-heap memory management, and low-level concurrency
+controls. Because there were often no supported public APIs providing
+equivalent functionality, major frameworks and libraries built deep
+dependencies on these internal classes. Consequently, the OpenJDK
+maintainers found themselves unable to evolve, optimize, or refactor the
+core platform without breaking the global Java software ecosystem.</p>
+<h3 id="strengthening-security-and-integrity">Strengthening Security and
+Integrity</h3>
+<p>Internal APIs provide capabilities that bypass standard Java language
+safeguards. For instance, accessing internal memory structures and
+native pointers breaks the integrity of the Java memory model, making
+applications vulnerable to memory corruption, segmentation faults, and
+unrecoverable runtime crashes.</p>
+<p>Furthermore, unrestricted access to internal classes allows
+unauthorized code to bypass access-control checks, modify private and
+final fields via reflection, and interact directly with class loaders.
+By enforcing strong encapsulation, the JDK runtime ensures that the core
+platform boundaries are impenetrable, mitigating entire classes of
+vulnerabilities related to unauthorized reflection and arbitrary memory
+access.</p>
+<h3 id="the-module-system-and-phased-enforcement">The Module System and
+Phased Enforcement</h3>
+<p>Project Jigsaw, delivered in Java 9, introduced the JPMS to establish
+hard boundaries between components. The encapsulation of internal
+packages occurred in deliberate, progressive phases to give library
+maintainers time to adapt:</p>
+<ul>
+<li><strong>Java 9 to 15 (Relaxed Encapsulation):</strong> Internal
+packages were encapsulated by default, but the runtime provided an
+escape hatch via the <code>--illegal-access</code> command-line flag,
+defaulting to <code>permit</code> to allow legacy code to run with
+warning messages.</li>
+<li><strong>Java 16 (JEP 396):</strong> The default was shifted from
+<code>permit</code> to <code>deny</code>, meaning reflection into
+internal packages threw an <code>InaccessibleObjectException</code>
+unless explicitly permitted by <code>--add-opens</code> or
+<code>--add-exports</code> flags.</li>
+<li><strong>Java 17 (JEP 403):</strong> Strong encapsulation was firmly
+locked into place. The <code>--illegal-access</code> flag was removed
+entirely, requiring explicit build-time or runtime configuration flags
+to access any internal package.</li>
+<li><strong>Java 21+:</strong> The JDK began actively deprecating and
+planning the removal of memory-access methods inside remaining internal
+classes like <code>sun.misc.Unsafe</code>.</li>
+</ul>
+<h3 id="providing-standardized-replacements">Providing Standardized
+Replacements</h3>
+<p>Encapsulation was not carried out in isolation; the OpenJDK team
+systematically designed robust, standard alternatives before cutting off
+access to internal packages:</p>
+<ol type="1">
+<li><strong>VarHandles (Java 9):</strong> Introduced safe, optimized
+alternatives to low-level field manipulation and atomic access
+operations previously done via <code>sun.misc.Unsafe</code>.</li>
+<li><strong>Stack-Walking API (Java 9):</strong> Replaced internal,
+proprietary methods for inspecting call stacks.</li>
+<li><strong>Foreign Function and Memory API (Project Panama, Java
+22):</strong> Provided a complete, standardized, and safe alternative
+for off-heap memory allocation and native library interoperability,
+rendering direct reliance on internal memory hacks obsolete.</li>
+</ol>
+<p>By closing off private implementation details, modern Java releases
+have reclaimed the freedom to innovate within the runtime while ensuring
+that production applications run on secure, predictable, and fully
+standardized foundations.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

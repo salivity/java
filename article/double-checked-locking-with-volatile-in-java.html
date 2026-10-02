@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Double-Checked Locking with Volatile in Java - java</title>
+    <meta name="description" content="The double-checked locking pattern is a software design pattern used to reduce synchronization overhead when implementing lazy initialization in multithreaded environments. While early implementations in Java suffered from subtle concurrency bugs due to">
+    <link rel="canonical" href="https://salivity.github.io/java/article/double-checked-locking-with-volatile-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Double-Checked Locking with Volatile in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/double-checked-locking-with-volatile-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The double-checked locking pattern is a software design pattern used to reduce synchronization overhead when implementing lazy initialization in multithreaded environments. While early implementations in Java suffered from subtle concurrency bugs due to" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="double-checked-locking-with-volatile-in-java">Double-Checked
+Locking with Volatile in Java</h1>
+<p>The double-checked locking pattern is a software design pattern used
+to reduce synchronization overhead when implementing lazy initialization
+in multithreaded environments. While early implementations in Java
+suffered from subtle concurrency bugs due to compiler optimizations and
+processor memory models, the introduction of the enhanced
+<code>volatile</code> keyword in Java 5 made the pattern fully
+thread-safe. This article explains the mechanics of double-checked
+locking, the memory visibility problem that initially broke it, and how
+<code>volatile</code> field access resolves the issue.</p>
+<h3 id="the-purpose-of-double-checked-locking">The Purpose of
+Double-Checked Locking</h3>
+<p>In multithreaded applications, lazily initializing a heavy resource
+often requires synchronization to ensure that only one instance is
+created. Synchronizing the entire accessor method creates unnecessary
+overhead:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">synchronized</span> <span class="bu">Resource</span> <span class="fu">getInstance</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>instance <span class="op">==</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        instance <span class="op">=</span> <span class="kw">new</span> <span class="bu">Resource</span><span class="op">();</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> instance<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Once the instance is initialized, every subsequent call still pays
+the performance penalty of acquiring and releasing a lock.
+Double-checked locking solves this by checking if the instance is
+initialized before acquiring the lock, and checking again after
+acquiring the lock.</p>
+<h3 id="the-failure-of-the-classic-implementation">The Failure of the
+Classic Implementation</h3>
+<p>Before Java 5, the following implementation was considered standard,
+but it contained a critical flaw:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Broken implementation prior to Java 5</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> ResourceFactory <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">static</span> <span class="bu">Resource</span> instance<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="bu">Resource</span> <span class="fu">getInstance</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>instance <span class="op">==</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span> <span class="co">// First check (no lock)</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>            <span class="kw">synchronized</span> <span class="op">(</span>ResourceFactory<span class="op">.</span><span class="fu">class</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>instance <span class="op">==</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span> <span class="co">// Second check (with lock)</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>                    instance <span class="op">=</span> <span class="kw">new</span> <span class="bu">Resource</span><span class="op">();</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> instance<span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The issue stems from instruction reordering performed by compilers
+and CPUs to optimize execution. The operation
+<code>instance = new Resource()</code> is not atomic; it consists of
+three distinct steps:</p>
+<ol type="1">
+<li>Allocate memory for the <code>Resource</code> object.</li>
+<li>Execute the <code>Resource</code> constructor to initialize
+fields.</li>
+<li>Assign the memory address to the <code>instance</code>
+reference.</li>
+</ol>
+<p>Without explicit memory barriers, the Java Virtual Machine (JVM) may
+reorder steps 2 and 3. If reordered, the <code>instance</code> reference
+becomes non-null <em>before</em> the constructor finishes executing.</p>
+<p>If Thread A executes step 1 and step 3, and is preempted before step
+2, Thread B can perform the first check (<code>instance == null</code>),
+find it to be false, and immediately return <code>instance</code>.
+Thread B then attempts to use an incompletely initialized object,
+leading to erratic runtime exceptions or corrupted state.</p>
+<h3 id="how-volatile-fixes-the-pattern">How <code>volatile</code> Fixes
+the Pattern</h3>
+<p>Under the Java Memory Model (JSR-133) introduced in Java 5, the
+semantics of the <code>volatile</code> keyword were extended to prevent
+these reordering issues.</p>
+<p>Declaring a field as <code>volatile</code> provides two main
+guarantees:</p>
+<ol type="1">
+<li><strong>Visibility:</strong> Writes to a volatile variable are
+immediately flushed to main memory, and reads are always drawn from main
+memory rather than local processor caches.</li>
+<li><strong>Instruction Ordering (Happens-Before Relationship):</strong>
+The JVM inserts memory barriers around reads and writes of volatile
+variables. Specifically, it establishes that all actions occurring
+before a write to a volatile variable <em>happen-before</em> any
+subsequent read of that same volatile variable.</li>
+</ol>
+<p>When <code>instance</code> is marked as <code>volatile</code>, the
+compiler and CPU are strictly prohibited from reordering the constructor
+execution past the assignment write to the <code>instance</code>
+variable. The memory write to <code>instance</code> acts as a store
+barrier, ensuring the object is fully constructed in memory before its
+reference is published.</p>
+<h3 id="the-correct-implementation">The Correct Implementation</h3>
+<p>Below is the standard, thread-safe implementation of double-checked
+locking using a <code>volatile</code> field:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> ResourceFactory <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// volatile ensures memory visibility and prevents instruction reordering</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">static</span> <span class="kw">volatile</span> <span class="bu">Resource</span> instance<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="bu">Resource</span> <span class="fu">getInstance</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Local variable improves performance by reducing volatile reads</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Resource</span> result <span class="op">=</span> instance<span class="op">;</span> </span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>result <span class="op">==</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span> <span class="co">// First check</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>            <span class="kw">synchronized</span> <span class="op">(</span>ResourceFactory<span class="op">.</span><span class="fu">class</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>                result <span class="op">=</span> instance<span class="op">;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>result <span class="op">==</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span> <span class="co">// Second check</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>                    instance <span class="op">=</span> result <span class="op">=</span> <span class="kw">new</span> <span class="bu">Resource</span><span class="op">();</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> result<span class="op">;</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="execution-flow-breakdown">Execution Flow Breakdown</h3>
+<ol type="1">
+<li><strong>Initial Read:</strong> The method reads the volatile
+<code>instance</code> into a local variable <code>result</code>. Using a
+local variable ensures that once the instance is initialized, the
+volatile field is only read once rather than multiple times, providing a
+minor performance improvement.</li>
+<li><strong>First Check:</strong> If <code>result</code> is not null,
+the object is already constructed, and it is returned immediately
+without entering the <code>synchronized</code> block.</li>
+<li><strong>Lock Acquisition:</strong> If <code>result</code> is null,
+the thread acquires the class lock.</li>
+<li><strong>Second Check:</strong> Inside the lock,
+<code>instance</code> is checked again. This protects against race
+conditions where another thread initialized the object between the first
+check and lock acquisition.</li>
+<li><strong>Safe Publication:</strong> If the second check passes,
+<code>new Resource()</code> is executed. Because <code>instance</code>
+is volatile, the initialization of the object is guaranteed to complete
+before the reference is made accessible to other threads reading the
+volatile variable outside the lock.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

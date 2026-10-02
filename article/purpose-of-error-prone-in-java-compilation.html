@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purpose of Error Prone in Java Compilation - java</title>
+    <meta name="description" content="This article provides an overview of Error Prone, Google's open-source static analysis tool for Java, detailing its integration directly into the compilation process. It explores how Error Prone detects common programming errors at build time, eliminates">
+    <link rel="canonical" href="https://salivity.github.io/java/article/purpose-of-error-prone-in-java-compilation">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Purpose of Error Prone in Java Compilation - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/purpose-of-error-prone-in-java-compilation" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an overview of Error Prone, Google's open-source static analysis tool for Java, detailing its integration directly into the compilation process. It explores how Error Prone detects common programming errors at build time, eliminates" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="purpose-of-error-prone-in-java-compilation">Purpose of Error
+Prone in Java Compilation</h1>
+<p>This article provides an overview of Error Prone, Google's
+open-source static analysis tool for Java, detailing its integration
+directly into the compilation process. It explores how Error Prone
+detects common programming errors at build time, eliminates false
+positives, and provides automated fixes to maintain code correctness
+across large-scale codebases.</p>
+<p>Error Prone fundamentally alters how static analysis is applied to
+Java applications by hooking directly into the standard Java compiler
+(<code>javac</code>). Traditional static analysis tools, such as
+SpotBugs or SonarQube, typically analyze compiled bytecode or source
+files as a separate, detached build step. In contrast, Error Prone
+operates as a compiler plugin. It inspects source code during
+compilation, effectively transforming runtime mistakes into compile-time
+errors that halt the build before problematic code can be deployed or
+merged.</p>
+<p>The primary objective of Error Prone is to identify actual bugs
+rather than stylistic preferences. It focuses on correctness,
+performance pitfalls, and common API misuse patterns, such as calling
+<code>.equals()</code> on incompatible types, failing to check the
+return value of immutable objects, or misusing concurrency primitives.
+Because these checks are tuned to have a near-zero false-positive rate,
+developers can treat warnings as fatal build errors with confidence.</p>
+<p>By operating within <code>javac</code>, Error Prone has direct access
+to the compiler's complete Abstract Syntax Tree (AST) and type
+resolution data. This allows it to perform deep, semantic inspections
+that textual linters or simple pattern-matching tools cannot match. The
+tool understands the exact types, variable scopes, and execution paths
+available to the compiler itself, ensuring that reported issues are
+based on definitive compiler guarantees.</p>
+<p>Another core purpose of Error Prone is automated remediation. Most of
+its built-in checks include automated fixes using structured
+replacements. Developers can run Error Prone with specific flags to
+automatically apply these fixes directly to the source code. This
+capability simplifies large-scale refactoring and framework migrations,
+allowing teams to deprecate legacy patterns and update dependencies
+across millions of lines of code with minimal manual effort.</p>
+<p>Finally, Error Prone serves as an extensible framework for
+organization-specific best practices. Beyond its extensive library of
+standard checks, engineering teams can write custom analyzers to enforce
+internal API conventions, security policies, and domain-specific rules.
+Integrated into automated build tools like Maven and Gradle, Error Prone
+ensures these custom rules are enforced continuously at the earliest
+possible stage of the development lifecycle.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

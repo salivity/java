@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Jackson and Gson Serialize Java Object Graphs - java</title>
+    <meta name="description" content="This article provides an in-depth look at how popular Java JSON processing libraries, primarily Jackson and Gson, convert complex in-memory Java object graphs into JSON strings and reconstruct them back into objects. You will learn the mechanics behind r">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-jackson-and-gson-serialize-java-object-graphs">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Jackson and Gson Serialize Java Object Graphs - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-jackson-and-gson-serialize-java-object-graphs" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an in-depth look at how popular Java JSON processing libraries, primarily Jackson and Gson, convert complex in-memory Java object graphs into JSON strings and reconstruct them back into objects. You will learn the mechanics behind r" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-jackson-and-gson-serialize-java-object-graphs">How Jackson
+and Gson Serialize Java Object Graphs</h1>
+<p>This article provides an in-depth look at how popular Java JSON
+processing libraries, primarily Jackson and Gson, convert complex
+in-memory Java object graphs into JSON strings and reconstruct them back
+into objects. You will learn the mechanics behind reflection,
+tree-traversal algorithms, type token handling for generics, circular
+reference resolution, and how these libraries optimize performance
+through streaming and caching.</p>
+<h2 id="the-core-mechanism-reflection-and-metadata">The Core Mechanism:
+Reflection and Metadata</h2>
+<p>At the core of both Jackson and Gson is the Java Reflection API. When
+an object is passed to a serializer, the library inspects the class
+structure to discover its fields, accessor methods (getters/setters),
+constructors, and annotations.</p>
+<p>To avoid the severe performance penalties associated with repeated
+reflective lookups, both libraries build and cache internal metadata
+models.</p>
+<ul>
+<li><strong>Jackson</strong> constructs a
+<code>POJOPropertiesCollector</code> and caches the class's
+<code>BeanDescription</code> inside a <code>SerializerCache</code> and
+<code>DeserializerCache</code>.</li>
+<li><strong>Gson</strong> constructs and caches <code>TypeAdapter</code>
+instances based on <code>TypeToken</code> representations of
+classes.</li>
+</ul>
+<h2 id="the-serialization-process-object-graph-to-json">The
+Serialization Process (Object Graph to JSON)</h2>
+<p>Serialization is a depth-first traversal of a Java object graph,
+recursively translating references into nested JSON structures.</p>
+<ol type="1">
+<li><strong>Root Inspection:</strong> The serializer checks the runtime
+type of the root object and looks up its corresponding serializer or
+adapter.</li>
+<li><strong>Field Traversal:</strong> The library iterates over each
+serializable field. It checks inclusion rules, ignoring fields that are
+marked <code>transient</code>, configured to be excluded, or evaluated
+as null (if null-skipping is enabled).</li>
+<li><strong>Primitive and Scalar Conversion:</strong> Primitive types,
+wrapper classes, strings, dates, and enums are written directly to an
+underlying token stream (such as Jackson’s <code>JsonGenerator</code> or
+Gson’s <code>JsonWriter</code>).</li>
+<li><strong>Nested Objects and Collections:</strong> When a field
+contains a complex object, an array, or a <code>Collection</code>, the
+serializer halts execution on the current object and recursively invokes
+serialization on the child reference. Collections and arrays produce
+opening and closing JSON brackets (<code>[</code> and <code>]</code>),
+while objects produce braces (<code>{</code> and <code>}</code>).</li>
+</ol>
+<h3 id="handling-cyclic-dependencies">Handling Cyclic Dependencies</h3>
+<p>In bidirectional relationships (for example, a <code>User</code> has
+many <code>Order</code>s, and each <code>Order</code> references its
+<code>User</code>), a naive recursive descent leads to a
+<code>StackOverflowError</code>.</p>
+<ul>
+<li><strong>Jackson</strong> handles cycles through annotations:
+<ul>
+<li><code>@JsonManagedReference</code> and
+<code>@JsonBackReference</code>: The forward reference is serialized
+normally, while the backward reference is omitted.</li>
+<li><code>@JsonIdentityInfo</code>: Serializes the complete object on
+first encounter and serializes only an identifier (such as an ID) on
+subsequent encounters.</li>
+</ul></li>
+<li><strong>Gson</strong> does not natively resolve cyclical graphs
+automatically. Circular references cause a
+<code>StackOverflowError</code> unless an excluded strategy or a custom
+<code>TypeAdapter</code> is implemented.</li>
+</ul>
+<h2 id="the-deserialization-process-json-to-object-graph">The
+Deserialization Process (JSON to Object Graph)</h2>
+<p>Deserialization reverses this operation, transforming a linear stream
+of JSON tokens back into a connected in-memory graph.</p>
+<ol type="1">
+<li><strong>Tokenization:</strong> A low-level streaming parser
+(Jackson's <code>JsonParser</code> or Gson's <code>JsonReader</code>)
+processes raw bytes or characters into discrete syntactic tokens:
+<code>START_OBJECT</code>, <code>FIELD_NAME</code>,
+<code>VALUE_STRING</code>, <code>END_OBJECT</code>, etc.</li>
+<li><strong>Instance Creation:</strong>
+<ul>
+<li><strong>Jackson</strong> searches for a default no-argument
+constructor or a constructor/static factory method marked with
+<code>@JsonCreator</code>.</li>
+<li><strong>Gson</strong> attempts to use a no-argument constructor. If
+none exists, it uses internal JVM mechanisms (such as
+<code>sun.misc.Unsafe.allocateInstance</code>) to instantiate the class
+without invoking any constructor.</li>
+</ul></li>
+<li><strong>Field Matching and Type Coercion:</strong> As field names
+are read, the library matches them against cached property metadata.
+Values are coerced into their target Java types (e.g., parsing an ISO
+string to a <code>LocalDate</code> or an integer into a
+<code>Long</code>).</li>
+<li><strong>Handling Generics:</strong> Java's type erasure removes
+generic parameter details at runtime. To map nested structures like
+<code>List&lt;MyEntity&gt;</code>, libraries rely on:
+<ul>
+<li><strong>Gson's</strong> <code>TypeToken</code>: Captures generic
+types via an anonymous inner class
+(<code>new TypeToken&lt;List&lt;MyEntity&gt;&gt;(){}.getType()</code>).</li>
+<li><strong>Jackson's</strong> <code>TypeReference</code> or
+<code>JavaType</code>: Reconstructs the full generic hierarchy for
+parameterized types.</li>
+</ul></li>
+<li><strong>Polymorphic Deserialization:</strong> When handling abstract
+classes or interfaces, Jackson uses type identifiers embedded within the
+JSON (configured via <code>@JsonTypeInfo</code> and
+<code>@JsonSubTypes</code>) to determine the exact concrete subclass to
+instantiate. Gson achieves this using custom
+<code>JsonDeserializer</code> implementations or the
+<code>RuntimeTypeAdapterFactory</code> utility.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

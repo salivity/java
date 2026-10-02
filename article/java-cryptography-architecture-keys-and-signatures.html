@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Cryptography Architecture: Keys and Signatures - java</title>
+    <meta name="description" content="The Java Cryptography Architecture (JCA) provides a robust, extensible framework for implementing security functionalities without requiring developers to write complex cryptographic algorithms from scratch. This article explores how the JCA organizes an">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-cryptography-architecture-keys-and-signatures">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Cryptography Architecture: Keys and Signatures - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-cryptography-architecture-keys-and-signatures" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Cryptography Architecture (JCA) provides a robust, extensible framework for implementing security functionalities without requiring developers to write complex cryptographic algorithms from scratch. This article explores how the JCA organizes an" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-cryptography-architecture-keys-and-signatures">Java
+Cryptography Architecture: Keys and Signatures</h1>
+<p>The Java Cryptography Architecture (JCA) provides a robust,
+extensible framework for implementing security functionalities without
+requiring developers to write complex cryptographic algorithms from
+scratch. This article explores how the JCA organizes and manages core
+cryptographic components through its provider-based design, focusing
+specifically on how it configures and executes ciphers for data privacy,
+generates and handles asymmetric key pairs, and creates and validates
+digital signatures for data integrity and authentication.</p>
+<h3 id="the-jca-provider-architecture">The JCA Provider
+Architecture</h3>
+<p>At the core of the JCA is a provider-based architecture. The
+framework separates the cryptography Application Programming Interface
+(API) used by developers from the Service Provider Interface (SPI)
+implemented by cryptographic service providers (such as the default
+Sun/Oracle providers or third-party engines like Bouncy Castle). When an
+application requests an engine class (such as a cipher or signature
+generator), the JCA queries registered providers to supply the
+underlying implementation. This decoupling allows applications to remain
+algorithm-independent and switch implementations without modifying core
+application code.</p>
+<h3 id="managing-ciphers">Managing Ciphers</h3>
+<p>The JCA manages data encryption and decryption through the
+<code>javax.crypto.Cipher</code> class.</p>
+<ol type="1">
+<li><strong>Instantiation:</strong> Developers obtain a cipher instance
+by calling <code>Cipher.getInstance(transformation)</code>, where the
+transformation string defines the algorithm, feedback mode, and padding
+scheme (for example, <code>AES/GCM/NoPadding</code> or
+<code>AES/CBC/PKCS5Padding</code>).</li>
+<li><strong>Initialization:</strong> The cipher must be initialized
+using <code>cipher.init()</code>. During this step, the developer
+specifies the operational mode (<code>Cipher.ENCRYPT_MODE</code> or
+<code>Cipher.DECRYPT_MODE</code>), the encryption key, and any required
+algorithm parameters, such as an Initialization Vector (IV) via
+<code>IvParameterSpec</code> or <code>GCMParameterSpec</code>.</li>
+<li><strong>Execution:</strong> Data processing is handled via the
+<code>update()</code> and <code>doFinal()</code> methods.
+<code>update()</code> handles multi-part operations for large datasets,
+while <code>doFinal()</code> processes the terminal chunk of data and
+applies or verifies padding and authentication tags.</li>
+</ol>
+<h3 id="managing-key-pairs">Managing Key Pairs</h3>
+<p>Asymmetric cryptography requires pairs of mathematically linked
+public and private keys, managed via several specialized classes within
+<code>java.security</code>:</p>
+<ul>
+<li><strong>Generation:</strong> The <code>KeyPairGenerator</code> class
+produces public and private key pairs. Developers initialize the
+generator with an algorithm name (such as <code>RSA</code> or
+<code>EC</code>), a defined key size (such as 2048 or 4096 bits for
+RSA), and a cryptographically secure pseudo-random number generator
+(<code>SecureRandom</code>). Calling <code>generateKeyPair()</code>
+yields a <code>KeyPair</code> object containing both the
+<code>PublicKey</code> and <code>PrivateKey</code>.</li>
+<li><strong>Reconstruction and Conversion:</strong> The JCA uses
+<code>KeyFactory</code> classes to convert between opaque key objects
+(<code>Key</code>) and transparent key specifications
+(<code>KeySpec</code>). For instance, a byte array representing an
+encoded private key can be wrapped in a <code>PKCS8EncodedKeySpec</code>
+and converted into a <code>PrivateKey</code> object, while public keys
+are commonly translated using <code>X509EncodedKeySpec</code>.</li>
+<li><strong>Storage:</strong> Long-term storage of keys and certificates
+is handled by the <code>KeyStore</code> class, which offers
+password-protected repositories (<code>PKCS12</code> or
+<code>JKS</code>) to prevent unauthorized extraction of private
+credentials.</li>
+</ul>
+<h3 id="managing-digital-signatures">Managing Digital Signatures</h3>
+<p>Digital signatures guarantee authenticity, non-repudiation, and
+message integrity by combining a cryptographic hashing algorithm with
+asymmetric encryption. The JCA manages this lifecycle through the
+<code>java.security.Signature</code> class:</p>
+<ol type="1">
+<li><strong>Instantiation:</strong> A developer calls
+<code>Signature.getInstance(algorithm)</code>, supplying a combination
+algorithm such as <code>SHA256withRSA</code> or
+<code>SHA256withECDSA</code>.</li>
+<li><strong>Signing:</strong>
+<ul>
+<li>The signature engine is initialized for signing using
+<code>signature.initSign(privateKey)</code>.</li>
+<li>The payload is passed to the engine using
+<code>signature.update(dataBytes)</code>.</li>
+<li>The digital signature is generated by calling
+<code>signature.sign()</code>, which computes the hash of the data and
+encrypts the resulting digest with the private key.</li>
+</ul></li>
+<li><strong>Verification:</strong>
+<ul>
+<li>A recipient initializes the engine for validation using
+<code>signature.initVerify(publicKey)</code>.</li>
+<li>The recipient feeds the received data into the engine using
+<code>signature.update(dataBytes)</code>.</li>
+<li>Calling <code>signature.verify(signatureBytes)</code> returns a
+boolean indicating whether the signature was created by the
+corresponding private key and whether the data remained unaltered in
+transit.</li>
+</ul></li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

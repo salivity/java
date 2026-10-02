@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java UDP: DatagramSocket and DatagramPacket - java</title>
+    <meta name="description" content="This article explains the roles and functions of the DatagramSocket and DatagramPacket classes within Java's networking API (java.net). It details how these two classes collaborate to facilitate User Datagram Protocol (UDP) communication, contrasts their">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-udp-datagram-socket-and-datagram-packet">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java UDP: DatagramSocket and DatagramPacket - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-udp-datagram-socket-and-datagram-packet" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the roles and functions of the DatagramSocket and DatagramPacket classes within Java's networking API (java.net). It details how these two classes collaborate to facilitate User Datagram Protocol (UDP) communication, contrasts their" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-udp-datagramsocket-and-datagrampacket">Java UDP:
+DatagramSocket and DatagramPacket</h1>
+<p>This article explains the roles and functions of the
+<code>DatagramSocket</code> and <code>DatagramPacket</code> classes
+within Java's networking API (<code>java.net</code>). It details how
+these two classes collaborate to facilitate User Datagram Protocol (UDP)
+communication, contrasts their distinct responsibilities, and outlines
+how they handle connectionless data transmission across a network.</p>
+<h3 id="the-role-of-udp-in-java">The Role of UDP in Java</h3>
+<p>Unlike TCP, which establishes a continuous, reliable connection
+between two endpoints using streams, UDP is a connectionless,
+packet-oriented protocol. Data is broken into self-contained units
+called datagrams and transmitted across the network without a handshake
+or guaranteed delivery order. In Java, this communication model is
+realized through two core classes: <code>DatagramPacket</code> and
+<code>DatagramSocket</code>.</p>
+<h3 id="what-is-datagrampacket">What is DatagramPacket?</h3>
+<p><code>DatagramPacket</code> represents the actual message being
+transmitted or received. It acts as a data container—analogous to a
+physical envelope—holding the binary payload alongside the addressing
+metadata required for routing.</p>
+<p>Key responsibilities of <code>DatagramPacket</code> include:</p>
+<ul>
+<li><strong>Holding Data:</strong> It encapsulates a byte array
+(<code>byte[]</code>), along with offset and length pointers indicating
+where the valid data begins and ends.</li>
+<li><strong>Addressing for Transmission:</strong> When sending data, the
+packet contains the destination IP address (<code>InetAddress</code>)
+and the target port number.</li>
+<li><strong>Capturing Origin on Reception:</strong> When receiving data,
+an empty packet buffer is filled with the incoming payload, and the
+packet automatically records the sender's IP address and port number,
+allowing the application to identify the source.</li>
+</ul>
+<h3 id="what-is-datagramsocket">What is DatagramSocket?</h3>
+<p><code>DatagramSocket</code> represents the network mechanism used to
+send and receive datagrams. It serves as the endpoint or mailbox through
+which packets leave and enter a Java application.</p>
+<p>Key responsibilities of <code>DatagramSocket</code> include:</p>
+<ul>
+<li><strong>Port Binding:</strong> It binds to a specific local port to
+listen for incoming UDP traffic, or to an anonymous, ephemeral port when
+acting purely as a sender.</li>
+<li><strong>Transmission:</strong> It provides the
+<code>send(DatagramPacket p)</code> method, which takes an addressed
+packet and dispatches it onto the network.</li>
+<li><strong>Reception:</strong> It provides the blocking
+<code>receive(DatagramPacket p)</code> method, which waits for incoming
+data and populates a provided <code>DatagramPacket</code> instance.</li>
+<li><strong>Resource Management:</strong> It handles network-level
+configurations such as timeouts (<code>setSoTimeout</code>), buffer
+sizes, and socket closure.</li>
+</ul>
+<h3 id="how-they-work-together">How They Work Together</h3>
+<p>To visualize their relationship:</p>
+<ul>
+<li><strong><code>DatagramPacket</code> is the envelope:</strong> It
+contains the written message (the byte payload) and the delivery address
+(IP and port).</li>
+<li><strong><code>DatagramSocket</code> is the postal drop box:</strong>
+It is the conduit that accepts the envelope to route it over the
+network, or holds incoming envelopes until the program retrieves
+them.</li>
+</ul>
+<h4 id="sending-workflow">Sending Workflow</h4>
+<ol type="1">
+<li>Convert the application data into a byte array.</li>
+<li>Instantiate a <code>DatagramPacket</code> containing the byte array,
+payload length, target <code>InetAddress</code>, and target port.</li>
+<li>Instantiate a <code>DatagramSocket</code>.</li>
+<li>Call <code>socket.send(packet)</code>.</li>
+<li>Close the socket when transmission is complete.</li>
+</ol>
+<h4 id="receiving-workflow">Receiving Workflow</h4>
+<ol type="1">
+<li>Instantiate a <code>DatagramSocket</code> bound to the specific port
+expecting incoming traffic.</li>
+<li>Allocate a byte buffer and create an empty
+<code>DatagramPacket</code> specifying the buffer and its capacity.</li>
+<li>Call <code>socket.receive(packet)</code>, which halts execution
+until a datagram arrives.</li>
+<li>Extract the payload using <code>packet.getData()</code> and retrieve
+the sender's details via <code>packet.getAddress()</code> and
+<code>packet.getPort()</code>.</li>
+<li>Close the socket.</li>
+</ol>
+<h3 id="summary">Summary</h3>
+<p>In Java UDP networking, <code>DatagramPacket</code> and
+<code>DatagramSocket</code> decouple the data from the transport
+mechanism. <code>DatagramPacket</code> manages the content and
+addressing of the individual message, while <code>DatagramSocket</code>
+manages the underlying network connection and the physical sending and
+receiving operations.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

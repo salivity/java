@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invokedynamic vs Traditional Java Invocations - java</title>
+    <meta name="description" content="Introduced in Java 7 to support dynamically typed languages, the invokedynamic bytecode instruction represents the most significant shift in the Java Virtual Machine’s execution model since its inception. Unlike traditional invocation bytecodes that re">
+    <link rel="canonical" href="https://salivity.github.io/java/article/invokedynamic-vs-traditional-java-invocations">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Invokedynamic vs Traditional Java Invocations - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/invokedynamic-vs-traditional-java-invocations" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Introduced in Java 7 to support dynamically typed languages, the invokedynamic bytecode instruction represents the most significant shift in the Java Virtual Machine’s execution model since its inception. Unlike traditional invocation bytecodes that re" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="invokedynamic-vs-traditional-java-invocations">Invokedynamic vs
+Traditional Java Invocations</h1>
+<p>Introduced in Java 7 to support dynamically typed languages, the
+<code>invokedynamic</code> bytecode instruction represents the most
+significant shift in the Java Virtual Machine’s execution model since
+its inception. Unlike traditional invocation bytecodes that rely on
+static, compile-time type information and predefined JVM dispatch
+algorithms, <code>invokedynamic</code> delegates method resolution to
+user-defined bootstrap methods at runtime. This article examines the
+architectural differences between <code>invokedynamic</code> and
+traditional invocation instructions, detailing how it decouples
+call-site linkage from static types, leverages method handles, and
+maintains high runtime performance.</p>
+<h3 id="the-traditional-invocation-instructions">The Traditional
+Invocation Instructions</h3>
+<p>Standard Java bytecode relies on four primary invocation
+instructions, each tied to a rigid dispatch strategy defined directly in
+the JVM specification:</p>
+<ul>
+<li><strong><code>invokestatic</code></strong>: Dispatches static
+methods directly using static type information.</li>
+<li><strong><code>invokevirtual</code></strong>: Dispatches public and
+protected instance methods using standard polymorphic vtable lookups
+based on the runtime class of the target object.</li>
+<li><strong><code>invokeinterface</code></strong>: Dispatches methods
+declared in interfaces using an interface table (itable), which searches
+for the implementation at runtime.</li>
+<li><strong><code>invokespecial</code></strong>: Dispatches private
+methods, superclass methods, and constructors directly without dynamic
+polymorphism.</li>
+</ul>
+<p>All four traditional instructions share two constraints: they require
+a fixed symbolic reference (class, method name, and method descriptor)
+baked into the class file's constant pool at compile time, and their
+dispatch logic is hardwired into the JVM. The compiler must prove that a
+method matching the specified signature exists on the target type before
+generating the bytecode.</p>
+<h3 id="the-core-uniqueness-of-invokedynamic">The Core Uniqueness of
+<code>invokedynamic</code></h3>
+<p>The <code>invokedynamic</code> instruction breaks the direct
+connection between bytecode generation and JVM dispatch mechanics.
+Instead of specifying an exact method to invoke, an
+<code>invokedynamic</code> call site contains an arbitrary name, a
+method descriptor, and a reference to a Bootstrap Method (BSM).</p>
+<p>The unique lifecycle of <code>invokedynamic</code> unfolds in
+distinct stages:</p>
+<ol type="1">
+<li><strong>Bootstrap Resolution</strong>: The first time the
+instruction is encountered, the JVM executes the associated BSM—a
+standard Java method written by a compiler or library author.</li>
+<li><strong>Call Site Linking</strong>: The BSM executes arbitrary logic
+to determine the appropriate target method and returns a
+<code>java.lang.invoke.CallSite</code> object containing a
+<code>MethodHandle</code>.</li>
+<li><strong>Direct Execution</strong>: The JVM links this
+<code>CallSite</code> permanently (or semi-permanently) to the bytecode
+location, directly invoking the underlying
+<code>MethodHandle</code>.</li>
+</ol>
+<p>Subsequent executions of the same instruction bypass the BSM
+entirely, executing the linked target directly with negligible
+overhead.</p>
+<h3 id="dynamic-call-sites-and-mutable-behavior">Dynamic Call Sites and
+Mutable Behavior</h3>
+<p>Unlike traditional instructions, where the target resolution logic is
+immutable, <code>invokedynamic</code> supports dynamic call sites
+through three main implementations:</p>
+<ul>
+<li><strong><code>ConstantCallSite</code></strong>: The target
+<code>MethodHandle</code> is permanent and cannot be changed after
+initialization, offering optimization paths equivalent to direct method
+calls.</li>
+<li><strong><code>VolatileCallSite</code></strong>: The target can be
+replaced concurrently across threads, behaving like a volatile variable
+write.</li>
+<li><strong><code>MutableCallSite</code></strong>: The target can be
+changed dynamically, allowing compilers for dynamic languages (such as
+Groovy or JRuby) to adapt call targets when an object's type or
+monkey-patched methods change at runtime.</li>
+</ul>
+<h3 id="performance-and-jit-optimization">Performance and JIT
+Optimization</h3>
+<p>Prior to <code>invokedynamic</code>, dynamic method dispatch on the
+JVM required reflection or custom runtime code generation. Reflection
+incurs boxing, type-checking, and access-checking costs on every call,
+while dynamic class generation creates significant class loader
+pressure.</p>
+<p><code>invokedynamic</code> avoids these penalties. Because the JVM
+treats <code>MethodHandle</code> instances as first-class, low-level
+execution primitives, the Just-In-Time (JIT) compiler can inline method
+handles through the call site. Once linked, an
+<code>invokedynamic</code> instruction can achieve the same execution
+speed and inlining behavior as a conventional <code>invokevirtual</code>
+or <code>invokestatic</code> call.</p>
+<h3 id="impact-on-java-language-evolution">Impact on Java Language
+Evolution</h3>
+<p>Although originally built to optimize non-Java languages running on
+the JVM, <code>invokedynamic</code> became foundational to modern Java
+language features:</p>
+<ul>
+<li><strong>Lambda Expressions (Java 8)</strong>: Rather than generating
+anonymous inner classes at compile time, the Java compiler emits an
+<code>invokedynamic</code> instruction pointing to
+<code>LambdaMetafactory</code>, generating the implementation class on
+demand.</li>
+<li><strong>String Concatenation (Java 9)</strong>: String concatenation
+using the <code>+</code> operator replaced rigid
+<code>StringBuilder</code> chains with <code>invokedynamic</code> calls
+pointing to <code>StringConcatFactory</code>, enabling JVM-level
+optimizations without recompilation.</li>
+<li><strong>Pattern Matching and Records</strong>: Recent Java features
+use dynamic call sites to optimize record deconstruction, pattern
+checking, and <code>switch</code> statements without bloating
+bytecode.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

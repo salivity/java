@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Difference Between == and equals() in Java - java</title>
+    <meta name="description" content="In Java, comparing data can be accomplished using either the == identity operator or the equals() method, but they serve fundamentally different purposes. This guide breaks down the core distinctions between the two, explaining how the == operator handle">
+    <link rel="canonical" href="https://salivity.github.io/java/article/difference-between-and-equals-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Difference Between == and equals() in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/difference-between-and-equals-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, comparing data can be accomplished using either the == identity operator or the equals() method, but they serve fundamentally different purposes. This guide breaks down the core distinctions between the two, explaining how the == operator handle" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="difference-between--and-equals-in-java">Difference Between ==
+and equals() in Java</h1>
+<p>In Java, comparing data can be accomplished using either the
+<code>==</code> identity operator or the <code>equals()</code> method,
+but they serve fundamentally different purposes. This guide breaks down
+the core distinctions between the two, explaining how the
+<code>==</code> operator handles primitive values and memory references,
+while the <code>equals()</code> method evaluates logical object
+equivalence. Understanding this distinction is essential for avoiding
+subtle bugs, particularly when working with strings, wrapper classes,
+and custom objects.</p>
+<h3 id="the-identity-operator-">The Identity Operator
+(<code>==</code>)</h3>
+<p>The <code>==</code> operator is a binary operator built directly into
+the Java language. Its behavior depends entirely on whether it is
+operating on primitive types or object references:</p>
+<ul>
+<li><strong>Primitive Types:</strong> When used with primitives
+(<code>int</code>, <code>boolean</code>, <code>char</code>,
+<code>double</code>, etc.), <code>==</code> compares the raw binary
+values. If both operands hold the same value (for example,
+<code>5 == 5</code>), the expression evaluates to
+<code>true</code>.</li>
+<li><strong>Reference Types (Objects):</strong> When used with objects,
+<code>==</code> does not look at the internal data or state of the
+objects. Instead, it checks <strong>reference equality</strong>, meaning
+it verifies whether both variables point to the exact same memory
+address in the heap. If two separate objects contain identical data but
+reside in different memory locations, <code>==</code> evaluates to
+<code>false</code>.</li>
+</ul>
+<h3 id="the-equals-method">The <code>equals()</code> Method</h3>
+<p>The <code>equals()</code> method is defined in the root
+<code>java.lang.Object</code> class and is intended to determine
+<strong>logical equality</strong> (value equality).</p>
+<ul>
+<li><strong>Default Behavior:</strong> By default, the
+<code>equals()</code> implementation in <code>java.lang.Object</code>
+simply uses the <code>==</code> operator
+(<code>return (this == obj);</code>). Therefore, unless a class
+overrides this method, <code>equals()</code> behaves identically to
+<code>==</code>.</li>
+<li><strong>Overridden Behavior:</strong> Most standard Java library
+classes—such as <code>String</code>, <code>Integer</code>,
+<code>Date</code>, and collection classes—override <code>equals()</code>
+to compare the meaningful internal state of the objects rather than
+their memory addresses. Developers can also override
+<code>equals()</code> in custom classes to define what makes two
+instances logically equal.</li>
+</ul>
+<h3 id="key-differences-at-a-glance">Key Differences at a Glance</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">The <code>==</code> Operator</th>
+<th style="text-align: left;">The <code>equals()</code> Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Type</strong></td>
+<td style="text-align: left;">Built-in operator</td>
+<td style="text-align: left;">Method defined in
+<code>java.lang.Object</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Customization</strong></td>
+<td style="text-align: left;">Cannot be overridden (no operator
+overloading)</td>
+<td style="text-align: left;">Can be overridden by any class</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primitive Support</strong></td>
+<td style="text-align: left;">Works with primitive types and object
+references</td>
+<td style="text-align: left;">Works only with objects</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Purpose</strong></td>
+<td style="text-align: left;">Checks value (primitives) or memory
+address (objects)</td>
+<td style="text-align: left;">Checks logical content/state equality</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Null Handling</strong></td>
+<td style="text-align: left;">Safe; <code>obj == null</code> evaluates
+without exceptions</td>
+<td style="text-align: left;">Calling <code>null.equals(...)</code>
+throws a <code>NullPointerException</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-string-comparison-example">The String Comparison
+Example</h3>
+<p>The difference between reference equality and logical equality is
+most clearly illustrated using Java <code>String</code> objects:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> s1 <span class="op">=</span> <span class="kw">new</span> <span class="bu">String</span><span class="op">(</span><span class="st">&quot;hello&quot;</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> s2 <span class="op">=</span> <span class="kw">new</span> <span class="bu">String</span><span class="op">(</span><span class="st">&quot;hello&quot;</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Reference comparison: false because s1 and s2 are distinct objects in memory</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="dt">boolean</span> referenceCheck <span class="op">=</span> <span class="op">(</span>s1 <span class="op">==</span> s2<span class="op">);</span> </span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Value comparison: true because String overrides equals() to check characters</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="dt">boolean</span> contentCheck <span class="op">=</span> s1<span class="op">.</span><span class="fu">equals</span><span class="op">(</span>s2<span class="op">);</span> </span></code></pre></div>
+<p>While string literals may sometimes evaluate to <code>true</code>
+with <code>==</code> due to Java's internal String Constant Pool
+optimization, relying on <code>==</code> for text or object comparison
+is dangerous.</p>
+<h3 id="best-practices">Best Practices</h3>
+<p>Use <code>==</code> when comparing primitive data types or when you
+explicitly need to confirm that two object references point to the exact
+same instance in memory. For all other object comparisons where you care
+about the actual data—such as comparing strings or checking whether two
+domain models represent the same entity—always use the
+<code>equals()</code> method, or utility methods like
+<code>java.util.Objects.equals(a, b)</code> to safely handle potential
+<code>null</code> values.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

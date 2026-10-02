@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unnamed and Automatic Modules in Java JPMS - java</title>
+    <meta name="description" content="The Java Platform Module System (JPMS), introduced in Java 9, provides two transitional concepts—unnamed modules and automatic modules—to bridge the gap between traditional classpath-based architectures and the strict modular system. These mechanisms">
+    <link rel="canonical" href="https://salivity.github.io/java/article/unnamed-and-automatic-modules-in-java-jpms">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Unnamed and Automatic Modules in Java JPMS - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/unnamed-and-automatic-modules-in-java-jpms" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Platform Module System (JPMS), introduced in Java 9, provides two transitional concepts—unnamed modules and automatic modules—to bridge the gap between traditional classpath-based architectures and the strict modular system. These mechanisms" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="unnamed-and-automatic-modules-in-java-jpms">Unnamed and
+Automatic Modules in Java JPMS</h1>
+<p>The Java Platform Module System (JPMS), introduced in Java 9,
+provides two transitional concepts—unnamed modules and automatic
+modules—to bridge the gap between traditional classpath-based
+architectures and the strict modular system. These mechanisms allow
+legacy JARs and modern modular libraries to coexist and communicate
+seamlessly, enabling developers to adopt modularity incrementally rather
+than requiring a high-risk, all-at-once migration.</p>
+<h3 id="the-legacy-problem">The Legacy Problem</h3>
+<p>Prior to Java 9, Java applications relied exclusively on the flat
+classpath. On the classpath, all types were visible to each other as
+long as they had <code>public</code> access, and there was no mechanism
+to declare dependencies explicitly or encapsulate internal packages.</p>
+<p>The introduction of JPMS enforced strong encapsulation and explicit
+dependencies via <code>module-info.java</code>. Because millions of
+existing libraries could not update overnight, JPMS introduced unnamed
+and automatic modules to guarantee backward compatibility and support
+progressive migration.</p>
+<h3 id="the-unnamed-module-classpath-compatibility">The Unnamed Module:
+Classpath Compatibility</h3>
+<p>Any code loaded from the traditional classpath (using
+<code>-classpath</code> or <code>-cp</code>) is assigned to the unnamed
+module. The unnamed module acts as an adapter that allows legacy
+applications to run on modern Java runtimes without modifications.</p>
+<p>Key characteristics of the unnamed module include:</p>
+<ul>
+<li><strong>Reads Everything:</strong> The unnamed module can read all
+named modules, automatic modules, and standard Java runtime modules.
+This allows legacy classpath code to invoke modularized APIs.</li>
+<li><strong>Exports Everything:</strong> All packages inside the unnamed
+module are automatically exported and opened to any other module that
+can access it.</li>
+<li><strong>Cannot Be Required:</strong> Explicit (named) modules cannot
+declare a <code>requires</code> directive targeting the unnamed module.
+Because the unnamed module has no official name, modular code cannot
+statically depend on classes residing on the classpath.</li>
+</ul>
+<p>The unnamed module essentially preserves the historical behavior of
+the classpath, ensuring that older applications execute exactly as they
+did in Java 8 and earlier.</p>
+<h3
+id="automatic-modules-bringing-legacy-jars-to-the-module-path">Automatic
+Modules: Bringing Legacy JARs to the Module-Path</h3>
+<p>When a modular application depends on a third-party library that has
+not yet adopted a <code>module-info.java</code> descriptor, that library
+can be placed on the module-path (<code>--module-path</code>) instead of
+the classpath. The JPMS automatically treats this legacy JAR as an
+automatic module.</p>
+<p>Key characteristics of automatic modules include:</p>
+<ul>
+<li><strong>Automatic Naming:</strong> The module runtime determines the
+module name either from the <code>Automatic-Module-Name</code> manifest
+header in the JAR or by parsing the JAR's filename (stripping version
+numbers and non-alphanumeric characters).</li>
+<li><strong>Exports and Opens Everything:</strong> To ensure
+compatibility with reflection-heavy frameworks, an automatic module
+exports and opens all of its internal packages to all other
+modules.</li>
+<li><strong>Reads All Modules:</strong> An automatic module implicitly
+reads all other resolved modules, including other automatic modules,
+explicit modules, and the unnamed module.</li>
+<li><strong>Explicitly Required:</strong> Unlike the unnamed module,
+modular applications can declare
+<code>requires &lt;automatic-module-name&gt;;</code> in their
+<code>module-info.java</code>.</li>
+</ul>
+<h3 id="bridging-the-gap-migration-strategies">Bridging the Gap:
+Migration Strategies</h3>
+<p>Together, these mechanisms support two primary migration
+pathways:</p>
+<ol type="1">
+<li><strong>Top-Down Migration:</strong> An application can be
+modularized first while its dependencies remain legacy JARs. By placing
+those legacy dependencies on the module-path, they become automatic
+modules, allowing the application's <code>module-info.java</code> to
+declare dependencies on them directly.</li>
+<li><strong>Bottom-Down Migration:</strong> Libraries can modularize
+before the consuming application does. Modular libraries placed on the
+module-path remain fully accessible to the legacy application running in
+the unnamed module on the classpath.</li>
+</ol>
+<p>By using the unnamed module to preserve classpath dynamics and
+automatic modules to wrap legacy code with temporary module identities,
+Java allows teams to modernize their codebases at their own pace without
+breaking existing ecosystems.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

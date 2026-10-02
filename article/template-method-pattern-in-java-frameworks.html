@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Method Pattern in Java Frameworks - java</title>
+    <meta name="description" content="This article provides a comprehensive overview of the Template Method design pattern, explaining its core architectural concept and how it utilizes abstract methods to define algorithmic skeletons. You will learn how this behavioral pattern enables code">
+    <link rel="canonical" href="https://salivity.github.io/java/article/template-method-pattern-in-java-frameworks">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Template Method Pattern in Java Frameworks - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/template-method-pattern-in-java-frameworks" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides a comprehensive overview of the Template Method design pattern, explaining its core architectural concept and how it utilizes abstract methods to define algorithmic skeletons. You will learn how this behavioral pattern enables code" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="template-method-pattern-in-java-frameworks">Template Method
+Pattern in Java Frameworks</h1>
+<p>This article provides a comprehensive overview of the Template Method
+design pattern, explaining its core architectural concept and how it
+utilizes abstract methods to define algorithmic skeletons. You will
+learn how this behavioral pattern enables code reuse and enforces design
+constraints, followed by a look at real-world implementations across
+popular Java frameworks such as the Jakarta Servlet API and the Spring
+Framework.</p>
+<hr />
+<h3 id="what-is-the-template-method-pattern">What is the Template Method
+Pattern?</h3>
+<p>The Template Method pattern is a behavioral design pattern defined by
+the Gang of Four (GoF). It defines the skeleton of an algorithm in a
+base class method, delegating specific execution steps to subclasses.
+This allows subclasses to redefine certain steps of an algorithm without
+altering the overall algorithm's structure.</p>
+<p>The pattern enforces the "Hollywood Principle" (<em>"Don't call us,
+we'll call you"</em>). Instead of client code or subclasses
+orchestrating the flow of control, the superclass controls the process
+execution order and invokes subclass implementations as needed.</p>
+<hr />
+<h3 id="the-role-of-abstract-methods">The Role of Abstract Methods</h3>
+<p>The core mechanism of the Template Method pattern relies on class
+inheritance and abstract methods:</p>
+<ol type="1">
+<li><strong>The Template Method:</strong> A concrete method in the
+abstract class that outlines the algorithm's sequence. It is often
+declared as <code>final</code> to prevent subclasses from overriding the
+execution flow.</li>
+<li><strong>Abstract Steps:</strong> Declared in the abstract class
+without an implementation. Subclasses must implement these methods to
+provide business-specific logic.</li>
+<li><strong>Hook Methods:</strong> Methods with default (often empty)
+implementations in the abstract class that subclasses can optionally
+override to alter behavior.</li>
+</ol>
+<h4 id="basic-structure-in-java">Basic Structure in Java</h4>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> DataProcessor <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The template method defining the sequence</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">final</span> <span class="dt">void</span> <span class="fu">process</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="fu">readData</span><span class="op">();</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="fu">processData</span><span class="op">();</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="fu">writeData</span><span class="op">();</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Common invariant step implemented by the base class</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">void</span> <span class="fu">readData</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Reading data from source...&quot;</span><span class="op">);</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Abstract method: customization point for subclasses</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">protected</span> <span class="kw">abstract</span> <span class="dt">void</span> <span class="fu">processData</span><span class="op">();</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Hook or abstract method: destination-specific logic</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="kw">protected</span> <span class="kw">abstract</span> <span class="dt">void</span> <span class="fu">writeData</span><span class="op">();</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>By marking <code>processData()</code> and <code>writeData()</code> as
+<code>abstract</code>, the framework guarantees that compile-time checks
+ensure every subclass provides its own specific implementation while the
+execution order remains fixed inside <code>process()</code>.</p>
+<hr />
+<h3 id="how-java-frameworks-leverage-the-pattern">How Java Frameworks
+Leverage the Pattern</h3>
+<p>Frameworks rely heavily on inversion of control. The Template Method
+pattern allows frameworks to manage complex lifecycles, resource
+management, and error handling while letting developers inject custom
+business logic.</p>
+<h4 id="1-jakartajava-ee-httpservlet">1. Jakarta/Java EE:
+<code>HttpServlet</code></h4>
+<p>The Java Servlet API's <code>HttpServlet</code> class uses this
+pattern to handle incoming HTTP requests:</p>
+<ul>
+<li>The
+<code>service(HttpServletRequest req, HttpServletResponse resp)</code>
+method serves as the template method.</li>
+<li>It inspects the HTTP method of the incoming request (e.g.,
+<code>GET</code>, <code>POST</code>, <code>PUT</code>) and dispatches
+the request to the corresponding method: <code>doGet()</code>,
+<code>doPost()</code>, etc.</li>
+<li>Developers extend <code>HttpServlet</code> and override the specific
+<code>doGet()</code> or <code>doPost()</code> abstract/hook methods
+without having to manage raw socket connections or request parsing.</li>
+</ul>
+<h4 id="2-spring-framework-application-context-and-lifecycle">2. Spring
+Framework: Application Context and Lifecycle</h4>
+<p>Spring uses template methods extensively to manage the initialization
+of its IoC container:</p>
+<ul>
+<li>In <code>AbstractApplicationContext</code>, the
+<code>refresh()</code> method functions as a template method defining
+the startup lifecycle of the context.</li>
+<li>It calls internal template steps such as
+<code>prepareRefresh()</code>, <code>obtainFreshBeanFactory()</code>,
+and <code>onRefresh()</code>.</li>
+<li>Framework specializations (such as Web contexts or XML-based
+contexts) override specific steps like <code>onRefresh()</code> to
+initialize web-specific components (e.g., starting an embedded web
+server) without redefining the entire startup sequence.</li>
+</ul>
+<h4 id="3-spring-jdbc-jdbctemplate">3. Spring JDBC:
+<code>JdbcTemplate</code></h4>
+<p>While Spring's <code>JdbcTemplate</code> predominantly uses the
+Strategy/Callback pattern via interfaces (e.g., <code>RowMapper</code>),
+the broader Spring DAO layer uses abstract template classes (such as
+<code>JdbcDaoSupport</code>). These base classes manage connection
+acquisition, exception translation (converting checked
+<code>SQLException</code> into unchecked
+<code>DataAccessException</code>), and resource cleanup, requiring child
+classes to provide only the query and mapping logic.</p>
+<hr />
+<h3 id="key-advantages-in-framework-design">Key Advantages in Framework
+Design</h3>
+<ul>
+<li><strong>Elimination of Boilerplate:</strong> Repetitive tasks such
+as opening transactions, closing connections, and handling logging are
+handled once in the base class template method.</li>
+<li><strong>Control of Invariant Behavior:</strong> Marking template
+methods as <code>final</code> ensures that developers consuming the
+framework cannot bypass critical procedures such as security checks or
+transaction rollbacks.</li>
+<li><strong>Open/Closed Principle:</strong> Frameworks can be extended
+with new functionality through inheritance without modifying the base
+algorithm's source code.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

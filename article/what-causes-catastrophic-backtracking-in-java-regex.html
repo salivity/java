@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Causes Catastrophic Backtracking in Java Regex? - java</title>
+    <meta name="description" content="Catastrophic backtracking is a severe performance issue where a regular expression engine takes exponential time to evaluate an input string, potentially leading to application freezes and Regular Expression Denial of Service (ReDoS) vulnerabilities. Thi">
+    <link rel="canonical" href="https://salivity.github.io/java/article/what-causes-catastrophic-backtracking-in-java-regex">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What Causes Catastrophic Backtracking in Java Regex? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/what-causes-catastrophic-backtracking-in-java-regex" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Catastrophic backtracking is a severe performance issue where a regular expression engine takes exponential time to evaluate an input string, potentially leading to application freezes and Regular Expression Denial of Service (ReDoS) vulnerabilities. Thi" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="what-causes-catastrophic-backtracking-in-java-regex">What Causes
+Catastrophic Backtracking in Java Regex?</h1>
+<p>Catastrophic backtracking is a severe performance issue where a
+regular expression engine takes exponential time to evaluate an input
+string, potentially leading to application freezes and Regular
+Expression Denial of Service (ReDoS) vulnerabilities. This article
+explores the root causes of catastrophic backtracking in Java's standard
+pattern-matching engine, details the structural anti-patterns that
+trigger it, and explains how to prevent these failures using proper
+regex design.</p>
+<h3 id="the-mechanics-of-javas-nfa-engine">The Mechanics of Java's NFA
+Engine</h3>
+<p>Java's <code>java.util.regex</code> package relies on a traditional
+Nondeterministic Finite Automaton (NFA) engine. Unlike Deterministic
+Finite Automaton (DFA) engines, an NFA is "regex-directed," meaning it
+traverses the pattern token by token and evaluates candidate matches
+against the input string.</p>
+<p>When the NFA encounters multiple paths—such as alternations
+(<code>|</code>) or quantifiers (<code>*</code>, <code>+</code>)—it
+chooses a path and remembers the decision point. If subsequent tokens in
+the pattern fail to match the input, the engine backtracks to the
+previous decision point and tries an alternative path. Catastrophic
+backtracking occurs when an expression allows an astronomical number of
+possible execution paths to fail sequentially on non-matching or
+partially matching inputs.</p>
+<h3 id="primary-causes-and-structural-anti-patterns">Primary Causes and
+Structural Anti-Patterns</h3>
+<p>Catastrophic backtracking is primarily triggered by ambiguity
+combined with greedy repetition. When an engine has multiple ways to
+consume the same character sequence, its search space expands
+exponentially (<span class="math inline">\(O(2^n)\)</span> or <span
+class="math inline">\(O(n^m)\)</span>).</p>
+<h4 id="1-nested-quantifiers">1. Nested Quantifiers</h4>
+<p>The most common trigger is placing a quantifier inside another
+quantified group.</p>
+<ul>
+<li><strong>Problematic Pattern:</strong> <code>(a+)+$</code></li>
+<li><strong>Failing Input:</strong>
+<code>aaaaaaaaaaaaaaaaaaaaaaaaaaaa!</code></li>
+</ul>
+<p>When evaluating the input against <code>(a+)+$</code>, the engine
+must determine how to divide the sequence of <code>a</code> characters
+between the inner <code>+</code> and the outer <code>+</code>. A string
+of 30 <code>a</code>s has over one billion combinations of how the inner
+and outer quantifiers can consume characters. Because the string
+terminates with <code>!</code>, every single permutation will ultimately
+fail. The engine exhaustively tests all combinations before concluding
+there is no match, locking the CPU thread for minutes or hours.</p>
+<h4 id="2-overlapping-alternations-inside-quantifiers">2. Overlapping
+Alternations Inside Quantifiers</h4>
+<p>When an alternation group contains choices that can match the same
+characters, combined with an outer quantifier, the engine is forced into
+excessive backtracking.</p>
+<ul>
+<li><strong>Problematic Pattern:</strong> <code>(a|aa)+$</code></li>
+<li><strong>Failing Input:</strong>
+<code>aaaaaaaaaaaaaaaaaaaaaaaaaaaa!</code></li>
+</ul>
+<p>Both <code>a</code> and <code>aa</code> can match the same input.
+When the final character fails to match <code>$</code>, the engine
+rewinds and tries every permutation of single and double <code>a</code>
+combinations, causing combinatorial explosion.</p>
+<h4 id="3-overlapping-quantifiers-surrounding-optional-elements">3.
+Overlapping Quantifiers Surrounding Optional Elements</h4>
+<p>Patterns with two adjacent quantifiers separated by optional
+characters can also trigger exponential backtracking when looking for a
+non-existent anchor or character.</p>
+<ul>
+<li><strong>Problematic Pattern:</strong> <code>a*b?a*$</code></li>
+<li><strong>Failing Input:</strong>
+<code>aaaaaaaaaaaaaaaaaaaaaaaaaaaa!</code></li>
+</ul>
+<p>The engine cannot determine which <code>a*</code> should consume the
+input, leading to repeated re-evaluations as it attempts all
+distributions between the two greedy tokens.</p>
+<h3 id="preventing-catastrophic-backtracking-in-java">Preventing
+Catastrophic Backtracking in Java</h3>
+<p>Java provides built-in syntax to restrict the backtracking behavior
+of its regex engine.</p>
+<h4 id="possessive-quantifiers">Possessive Quantifiers</h4>
+<p>Possessive quantifiers consume characters greedily and never release
+them, completely disabling backtracking for that token. They are
+designated by appending a <code>+</code> to standard quantifiers:
+<code>?+</code>, <code>*+</code>, and <code>++</code>.</p>
+<ul>
+<li><strong>Safe Pattern:</strong> <code>(a+)++$</code></li>
+</ul>
+<p>If the character after the possessive quantifier fails to match, the
+engine aborts the branch immediately instead of testing alternate
+partitions.</p>
+<h4 id="atomic-grouping">Atomic Grouping</h4>
+<p>Atomic groups discard all backtracking points within the group once
+the group has successfully matched a sequence. They are written using
+the <code>(?&gt;...)</code> syntax.</p>
+<ul>
+<li><strong>Safe Pattern:</strong> <code>(?&gt;a+)+$</code></li>
+</ul>
+<p>Once the atomic group <code>(?&gt;a+)</code> consumes characters, the
+engine will not revisit those decisions if an outer pattern fails
+later.</p>
+<h4
+id="eliminating-ambiguity-through-mutually-exclusive-tokens">Eliminating
+Ambiguity Through Mutually Exclusive Tokens</h4>
+<p>The most robust solution is rewriting patterns so tokens are strictly
+mutually exclusive. For instance, rather than using <code>.*</code> to
+scan for delimited text, use negated character classes such as
+<code>[^"\r\n]*</code> to prevent the engine from over-consuming text
+and subsequently backtracking.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

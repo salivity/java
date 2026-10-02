@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Synchronized Blocks Guarantee monitorexit - java</title>
+    <meta name="description" content="In Java, thread synchronization relies on pairing the monitorenter and monitorexit bytecode instructions to acquire and release an object's intrinsic lock. When an unhandled exception occurs inside a synchronized block, the Java Virtual Machine (JVM) pre">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-synchronized-blocks-guarantee-monitorexit">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Synchronized Blocks Guarantee monitorexit - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-synchronized-blocks-guarantee-monitorexit" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, thread synchronization relies on pairing the monitorenter and monitorexit bytecode instructions to acquire and release an object's intrinsic lock. When an unhandled exception occurs inside a synchronized block, the Java Virtual Machine (JVM) pre" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-synchronized-blocks-guarantee-monitorexit">How Java
+Synchronized Blocks Guarantee monitorexit</h1>
+<p>In Java, thread synchronization relies on pairing the
+<code>monitorenter</code> and <code>monitorexit</code> bytecode
+instructions to acquire and release an object's intrinsic lock. When an
+unhandled exception occurs inside a <code>synchronized</code> block, the
+Java Virtual Machine (JVM) prevents deadlocks by ensuring the lock is
+released reliably. This guarantee is enforced by the Java compiler
+(<code>javac</code>), which automatically wraps the contents of the
+synchronized block in an implicit exception-handling table at the
+bytecode level, routing any thrown exception to a dedicated block that
+calls <code>monitorexit</code> before re-throwing the exception.</p>
+<h3 id="the-bytecode-mechanism-behind-synchronized-blocks">The Bytecode
+Mechanism Behind Synchronized Blocks</h3>
+<p>When you declare a <code>synchronized(lock)</code> statement in Java
+source code, the compiler does not simply emit a
+<code>monitorenter</code> at the start and a single
+<code>monitorexit</code> at the end. Instead, it generates bytecode that
+provides two distinct exit paths: one for standard, uninterrupted
+execution and one for exceptional execution.</p>
+<p>Consider a simple synchronized block:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">doWork</span><span class="op">(</span><span class="bu">Object</span> lock<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">synchronized</span> <span class="op">(</span>lock<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="fu">performAction</span><span class="op">();</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>When compiled, <code>javac</code> translates this method into
+low-level instructions:</p>
+<ol type="1">
+<li><strong>Lock Acquisition:</strong> The reference to
+<code>lock</code> is pushed onto the operand stack, and
+<code>monitorenter</code> is invoked to acquire the monitor.</li>
+<li><strong>Normal Execution:</strong> The body
+(<code>performAction()</code>) executes.</li>
+<li><strong>Normal Exit:</strong> If the body completes successfully,
+<code>monitorexit</code> is called on the lock object, followed by a
+return instruction (e.g., <code>return</code>).</li>
+</ol>
+<h3 id="the-exception-table-entry">The Exception Table Entry</h3>
+<p>To handle exceptions, the compiler generates an entry in the method's
+<strong>Exception Table</strong> within the <code>.class</code> file.
+The exception table defines ranges of bytecode instructions and
+specifies how the JVM should handle exceptions occurring within those
+ranges.</p>
+<p>A typical exception table entry for a synchronized block looks like
+this:</p>
+<table>
+<thead>
+<tr>
+<th>From</th>
+<th>To</th>
+<th>Target</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4</td>
+<td>10</td>
+<td>13</td>
+<td>any</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>From / To:</strong> Defines the exact bytecode index range
+corresponding to the code inside the synchronized block.</li>
+<li><strong>Target:</strong> Points to the beginning of the
+compiler-generated exception handling code (index <code>13</code>).</li>
+<li><strong>Type:</strong> Set to <code>any</code>, meaning it matches
+every subclass of <code>java.lang.Throwable</code>.</li>
+</ul>
+<h3 id="the-exceptional-execution-path">The Exceptional Execution
+Path</h3>
+<p>If an exception occurs between the designated <code>From</code> and
+<code>To</code> instructions:</p>
+<ol type="1">
+<li>The JVM halts execution and inspects the Exception Table for a
+matching range.</li>
+<li>Because the handler type is <code>any</code>, control jumps
+immediately to the <code>Target</code> instruction.</li>
+<li>The handler ensures the exception reference is kept on the stack,
+loads the reference to the original <code>lock</code> object, and
+immediately executes <code>monitorexit</code>.</li>
+<li>After releasing the lock via <code>monitorexit</code>, the handler
+invokes the <code>athrow</code> instruction to re-throw the original
+exception so it can propagate up the call stack to the caller.</li>
+</ol>
+<h3 id="compiler-enforced-pairing">Compiler-Enforced Pairing</h3>
+<p>By embedding the cleanup logic directly into the bytecode's exception
+table, Java achieves the same safety pattern as an implicit
+<code>try...finally</code> block. Even if an abrupt termination
+occurs—such as a <code>RuntimeException</code>, an unchecked
+<code>Error</code>, or an out-of-memory condition—the JVM's frame
+unwinding process always executes the designated
+<code>monitorexit</code> instruction for that monitor before clearing
+the stack frame.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

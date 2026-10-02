@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Using HTTP/2 and WebSocket with Java 11 HttpClient - java</title>
+    <meta name="description" content="Java 11 modernized network programming in the standard library by introducing the standardized java.net.http.HttpClient API, replacing the outdated and synchronous HttpURLConnection. This built-in client provides native, out-of-the-box support for both H">
+    <link rel="canonical" href="https://salivity.github.io/java/article/using-http-2-and-web-socket-with-java-11-http-client">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Using HTTP/2 and WebSocket with Java 11 HttpClient - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/using-http-2-and-web-socket-with-java-11-http-client" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java 11 modernized network programming in the standard library by introducing the standardized java.net.http.HttpClient API, replacing the outdated and synchronous HttpURLConnection. This built-in client provides native, out-of-the-box support for both H" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="using-http2-and-websocket-with-java-11-httpclient">Using HTTP/2
+and WebSocket with Java 11 HttpClient</h1>
+<p>Java 11 modernized network programming in the standard library by
+introducing the standardized <code>java.net.http.HttpClient</code> API,
+replacing the outdated and synchronous <code>HttpURLConnection</code>.
+This built-in client provides native, out-of-the-box support for both
+HTTP/2 and WebSocket protocols without requiring third-party libraries.
+By leveraging asynchronous programming patterns and reactive streams,
+the Java 11 <code>HttpClient</code> allows developers to build
+high-performance, non-blocking applications that can efficiently
+multiplex requests over HTTP/2 and maintain persistent, bidirectional
+WebSocket communication.</p>
+<h3 id="native-http2-support">Native HTTP/2 Support</h3>
+<p>The <code>HttpClient</code> supports HTTP/2 as its default
+operational mode. When a request is initiated, the client attempts to
+negotiate an HTTP/2 connection with the server via Application-Layer
+Protocol Negotiation (ALPN) over TLS. If the server does not support
+HTTP/2, the client automatically and transparently falls back to
+HTTP/1.1.</p>
+<p>Developers can explicitly configure or enforce the protocol version
+using the client builder:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>HttpClient client <span class="op">=</span> HttpClient<span class="op">.</span><span class="fu">newBuilder</span><span class="op">()</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">version</span><span class="op">(</span>HttpClient<span class="op">.</span><span class="fu">Version</span><span class="op">.</span><span class="fu">HTTP_2</span><span class="op">)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">build</span><span class="op">();</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>HttpRequest request <span class="op">=</span> HttpRequest<span class="op">.</span><span class="fu">newBuilder</span><span class="op">()</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">uri</span><span class="op">(</span><span class="bu">URI</span><span class="op">.</span><span class="fu">create</span><span class="op">(</span><span class="st">&quot;https://example.com&quot;</span><span class="op">))</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">build</span><span class="op">();</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>HttpResponse<span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> response <span class="op">=</span> client<span class="op">.</span><span class="fu">send</span><span class="op">(</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    request<span class="op">,</span> </span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    HttpResponse<span class="op">.</span><span class="fu">BodyHandlers</span><span class="op">.</span><span class="fu">ofString</span><span class="op">()</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Protocol version: &quot;</span> <span class="op">+</span> response<span class="op">.</span><span class="fu">version</span><span class="op">());</span></span></code></pre></div>
+<p>Key HTTP/2 capabilities handled internally by the client include:</p>
+<ul>
+<li><strong>Multiplexing:</strong> The client sends multiple concurrent
+bidirectional requests and responses over a single TCP connection as
+independent streams, eliminating the head-of-line blocking problem
+inherent in HTTP/1.1.</li>
+<li><strong>Header Compression (HPACK):</strong> Header data is
+automatically compressed and decompressed using HPACK, significantly
+reducing overhead on repetitive requests.</li>
+<li><strong>Server Push:</strong> The client supports HTTP/2 Server Push
+via <code>HttpResponse.PushPromiseHandler</code>, allowing applications
+to intercept and accept server-initiated resources before they are
+explicitly requested.</li>
+</ul>
+<h3 id="native-websocket-support">Native WebSocket Support</h3>
+<p>Unlike older Java networking utilities, Java 11 includes a dedicated
+<code>WebSocket</code> interface and builder accessible directly from an
+<code>HttpClient</code> instance. It facilitates full-duplex,
+event-driven communication over a single TCP connection without external
+dependencies.</p>
+<p>To establish a WebSocket connection, use the client's
+<code>newWebSocketBuilder()</code> method, passing the target URI and an
+implementation of <code>WebSocket.Listener</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>HttpClient client <span class="op">=</span> HttpClient<span class="op">.</span><span class="fu">newHttpClient</span><span class="op">();</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>CompletableFuture<span class="op">&lt;</span>WebSocket<span class="op">&gt;</span> webSocketFuture <span class="op">=</span> client<span class="op">.</span><span class="fu">newWebSocketBuilder</span><span class="op">()</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">buildAsync</span><span class="op">(</span><span class="bu">URI</span><span class="op">.</span><span class="fu">create</span><span class="op">(</span><span class="st">&quot;wss://example.com/socket&quot;</span><span class="op">),</span> <span class="kw">new</span> WebSocket<span class="op">.</span><span class="fu">Listener</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="at">@Override</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="kw">public</span> <span class="dt">void</span> <span class="fu">onOpen</span><span class="op">(</span>WebSocket webSocket<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;WebSocket opened&quot;</span><span class="op">);</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            webSocket<span class="op">.</span><span class="fu">sendText</span><span class="op">(</span><span class="st">&quot;Hello Server&quot;</span><span class="op">,</span> <span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>            WebSocket<span class="op">.</span><span class="fu">Listener</span><span class="op">.</span><span class="fu">super</span><span class="op">.</span><span class="fu">onOpen</span><span class="op">(</span>webSocket<span class="op">);</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="at">@Override</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="kw">public</span> CompletionStage<span class="op">&lt;?&gt;</span> <span class="fu">onText</span><span class="op">(</span>WebSocket webSocket<span class="op">,</span> <span class="bu">CharSequence</span> data<span class="op">,</span> <span class="dt">boolean</span> last<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Received: &quot;</span> <span class="op">+</span> data<span class="op">);</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> WebSocket<span class="op">.</span><span class="fu">Listener</span><span class="op">.</span><span class="fu">super</span><span class="op">.</span><span class="fu">onText</span><span class="op">(</span>webSocket<span class="op">,</span> data<span class="op">,</span> last<span class="op">);</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">@Override</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>        <span class="kw">public</span> CompletionStage<span class="op">&lt;?&gt;</span> <span class="fu">onClose</span><span class="op">(</span>WebSocket webSocket<span class="op">,</span> <span class="dt">int</span> statusCode<span class="op">,</span> <span class="bu">String</span> reason<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Closed: &quot;</span> <span class="op">+</span> reason<span class="op">);</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> WebSocket<span class="op">.</span><span class="fu">Listener</span><span class="op">.</span><span class="fu">super</span><span class="op">.</span><span class="fu">onClose</span><span class="op">(</span>webSocket<span class="op">,</span> statusCode<span class="op">,</span> reason<span class="op">);</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">});</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>WebSocket webSocket <span class="op">=</span> webSocketFuture<span class="op">.</span><span class="fu">join</span><span class="op">();</span></span></code></pre></div>
+<p>Key aspects of the WebSocket implementation include:</p>
+<ul>
+<li><strong>Asynchronous Lifecycle:</strong> Connection establishment is
+completely non-blocking, returning a
+<code>CompletableFuture&lt;WebSocket&gt;</code>.</li>
+<li><strong>Reactive Flow Control:</strong> The
+<code>WebSocket.Listener</code> interface provides callback hooks such
+as <code>onOpen</code>, <code>onText</code>, <code>onBinary</code>,
+<code>onPing</code>, <code>onPong</code>, and <code>onClose</code>.
+Message handling returns a <code>CompletionStage&lt;?&gt;</code>, giving
+consumers backpressure control to signal when they are ready to process
+subsequent frames.</li>
+<li><strong>Message Fragmentation:</strong> Methods like
+<code>sendText(CharSequence message, boolean last)</code> accept a
+boolean flag indicating whether the message is complete or part of a
+fragmented frame sequence.</li>
+</ul>
+<p>By packaging robust HTTP/2 protocol negotiation and an asynchronous
+WebSocket API directly into the <code>java.net.http</code> package, Java
+11 eliminated the need for external HTTP and WebSocket client libraries
+in modern enterprise applications.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridge Methods and Generic Type Erasure in Java - java</title>
+    <meta name="description" content="Bridge method generation is the Java compiler's mechanism for preserving polymorphism when generic classes and interfaces are compiled into bytecode. Because Java uses type erasure to maintain backward compatibility with legacy versions, generic type par">
+    <link rel="canonical" href="https://salivity.github.io/java/article/bridge-methods-and-generic-type-erasure-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bridge Methods and Generic Type Erasure in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/bridge-methods-and-generic-type-erasure-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Bridge method generation is the Java compiler's mechanism for preserving polymorphism when generic classes and interfaces are compiled into bytecode. Because Java uses type erasure to maintain backward compatibility with legacy versions, generic type par" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="bridge-methods-and-generic-type-erasure-in-java">Bridge Methods
+and Generic Type Erasure in Java</h1>
+<p>Bridge method generation is the Java compiler's mechanism for
+preserving polymorphism when generic classes and interfaces are compiled
+into bytecode. Because Java uses type erasure to maintain backward
+compatibility with legacy versions, generic type parameters are stripped
+away at compile time and replaced with their bounds or
+<code>Object</code>. This process can unintentionally alter method
+signatures, causing subclass methods to overload rather than override
+parent methods. To solve this discrepancy, the compiler automatically
+synthesizes hidden bridge methods that delegate calls and enforce type
+safety at runtime.</p>
+<h3 id="the-conflict-between-type-erasure-and-polymorphism">The Conflict
+Between Type Erasure and Polymorphism</h3>
+<p>Java introduced generics in Java 5 without altering the Java Virtual
+Machine (JVM). To achieve this, the compiler implements <strong>type
+erasure</strong>, removing all generic type parameters during
+compilation. A generic type parameter like <code>T</code> is replaced
+with its upper bound, or with <code>java.lang.Object</code> if it is
+unbound.</p>
+<p>Consider a generic interface and an implementing subclass:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> Consumer<span class="op">&lt;</span>T<span class="op">&gt;</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">consume</span><span class="op">(</span>T value<span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> IntegerConsumer <span class="kw">implements</span> Consumer<span class="op">&lt;</span><span class="bu">Integer</span><span class="op">&gt;</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">consume</span><span class="op">(</span><span class="bu">Integer</span> value<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>value<span class="op">);</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>After type erasure, the interface signature becomes:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> Consumer <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">consume</span><span class="op">(</span><span class="bu">Object</span> value<span class="op">);</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>However, <code>IntegerConsumer</code> defines:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">consume</span><span class="op">(</span><span class="bu">Integer</span> value<span class="op">);</span></span></code></pre></div>
+<p>Because <code>consume(Integer)</code> has a different parameter type
+than <code>consume(Object)</code>, <code>IntegerConsumer</code> no
+longer overrides the method in <code>Consumer</code>. Instead, it
+overloads it. Under standard polymorphic invocation, a call like the
+following would fail to execute the subclass's logic:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>Consumer consumer <span class="op">=</span> <span class="kw">new</span> <span class="fu">IntegerConsumer</span><span class="op">();</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>consumer<span class="op">.</span><span class="fu">consume</span><span class="op">(</span><span class="dv">10</span><span class="op">);</span> <span class="co">// Resolves to consume(Object), missing consume(Integer)</span></span></code></pre></div>
+<h3 id="how-bridge-methods-resolve-the-discrepancy">How Bridge Methods
+Resolve the Discrepancy</h3>
+<p>To preserve the contract of method overriding, the Java compiler
+injects a synthetic method into the subclass known as a <strong>bridge
+method</strong>. This method matches the erased signature of the
+superclass or interface and delegates to the specialized method defined
+in the subclass.</p>
+<p>Decompiled bytecode of <code>IntegerConsumer</code> reveals what the
+compiler creates behind the scenes:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> IntegerConsumer <span class="kw">implements</span> Consumer <span class="op">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Original method</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">consume</span><span class="op">(</span><span class="bu">Integer</span> value<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>value<span class="op">);</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Synthetic bridge method generated by the compiler</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">consume</span><span class="op">(</span><span class="bu">Object</span> value<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">consume</span><span class="op">((</span><span class="bu">Integer</span><span class="op">)</span> value<span class="op">);</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>When an invocation occurs through a generic reference, the JVM
+invokes <code>consume(Object)</code>. The bridge method casts the
+argument to <code>Integer</code> (which throws a
+<code>ClassCastException</code> if the type is invalid, safeguarding
+heap pollution) and delegates the call directly to
+<code>consume(Integer)</code>.</p>
+<h3 id="covariant-return-types">Covariant Return Types</h3>
+<p>Bridge methods also resolve covariant return types, another feature
+added in Java 5. When a subclass overrides a method and narrows its
+return type, the bytecode must still satisfy the original method
+signature defined in the parent class:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Producer <span class="op">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">Number</span> <span class="fu">produce</span><span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> <span class="dv">1</span><span class="op">;</span> <span class="op">}</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> IntegerProducer <span class="kw">extends</span> Producer <span class="op">{</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">Integer</span> <span class="fu">produce</span><span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> <span class="dv">1</span><span class="op">;</span> <span class="op">}</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>At the bytecode level, two methods cannot differ solely by return
+type. However, the class file format allows methods with identical
+parameter lists and different return types. The compiler generates a
+bridge method with the parent return type:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> IntegerProducer <span class="kw">extends</span> Producer <span class="op">{</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">Integer</span> <span class="fu">produce</span><span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> <span class="dv">1</span><span class="op">;</span> <span class="op">}</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Bridge method matching parent signature</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">Number</span> <span class="fu">produce</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">this</span><span class="op">.</span><span class="fu">produce</span><span class="op">();</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="identifying-bridge-methods">Identifying Bridge Methods</h3>
+<p>Bridge methods are completely invisible in source code, but they
+exist in the compiled <code>.class</code> files. The compiler marks
+these methods with two special flags:</p>
+<ul>
+<li><code>ACC_SYNTHETIC</code>: Indicates that the method was generated
+by the compiler and does not appear in the original source code.</li>
+<li><code>ACC_BRIDGE</code>: Identifies the method explicitly as a
+bridge method created to resolve generic type erasure.</li>
+</ul>
+<p>Using the Java Reflection API, these methods can be detected at
+runtime:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Method</span><span class="op">[]</span> methods <span class="op">=</span> IntegerConsumer<span class="op">.</span><span class="fu">class</span><span class="op">.</span><span class="fu">getDeclaredMethods</span><span class="op">();</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="bu">Method</span> method <span class="op">:</span> methods<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>method<span class="op">.</span><span class="fu">isBridge</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Bridge method found: &quot;</span> <span class="op">+</span> method<span class="op">);</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Through this mechanism, Java successfully combines backward
+compatibility via type erasure with modern polymorphic behavior,
+ensuring that generic inheritance hierarchies behave predictably at
+runtime.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

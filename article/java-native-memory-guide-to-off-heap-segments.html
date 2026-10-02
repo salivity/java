@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Native Memory: Guide to Off-Heap Segments - java</title>
+    <meta name="description" content="While developers typically focus on the Java heap, a significant portion of a Java application's overall memory footprint resides off-heap in native memory managed directly by the operating system and the Java Virtual Machine (JVM). When a Java process e">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-native-memory-guide-to-off-heap-segments">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Native Memory: Guide to Off-Heap Segments - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-native-memory-guide-to-off-heap-segments" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="While developers typically focus on the Java heap, a significant portion of a Java application's overall memory footprint resides off-heap in native memory managed directly by the operating system and the Java Virtual Machine (JVM). When a Java process e" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-native-memory-guide-to-off-heap-segments">Java Native
+Memory: Guide to Off-Heap Segments</h1>
+<p>While developers typically focus on the Java heap, a significant
+portion of a Java application's overall memory footprint resides
+off-heap in native memory managed directly by the operating system and
+the Java Virtual Machine (JVM). When a Java process encounters
+Out-Of-Memory (OOM) errors or experiences unexpected memory growth,
+off-heap native memory is frequently the root cause. This article
+provides an overview of the distinct memory segments that constitute the
+off-heap native memory consumption of a Java application, including
+class metadata, thread stacks, JIT compilation caches, direct I/O
+buffers, and JVM internals.</p>
+<h2 id="metaspace-and-class-metadata">Metaspace and Class Metadata</h2>
+<p>Metaspace holds the runtime representations of Java classes loaded by
+the application. Introduced in Java 8 to replace the PermGen space,
+Metaspace is allocated entirely out of native memory. It stores class
+metadata, method bytecode, runtime constant pools, annotations, and
+method tables. While Metaspace expands automatically by default, its
+growth can be capped using the <code>-XX:MaxMetaspaceSize</code> flag.
+Unbounded dynamic class generation—common in frameworks relying heavily
+on reflection, proxies, or bytecode manipulation—can lead to severe
+native memory bloat.</p>
+<h2 id="thread-stacks">Thread Stacks</h2>
+<p>Every active thread in a Java application requires its own call stack
+allocated from native memory rather than the Java heap. The stack
+maintains execution frames, local primitive variables, and references to
+objects on the heap. The default stack size is typically 1 MB per thread
+on 64-bit systems, configured via the <code>-Xss</code> flag. In
+applications with high concurrency or thread pools containing thousands
+of threads, thread stacks alone can consume gigabytes of off-heap
+memory.</p>
+<h2 id="code-cache">Code Cache</h2>
+<p>The Code Cache is native memory dedicated to the compilation and
+storage of native machine code produced by the Just-In-Time (JIT)
+compilers (C1 and C2). When the JVM detects frequently executed
+bytecode, it compiles that code into native instructions for better
+performance. The Code Cache also holds native method signatures and
+adapter code. It is bounded by the
+<code>-XX:ReservedCodeCacheSize</code> parameter, and exceeding this
+threshold forces the JVM to stop JIT compilation, falling back entirely
+to interpreted execution.</p>
+<h2 id="direct-byte-buffers-and-off-heap-io">Direct Byte Buffers and
+Off-Heap I/O</h2>
+<p>Java NIO (New I/O) allows applications to allocate off-heap memory
+directly using <code>ByteBuffer.allocateDirect()</code> or low-level
+internal mechanisms like <code>sun.misc.Unsafe</code>. These Direct Byte
+Buffers bypass the Java heap to enable zero-copy network and disk I/O
+operations directly through operating system system calls. While highly
+performant for frameworks like Netty or gRPC, these allocations reside
+entirely in native memory and are only reclaimed during garbage
+collection cycles via phantom references or cleaner mechanisms, unless
+freed explicitly.</p>
+<h2 id="garbage-collector-data-structures">Garbage Collector Data
+Structures</h2>
+<p>The JVM's Garbage Collector (GC) requires native memory to track,
+manage, and compact the Java heap. Advanced collectors such as G1, ZGC,
+and Shenandoah use native memory structures to track object references
+across memory regions. Key structures include:</p>
+<ul>
+<li><strong>Remembered Sets (R-Sets):</strong> Track cross-region object
+references in G1 GC to facilitate concurrent and independent region
+collection.</li>
+<li><strong>Card Tables and Mark Bitmaps:</strong> Used during marking
+phases to record the liveness of objects.</li>
+<li><strong>GC Work Queues and Buffers:</strong> Coordinate task
+distribution among parallel GC worker threads.</li>
+</ul>
+<p>The native memory footprint of the GC scales directly with the
+configured heap size and the complexity of object graphs.</p>
+<h2 id="jni-and-third-party-native-libraries">JNI and Third-Party Native
+Libraries</h2>
+<p>Applications that utilize the Java Native Interface (JNI), Java
+Native Access (JNA), or the Foreign Function &amp; Memory API interact
+with C/C++ libraries that manage memory independently via standard
+system calls like <code>malloc</code> and <code>free</code>. Common
+examples include embedded databases (e.g., RocksDB), native cryptography
+engines (e.g., OpenSSL via Netty), and compression algorithms (e.g.,
+Zstandard). Memory allocated within these native libraries is invisible
+to standard JVM management tools and can easily leak if not paired with
+deterministic deallocation routines.</p>
+<h2 id="internal-jvm-allocations-and-symbol-tables">Internal JVM
+Allocations and Symbol Tables</h2>
+<p>The JVM maintains multiple native internal data structures necessary
+to coordinate core runtime operations:</p>
+<ul>
+<li><strong>Symbol and String Tables:</strong> Internal lookup tables
+that store interned string pointers and symbolic names for classes,
+fields, and methods.</li>
+<li><strong>Performance Counters and Profiling Data:</strong> Buffers
+utilized by runtime profilers and Java Flight Recorder (JFR) to track
+performance metrics.</li>
+<li><strong>Arena Allocators:</strong> Temporary native memory arenas
+used by the JVM during JIT optimization phases and class
+verification.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

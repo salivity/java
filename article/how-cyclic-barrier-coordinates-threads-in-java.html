@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How CyclicBarrier Coordinates Threads in Java - java</title>
+    <meta name="description" content="Java's CyclicBarrier is a synchronization aid from the java.util.concurrent package that allows a fixed set of threads to wait for each other to reach a common execution point, known as the barrier. This article explains the internal mechanics of CyclicB">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-cyclic-barrier-coordinates-threads-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How CyclicBarrier Coordinates Threads in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-cyclic-barrier-coordinates-threads-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's CyclicBarrier is a synchronization aid from the java.util.concurrent package that allows a fixed set of threads to wait for each other to reach a common execution point, known as the barrier. This article explains the internal mechanics of CyclicB" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-cyclicbarrier-coordinates-threads-in-java">How CyclicBarrier
+Coordinates Threads in Java</h1>
+<p>Java's <code>CyclicBarrier</code> is a synchronization aid from the
+<code>java.util.concurrent</code> package that allows a fixed set of
+threads to wait for each other to reach a common execution point, known
+as the barrier. This article explains the internal mechanics of
+<code>CyclicBarrier</code>, detailing how it tracks arriving threads,
+manages blocking and release operations, handles optional barrier
+actions, and resets itself for repeated use in multi-phased concurrent
+workflows.</p>
+<h2 id="the-core-mechanism-of-cyclicbarrier">The Core Mechanism of
+CyclicBarrier</h2>
+<p>A <code>CyclicBarrier</code> is initialized with an integer value
+specifying the number of "parties"—the specific count of threads that
+must arrive at the barrier before any can continue. When a thread
+completes its assigned phase of work, it invokes the
+<code>await()</code> method.</p>
+<p>Internally, <code>CyclicBarrier</code> relies on a
+<code>ReentrantLock</code> and a <code>Condition</code> variable to
+manage thread coordination:</p>
+<ol type="1">
+<li><strong>Arrival and Decrementing:</strong> When a thread calls
+<code>await()</code>, it acquires the barrier's lock and decrements the
+internal counter representing the remaining parties.</li>
+<li><strong>Blocking:</strong> If the counter has not yet reached zero,
+the thread calls <code>Condition.await()</code>, suspending its
+execution and releasing the lock so subsequent threads can register
+their arrival.</li>
+<li><strong>Tripping the Barrier:</strong> When the final thread invokes
+<code>await()</code>, the remaining counter hits zero. Instead of
+waiting, this last thread triggers the barrier release. It signals all
+suspended threads using <code>Condition.signalAll()</code>, waking them
+up simultaneously so they can resume execution.</li>
+</ol>
+<h2 id="executing-barrier-actions">Executing Barrier Actions</h2>
+<p><code>CyclicBarrier</code> provides an overloaded constructor that
+accepts a <code>Runnable</code> command in addition to the party
+count:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">CyclicBarrier</span> barrier <span class="op">=</span> <span class="kw">new</span> <span class="bu">CyclicBarrier</span><span class="op">(</span>parties<span class="op">,</span> barrierAction<span class="op">);</span></span></code></pre></div>
+<p>When this optional <code>barrierAction</code> is provided, the
+barrier executes it automatically once all threads have arrived, but
+<em>before</em> any of the blocked threads are released. Crucially, this
+task runs on the final arriving thread that tripped the barrier. This
+feature is useful for aggregating partial results, updating shared
+state, or logging phase completions before the worker threads commence
+the next phase.</p>
+<h2 id="why-the-barrier-is-cyclic">Why the Barrier is "Cyclic"</h2>
+<p>Unlike a <code>CountDownLatch</code>, which counts down once and
+cannot be reused, a <code>CyclicBarrier</code> automatically resets its
+counter to the original party count once all threads are released.</p>
+<p>This cyclic capability makes it well-suited for iterative
+computations, such as matrix operations or simulations, where tasks are
+divided among threads across multiple consecutive phases:</p>
+<ul>
+<li>Phase 1: Threads process data independently.</li>
+<li>Sync: Threads meet at the barrier, and an aggregation step
+runs.</li>
+<li>Phase 2: Threads proceed to the next iteration using the newly
+aggregated state without re-instantiating a new synchronization
+object.</li>
+</ul>
+<p>Manual resets are also possible using the <code>reset()</code>
+method, which sets the barrier back to its initial state.</p>
+<h2 id="broken-barriers-and-failure-handling">Broken Barriers and
+Failure Handling</h2>
+<p>Because <code>CyclicBarrier</code> relies on all threads successfully
+arriving, the failure of one thread jeopardizes the entire group. To
+prevent indefinite deadlocks, Java implements a "broken barrier"
+protocol:</p>
+<ul>
+<li>If any waiting thread is interrupted or times out while blocked in
+<code>await()</code>, the barrier enters a broken state.</li>
+<li>The failing thread throws an <code>InterruptedException</code> or
+<code>TimeoutException</code>.</li>
+<li>All other currently waiting threads are immediately unblocked and
+throw a <code>BrokenBarrierException</code>.</li>
+<li>Subsequent attempts to call <code>await()</code> on a broken barrier
+will immediately throw <code>BrokenBarrierException</code> until the
+barrier is explicitly reset.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

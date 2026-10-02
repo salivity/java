@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding Java Static Imports - java</title>
+    <meta name="description" content="This article explains the mechanism and practical effects of using the static keyword in Java import statements. Introduced in Java 5, static imports allow developers to access static members—both fields and methods—from other classes directly withou">
+    <link rel="canonical" href="https://salivity.github.io/java/article/understanding-java-static-imports">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Understanding Java Static Imports - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/understanding-java-static-imports" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the mechanism and practical effects of using the static keyword in Java import statements. Introduced in Java 5, static imports allow developers to access static members—both fields and methods—from other classes directly withou" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="understanding-java-static-imports">Understanding Java Static
+Imports</h1>
+<p>This article explains the mechanism and practical effects of using
+the <code>static</code> keyword in Java import statements. Introduced in
+Java 5, static imports allow developers to access static members—both
+fields and methods—from other classes directly without prefixing them
+with their containing class name. While this feature can reduce
+boilerplate and improve readability when used properly, it also
+introduces potential issues such as namespace collisions and code
+ambiguity if overused.</p>
+<h2 id="the-core-effect-of-static-imports">The Core Effect of Static
+Imports</h2>
+<p>A standard Java import statement brings types (classes and
+interfaces) into the current compilation unit's scope. In contrast,
+prepending the <code>static</code> keyword shifts the import's target
+from types to the static members inside those types.</p>
+<p>By applying <code>import static</code>, you gain the ability to call
+static methods or read static fields as if they were declared directly
+within the current class or its superclasses.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Standard import: requires qualifying static members with the class name</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">Math</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="dt">double</span> area <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">PI</span> <span class="op">*</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">pow</span><span class="op">(</span>radius<span class="op">,</span> <span class="dv">2</span><span class="op">);</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Static import: brings static members directly into scope</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="kw">static</span><span class="im"> java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">Math</span><span class="op">.</span><span class="im">PI</span><span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="kw">static</span><span class="im"> java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">Math</span><span class="op">.</span><span class="im">pow</span><span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="dt">double</span> area <span class="op">=</span> PI <span class="op">*</span> <span class="fu">pow</span><span class="op">(</span>radius<span class="op">,</span> <span class="dv">2</span><span class="op">);</span></span></code></pre></div>
+<h2 id="import-variants-single-member-vs-on-demand">Import Variants:
+Single Member vs. On-Demand</h2>
+<p>There are two primary ways to declare a static import:</p>
+<ol type="1">
+<li><p><strong>Single Static Import:</strong> Explicitly imports a
+specific static member by name.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="kw">static</span><span class="im"> java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">Collections</span><span class="op">.</span><span class="im">sort</span><span class="op">;</span></span></code></pre></div>
+<p>This ensures that only <code>sort</code> is available unqualified,
+minimizing the risk of name conflicts.</p></li>
+<li><p><strong>Static Import On-Demand (Wildcard):</strong> Imports all
+accessible static members of a specified class using an asterisk
+(<code>*</code>).</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="kw">static</span><span class="im"> java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">Math</span><span class="op">.*;</span></span></code></pre></div>
+<p>This exposes all public static fields and methods of that class
+without qualification.</p></li>
+</ol>
+<h2 id="scope-resolution-and-shadowing-rules">Scope Resolution and
+Shadowing Rules</h2>
+<p>When you apply a static import, the Java compiler uses specific
+precedence rules to resolve identifiers:</p>
+<ul>
+<li><strong>Local Scope Priority:</strong> If a locally declared field,
+parameter, or method shares the same name as an imported static member,
+the local declaration shadows the static import.</li>
+<li><strong>Class Scope Priority:</strong> Static or instance members
+declared in the current class or inherited from a superclass take
+precedence over statically imported members.</li>
+<li><strong>Ambiguity Errors:</strong> If two different static imports
+introduce a member with the identical name and signature into the same
+compilation unit, the compiler generates an ambiguity error at the call
+site unless you explicitly qualify the member with its class name.</li>
+</ul>
+<h2 id="best-practices-and-common-use-cases">Best Practices and Common
+Use Cases</h2>
+<p>Static imports are best reserved for situations where repeating the
+class name adds clutter without providing useful context:</p>
+<ul>
+<li><strong>Unit Testing:</strong> Assertions and matchers in frameworks
+like JUnit and AssertJ (e.g., <code>assertEquals</code>,
+<code>assertThat</code>) read more naturally in test methods when
+statically imported.</li>
+<li><strong>Constant Pools and Mathematical Operations:</strong>
+Functions like <code>sin()</code>, <code>cos()</code>, and constants
+like <code>PI</code> in numerical calculations remain clean and legible
+without repetitive <code>Math.</code> prefixes.</li>
+<li><strong>Domain-Specific Languages (DSLs):</strong> Fluent builders
+and mock frameworks (e.g., Mockito's <code>when()</code>,
+<code>verify()</code>) benefit from a natural, readable structure
+through static imports.</li>
+</ul>
+<p>Overusing on-demand static imports (<code>.*</code>) across multiple
+classes should be avoided, as it can pollute the namespace and make it
+difficult for readers to determine which class defines a particular
+method or constant.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

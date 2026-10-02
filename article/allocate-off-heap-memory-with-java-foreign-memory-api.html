@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Allocate Off-Heap Memory with Java Foreign Memory API - java</title>
+    <meta name="description" content="The Java Foreign Function & Memory (FFM) API, finalized in Java 22 under package java.lang.foreign, provides a safe and efficient way to allocate and manage native off-heap memory outside the garbage-collected Java heap. By replacing the error-prone and">
+    <link rel="canonical" href="https://salivity.github.io/java/article/allocate-off-heap-memory-with-java-foreign-memory-api">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Allocate Off-Heap Memory with Java Foreign Memory API - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/allocate-off-heap-memory-with-java-foreign-memory-api" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Foreign Function & Memory (FFM) API, finalized in Java 22 under package java.lang.foreign, provides a safe and efficient way to allocate and manage native off-heap memory outside the garbage-collected Java heap. By replacing the error-prone and" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="allocate-off-heap-memory-with-java-foreign-memory-api">Allocate
+Off-Heap Memory with Java Foreign Memory API</h1>
+<p>The Java Foreign Function &amp; Memory (FFM) API, finalized in Java
+22 under package <code>java.lang.foreign</code>, provides a safe and
+efficient way to allocate and manage native off-heap memory outside the
+garbage-collected Java heap. By replacing the error-prone and
+unsupported <code>sun.misc.Unsafe</code> and standard JNI workflows, the
+FFM API introduces two core abstractions—<code>MemorySegment</code> and
+<code>Arena</code>—to govern the allocation, spatial boundaries, and
+deterministic release of native memory resources.</p>
+<h3 id="core-abstractions-memorysegment-and-arena">Core Abstractions:
+MemorySegment and Arena</h3>
+<p>A <code>MemorySegment</code> models a contiguous region of memory,
+which can be either on-heap or off-heap. It guarantees spatial safety by
+enforcing bounds checks on every read and write operation, preventing
+buffer overflows.</p>
+<p>An <code>Arena</code> governs the lifecycle and temporal safety of
+one or more native memory segments. When an arena is closed, all native
+segments allocated within that arena are invalidated and their
+underlying native memory is immediately released back to the operating
+system. Any subsequent access to those segments throws an
+<code>IllegalStateException</code>, completely preventing use-after-free
+bugs.</p>
+<h3 id="allocating-native-off-heap-memory">Allocating Native Off-Heap
+Memory</h3>
+<p>Native allocation is performed using factory methods on an
+<code>Arena</code> instance. An arena provides methods such as
+<code>allocate()</code> and <code>allocateFrom()</code> to reserve
+off-heap bytes:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> <span class="op">(</span>Arena arena <span class="op">=</span> Arena<span class="op">.</span><span class="fu">ofConfined</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Allocate 1024 bytes of native off-heap memory</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    MemorySegment segment <span class="op">=</span> arena<span class="op">.</span><span class="fu">allocate</span><span class="op">(</span><span class="dv">1024</span><span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Allocate and initialize off-heap memory with primitive values</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    MemorySegment intSegment <span class="op">=</span> arena<span class="op">.</span><span class="fu">allocate</span><span class="op">(</span>java<span class="op">.</span><span class="fu">lang</span><span class="op">.</span><span class="fu">foreign</span><span class="op">.</span><span class="fu">ValueLayout</span><span class="op">.</span><span class="fu">JAVA_INT</span><span class="op">,</span> <span class="dv">42</span><span class="op">);</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Read data safely</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> value <span class="op">=</span> intSegment<span class="op">.</span><span class="fu">get</span><span class="op">(</span>java<span class="op">.</span><span class="fu">lang</span><span class="op">.</span><span class="fu">foreign</span><span class="op">.</span><span class="fu">ValueLayout</span><span class="op">.</span><span class="fu">JAVA_INT</span><span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Behind the scenes, the native arena delegates to platform-specific
+system calls (such as <code>malloc</code> or virtual memory allocation)
+to carve out address space outside the JVM heap.</p>
+<h3 id="releasing-native-memory">Releasing Native Memory</h3>
+<p>Deallocation depends entirely on the type of <code>Arena</code>
+chosen. The API provides four distinct arena varieties to support
+different concurrency and lifecycle requirements:</p>
+<ol type="1">
+<li><p><strong>Confined Arena
+(<code>Arena.ofConfined()</code>)</strong>: Designed for single-threaded
+use. It provides deterministic deallocation when closed. Allocation,
+access, and closure must all occur within the thread that created the
+arena.</p></li>
+<li><p><strong>Shared Arena (<code>Arena.ofShared()</code>)</strong>:
+Designed for multi-threaded environments. Multiple threads can
+concurrently access segments and allocate memory. When
+<code>arena.close()</code> is called, the runtime uses a safe
+coordination mechanism (handshake) across threads to ensure no thread is
+actively reading or writing to the memory before releasing the backing
+native address.</p></li>
+<li><p><strong>Automatic Arena (<code>Arena.ofAuto()</code>)</strong>:
+Provides non-deterministic, garbage-collected deallocation. It cannot be
+explicitly closed. Instead, the runtime associates a
+<code>Cleaner</code> with the arena; when the <code>MemorySegment</code>
+and the arena are no longer reachable on the Java heap, the native
+memory is freed automatically.</p></li>
+<li><p><strong>Global Arena (<code>Arena.global()</code>)</strong>: An
+unbounded, process-wide arena that is never closed. Memory allocated via
+the global arena lives for the entire duration of the JVM
+process.</p></li>
+</ol>
+<h3 id="deterministic-lifecycle-with-try-with-resources">Deterministic
+Lifecycle with try-with-resources</h3>
+<p>Because <code>Arena</code> extends <code>AutoCloseable</code>,
+explicit arenas should be paired with a standard Java
+<code>try-with-resources</code> block. When execution leaves the block,
+<code>Arena.close()</code> is invoked automatically. This guarantees
+that native memory is released immediately without waiting for garbage
+collection cycles, eliminating memory leaks while maintaining complete
+memory safety.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

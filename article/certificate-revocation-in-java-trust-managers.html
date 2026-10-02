@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Revocation in Java Trust Managers - java</title>
+    <meta name="description" content="This article provides an overview of how certificate revocation checking functions within standard Java trust managers. By default, standard Java Secure Socket Extension (JSSE) trust managers do not check certificate revocation during TLS handshakes to p">
+    <link rel="canonical" href="https://salivity.github.io/java/article/certificate-revocation-in-java-trust-managers">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Certificate Revocation in Java Trust Managers - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/certificate-revocation-in-java-trust-managers" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an overview of how certificate revocation checking functions within standard Java trust managers. By default, standard Java Secure Socket Extension (JSSE) trust managers do not check certificate revocation during TLS handshakes to p" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="certificate-revocation-in-java-trust-managers">Certificate
+Revocation in Java Trust Managers</h1>
+<p>This article provides an overview of how certificate revocation
+checking functions within standard Java trust managers. By default,
+standard Java Secure Socket Extension (JSSE) trust managers do not check
+certificate revocation during TLS handshakes to prevent latency and
+network failure vulnerabilities. However, the underlying Public Key
+Infrastructure for X.509 (PKIX) validation engine natively supports both
+Certificate Revocation Lists (CRLs) and the Online Certificate Status
+Protocol (OCSP). Below is an explanation of the default behavior, the
+configuration properties required to enable checking, the verification
+workflow, and modern enhancements such as OCSP stapling.</p>
+<h3 id="default-behavior">Default Behavior</h3>
+<p>Standard Java TLS client connections rely on the
+<code>TrustManagerFactory</code> using the default algorithm (typically
+<code>PKIX</code>). While the <code>PKIX</code> engine is fully capable
+of validating revocation status, revocation checking is explicitly
+disabled by default.</p>
+<p>If revocation checking is left disabled, the trust manager only
+validates the certificate's validity dates, its digital signature path
+against a trusted root in the <code>cacerts</code> or configured
+truststore, and constraints such as basic constraints or key usage. A
+revoked certificate with a valid signature and valid timeframe will be
+accepted.</p>
+<h3 id="enabling-revocation-checking-via-system-properties">Enabling
+Revocation Checking via System Properties</h3>
+<p>To activate revocation checking in standard JSSE trust managers
+without altering application code, you must set specific system and
+security properties:</p>
+<ol type="1">
+<li><strong>Enable TLS-Level Revocation</strong>: Set the system
+property <code>com.sun.net.ssl.checkRevocation=true</code>. This
+instructs the JSSE <code>PKIX</code> trust manager to pass the
+revocation flag to the underlying <code>CertPathValidator</code>.</li>
+<li><strong>Enable CRL Distribution Points</strong>: Set
+<code>com.sun.security.enableCRLDP=true</code>. When enabled, the
+validator downloads and parses CRLs listed in the certificate's CRL
+Distribution Points (CRLDP) extension.</li>
+<li><strong>Enable OCSP</strong>: Set the security property
+<code>ocsp.enable=true</code> (or via <code>-Docsp.enable=true</code>).
+This activates OCSP validation using the Authority Information Access
+(AIA) extension found within the certificate.</li>
+</ol>
+<h3 id="the-validation-workflow">The Validation Workflow</h3>
+<p>When revocation checking is active, the trust manager executes the
+following process during a TLS handshake:</p>
+<ol type="1">
+<li><strong>Path Building</strong>: The trust manager builds a
+certificate chain from the peer's end-entity certificate back to a
+trusted anchor in the truststore.</li>
+<li><strong>Order of Evaluation</strong>: The engine prefers OCSP by
+default if configured, falling back to CRLDP if OCSP fails or is
+unavailable.</li>
+<li><strong>Fetching Revocation Data</strong>:
+<ul>
+<li><strong>OCSP</strong>: The client sends a request to the OCSP
+responder URI specified in the AIA extension of the certificate. The
+responder replies with a cryptographically signed status:
+<code>Good</code>, <code>Revoked</code>, or <code>Unknown</code>.</li>
+<li><strong>CRL</strong>: If using CRLs, the client downloads the full
+CRL file over HTTP/LDAP from the CRLDP URI, validates the signature on
+the CRL, and checks if the certificate serial number is listed.</li>
+</ul></li>
+<li><strong>Caching</strong>: Java maintains in-memory caches for CRLs
+and OCSP responses to minimize the performance overhead of querying
+remote servers on every connection.</li>
+<li><strong>Decision</strong>: If any certificate in the path is marked
+as revoked, a <code>CertificateException</code> (specifically a
+<code>CertPathValidatorException</code>) is thrown, immediately aborting
+the TLS handshake.</li>
+</ol>
+<h3 id="network-failures-and-fallback-soft-fail-vs-hard-fail">Network
+Failures and Fallback (Soft-Fail vs. Hard-Fail)</h3>
+<p>Standard Java revocation checking implements a "soft-fail" model by
+default for network issues. If an OCSP responder or CRL server is
+unreachable, times out, or returns an HTTP error, the trust manager may
+log a warning and proceed with the connection.</p>
+<p>To enforce strict validation ("hard-fail"), administrators must
+configure custom <code>PKIXRevocationChecker</code> options
+programmatically to avoid proceeding when revocation status cannot be
+definitively confirmed.</p>
+<h3 id="ocsp-stapling-tls-certificate-status-request">OCSP Stapling (TLS
+Certificate Status Request)</h3>
+<p>Since Java 9, client-side OCSP stapling is supported. Instead of the
+client querying the CA's OCSP responder directly, the server fetches the
+OCSP response in advance and "staples" it to the certificate during the
+TLS handshake.</p>
+<p>To enable client-side OCSP stapling support in Java:</p>
+<ul>
+<li>Set
+<code>-Djdk.tls.client.enableStatusRequestExtension=true</code></li>
+</ul>
+<p>When enabled, the trust manager inspects the stapled response
+provided by the server, eliminating the latency and availability risks
+associated with real-time outbound client HTTP queries.</p>
+<h3 id="programmatic-configuration">Programmatic Configuration</h3>
+<p>For granular control, developers can configure revocation directly in
+code by creating custom <code>PKIXBuilderParameters</code> alongside a
+<code>CertPathTrustManagerParameters</code> instance:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">CertPathBuilder</span> cpb <span class="op">=</span> <span class="bu">CertPathBuilder</span><span class="op">.</span><span class="fu">getInstance</span><span class="op">(</span><span class="st">&quot;PKIX&quot;</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>PKIXRevocationChecker rc <span class="op">=</span> <span class="op">(</span>PKIXRevocationChecker<span class="op">)</span> cpb<span class="op">.</span><span class="fu">getRevocationChecker</span><span class="op">();</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>rc<span class="op">.</span><span class="fu">setOptions</span><span class="op">(</span><span class="bu">EnumSet</span><span class="op">.</span><span class="fu">of</span><span class="op">(</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    PKIXRevocationChecker<span class="op">.</span><span class="fu">Option</span><span class="op">.</span><span class="fu">ONLY_END_ENTITY</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    PKIXRevocationChecker<span class="op">.</span><span class="fu">Option</span><span class="op">.</span><span class="fu">NO_FALLBACK</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">));</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="bu">PKIXBuilderParameters</span> params <span class="op">=</span> <span class="kw">new</span> <span class="bu">PKIXBuilderParameters</span><span class="op">(</span>trustStore<span class="op">,</span> <span class="kw">new</span> <span class="bu">X509CertSelector</span><span class="op">());</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>params<span class="op">.</span><span class="fu">addCertPathChecker</span><span class="op">(</span>rc<span class="op">);</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="bu">TrustManagerFactory</span> tmf <span class="op">=</span> <span class="bu">TrustManagerFactory</span><span class="op">.</span><span class="fu">getInstance</span><span class="op">(</span><span class="st">&quot;PKIX&quot;</span><span class="op">);</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>tmf<span class="op">.</span><span class="fu">init</span><span class="op">(</span><span class="kw">new</span> <span class="bu">CertPathTrustManagerParameters</span><span class="op">(</span>params<span class="op">));</span></span></code></pre></div>
+<p>This approach allows the enforcement of strict policies, such as
+checking only end-entity certificates or requiring specific fallback
+behaviors.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

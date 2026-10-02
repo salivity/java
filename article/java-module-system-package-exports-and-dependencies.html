@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Module System: Package Exports and Dependencies - java</title>
+    <meta name="description" content="The Java Platform Module System (JPMS), introduced in Java 9, enforces strong encapsulation and reliable configuration across application components. This article explains how JPMS utilizes the module-info.java descriptor to explicitly control which pack">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-module-system-package-exports-and-dependencies">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Module System: Package Exports and Dependencies - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-module-system-package-exports-and-dependencies" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Platform Module System (JPMS), introduced in Java 9, enforces strong encapsulation and reliable configuration across application components. This article explains how JPMS utilizes the module-info.java descriptor to explicitly control which pack" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-module-system-package-exports-and-dependencies">Java Module
+System: Package Exports and Dependencies</h1>
+<p>The Java Platform Module System (JPMS), introduced in Java 9,
+enforces strong encapsulation and reliable configuration across
+application components. This article explains how JPMS utilizes the
+<code>module-info.java</code> descriptor to explicitly control which
+packages are accessible to outside consumers via the
+<code>exports</code> directive, how it declares compile-time and runtime
+requirements via the <code>requires</code> directive, and how it
+completely hides internal implementation details to prevent unauthorized
+access.</p>
+<h3 id="the-module-descriptor">The Module Descriptor</h3>
+<p>At the core of modularization is the <code>module-info.java</code>
+file, located at the root of a module's source tree. This file defines
+the module's identity, its incoming dependencies, and its outgoing
+package permissions. By default, every package inside a module is
+strictly encapsulated, meaning that types inside those packages—even
+those declared with the <code>public</code> access modifier—are
+completely invisible to other modules unless explicitly made
+accessible.</p>
+<h3 id="controlling-public-apis-with-exports">Controlling Public APIs
+with <code>exports</code></h3>
+<p>To make a package accessible to external modules, you must explicitly
+declare it using the <code>exports</code> keyword:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    exports com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span><span class="op">.</span><span class="fu">api</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this example, only the <code>public</code> and
+<code>protected</code> classes and interfaces within
+<code>com.example.service.api</code> are accessible to outside modules.
+Any subpackages, such as <code>com.example.service.api.internal</code>,
+are not automatically exported and remain invisible.</p>
+<p>JPMS also supports qualified exports, which restrict access to
+specific, named modules:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    exports com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span><span class="op">.</span><span class="fu">internal</span> to com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">test</span><span class="op">,</span> com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">admin</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Qualified exports allow library designers to share utility or
+integration code with trusted partner modules without exposing those
+packages to the general public.</p>
+<h3 id="managing-internal-dependencies-with-requires">Managing Internal
+Dependencies with <code>requires</code></h3>
+<p>When a module depends on another module's exported packages, it must
+explicitly state that dependency using the <code>requires</code>
+directive:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">client</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    requires com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>This declaration provides reliable configuration. The Java compiler
+and runtime verify the entire module graph during initialization. If a
+required module is missing, cyclical, or conflicts with another
+dependency, the application fails immediately at startup rather than
+throwing a <code>NoClassDefFoundError</code> deep into runtime
+execution.</p>
+<p>To pass dependencies downstream, modules can use
+<code>requires transitive</code>. This exposes the required module's
+public packages to any other module reading the host module:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">client</span> <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    requires transitive com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span><span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="encapsulating-internal-implementations">Encapsulating Internal
+Implementations</h3>
+<p>Packages within a module that are not exported are strictly internal.
+Historically, developers relied on naming conventions (like
+<code>.internal.</code> packages) to signal that a package was private,
+but this did not stop external code from importing those classes or
+using reflection to access them.</p>
+<p>Under JPMS, non-exported packages cannot be accessed at compile time,
+and runtime reflection into these packages via
+<code>setAccessible(true)</code> is blocked by default. If deep
+reflection is required (such as for dependency injection or
+serialization frameworks like Spring or Jackson), a module can
+selectively grant reflection access using the <code>opens</code>
+directive:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>module com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span> <span class="op">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    opens com<span class="op">.</span><span class="fu">example</span><span class="op">.</span><span class="fu">service</span><span class="op">.</span><span class="fu">model</span> to com<span class="op">.</span><span class="fu">fasterxml</span><span class="op">.</span><span class="fu">jackson</span><span class="op">.</span><span class="fu">databind</span><span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>This approach allows frameworks to perform reflection at runtime
+while keeping the package completely hidden from regular compilation and
+API usage. Through this combination of <code>exports</code>,
+<code>requires</code>, and <code>opens</code>, the Java Module System
+provides strict boundaries that enforce architectural integrity and
+secure internal dependencies.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

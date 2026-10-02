@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java IEEE 754 Floating-Point Compliance Model - java</title>
+    <meta name="description" content="This article explains how Java implements the IEEE 754 standard for floating-point arithmetic across its primitive data types. It covers the representation of single and double precision values, special values like NaN and infinities, the historical nuan">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-ieee-754-floating-point-compliance-model">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java IEEE 754 Floating-Point Compliance Model - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-ieee-754-floating-point-compliance-model" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Java implements the IEEE 754 standard for floating-point arithmetic across its primitive data types. It covers the representation of single and double precision values, special values like NaN and infinities, the historical nuan" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-ieee-754-floating-point-compliance-model">Java IEEE 754
+Floating-Point Compliance Model</h1>
+<p>This article explains how Java implements the IEEE 754 standard for
+floating-point arithmetic across its primitive data types. It covers the
+representation of single and double precision values, special values
+like NaN and infinities, the historical nuances of platform-specific
+hardware acceleration, and how modern Java (specifically since Java 17)
+enforces strict IEEE 754 compliance by default.</p>
+<h3 id="core-floating-point-types-in-java">Core Floating-Point Types in
+Java</h3>
+<p>Java defines two primitive floating-point types that directly map to
+formats established by the IEEE 754 standard:</p>
+<ul>
+<li><strong><code>float</code> (Single Precision):</strong> A 32-bit
+IEEE 754 value consisting of 1 sign bit, an 8-bit exponent, and a 23-bit
+significand (mantissa).</li>
+<li><strong><code>double</code> (Double Precision):</strong> A 64-bit
+IEEE 754 value consisting of 1 sign bit, an 11-bit exponent, and a
+52-bit significand.</li>
+</ul>
+<p>Both types support the standard IEEE 754 numeric ranges, subnormal
+(denormalized) numbers to prevent underflow, and normalized
+representations.</p>
+<h3 id="special-values-and-arithmetic-behavior">Special Values and
+Arithmetic Behavior</h3>
+<p>Java adheres to the IEEE 754 specifications regarding edge cases and
+special numeric states:</p>
+<ul>
+<li><strong>Signed Zeros:</strong> Both positive zero
+(<code>+0.0</code>) and negative zero (<code>-0.0</code>) exist. While
+they evaluate as equal (<code>+0.0 == -0.0</code> returns
+<code>true</code>), they produce different results in certain
+operations, such as <code>1.0 / +0.0</code> returning positive infinity
+and <code>1.0 / -0.0</code> returning negative infinity.</li>
+<li><strong>Infinities:</strong> Operations that overflow return
+<code>Float.POSITIVE_INFINITY</code>,
+<code>Float.NEGATIVE_INFINITY</code>,
+<code>Double.POSITIVE_INFINITY</code>, or
+<code>Double.NEGATIVE_INFINITY</code>.</li>
+<li><strong>Not-a-Number (NaN):</strong> Undefined results (such as
+<code>0.0 / 0.0</code> or the square root of a negative number) yield a
+<code>NaN</code> value. In accordance with IEEE 754, <code>NaN</code> is
+unordered, meaning <code>NaN == NaN</code> always evaluates to
+<code>false</code>.</li>
+</ul>
+<h3 id="rounding-modes-and-hardware-deviations">Rounding Modes and
+Hardware Deviations</h3>
+<p>The IEEE 754 standard defines multiple rounding modes. By default,
+Java uses <strong>round-to-nearest, ties-to-even</strong> for
+floating-point operations (+, -, *, /).</p>
+<p>However, Java diverges slightly from the full IEEE 754 specification
+in two areas:</p>
+<ol type="1">
+<li><strong>Floating-point Exceptions:</strong> IEEE 754 defines status
+flags (such as division-by-zero, underflow, overflow, and inexact) to
+signal edge conditions. Java does not expose these hardware flags or
+raise standard runtime traps for them; instead, it silently transitions
+to infinities, signed zeroes, or <code>NaN</code>.</li>
+<li><strong>Dynamic Rounding Modes:</strong> Standard Java bytecode does
+not allow developers to dynamically change the rounding mode to directed
+roundings (round-toward-zero, round-up, or round-down) at runtime
+without using external native libraries or classes like
+<code>BigDecimal</code>.</li>
+</ol>
+<h3 id="the-history-and-current-state-of-strictfp">The History and
+Current State of <code>strictfp</code></h3>
+<p>Historically, Java struggled to balance absolute cross-platform
+reproducibility with hardware performance:</p>
+<ul>
+<li><strong>Java 1.0:</strong> Required strict IEEE 754 behavior
+everywhere. This crippled performance on Intel x86 processors, which
+utilized 80-bit extended-precision registers in their x87 floating-point
+units.</li>
+<li><strong>Java 1.2 to Java 16:</strong> Java relaxed the requirements
+to allow intermediate calculations to use wider exponent ranges (such as
+x87 extended precision) to optimize speed. To guarantee identical
+bit-level results across platforms, the <code>strictfp</code> keyword
+was introduced. When applied to classes, interfaces, or methods,
+<code>strictfp</code> forced the JVM to truncate intermediate
+calculations strictly to 32-bit or 64-bit bounds.</li>
+<li><strong>Java 17 and Later:</strong> Modern CPU architectures (via
+SSE2 and AVX instructions) support standard 32-bit and 64-bit operations
+natively without performance penalties. Consequently, Java 17 restored
+<strong>strict IEEE 754 semantics as the default</strong> for all
+floating-point expressions (JEP 306). The <code>strictfp</code> keyword
+is now obsolete and produces a compile-time warning because all
+floating-point operations in modern Java are strictly evaluated
+according to IEEE 754.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

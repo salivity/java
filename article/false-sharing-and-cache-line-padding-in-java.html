@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>False Sharing and Cache Line Padding in Java - java</title>
+    <meta name="description" content="In multicore architectures, false sharing occurs when multiple threads independently modify distinct variables that reside within the same CPU cache line, causing silent and severe performance degradation. This article examines the mechanics of false sha">
+    <link rel="canonical" href="https://salivity.github.io/java/article/false-sharing-and-cache-line-padding-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="False Sharing and Cache Line Padding in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/false-sharing-and-cache-line-padding-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In multicore architectures, false sharing occurs when multiple threads independently modify distinct variables that reside within the same CPU cache line, causing silent and severe performance degradation. This article examines the mechanics of false sha" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="false-sharing-and-cache-line-padding-in-java">False Sharing and
+Cache Line Padding in Java</h1>
+<p>In multicore architectures, false sharing occurs when multiple
+threads independently modify distinct variables that reside within the
+same CPU cache line, causing silent and severe performance degradation.
+This article examines the mechanics of false sharing under hardware
+cache coherence protocols, demonstrates how it affects concurrent Java
+programs, and details how CPU cache line padding—both through manual
+field expansion and the JVM's
+<code>@jdk.internal.vm.annotation.Contended</code> annotation—resolves
+this concurrency bottleneck.</p>
+<h3 id="understanding-cpu-cache-lines-and-cache-coherence">Understanding
+CPU Cache Lines and Cache Coherence</h3>
+<p>Modern CPUs do not read from or write to main memory one byte or word
+at a time. Instead, memory transfers between main memory and the CPU
+caches (L1, L2, and L3) occur in fixed-size blocks known as cache lines.
+On most modern x86 and ARM processors, a single cache line is 64
+bytes.</p>
+<p>To maintain a consistent view of memory across multiple CPU cores,
+hardware relies on cache coherence protocols, such as MESI (Modified,
+Exclusive, Shared, Invalid). Under MESI:</p>
+<ol type="1">
+<li>When Core A writes to a variable inside a cache line, that entire
+line is marked as <strong>Modified</strong>.</li>
+<li>Any copy of that same cache line present in the local caches of Core
+B, Core C, or other cores is marked as <strong>Invalid</strong>.</li>
+<li>If Core B subsequently attempts to read or write to any data within
+that invalidated line, it incurs a cache miss and must stall while
+fetching the updated line from Core A or higher-level memory.</li>
+</ol>
+<h3 id="what-is-false-sharing">What is False Sharing?</h3>
+<p>False sharing occurs when two or more threads update completely
+independent logical variables, but those variables happen to be located
+close enough in memory to share the same physical 64-byte cache
+line.</p>
+<p>Consider two threads and two distinct fields:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> CounterHolder <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="kw">volatile</span> <span class="dt">long</span> counterA <span class="op">=</span> <span class="dv">0L</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="kw">volatile</span> <span class="dt">long</span> counterB <span class="op">=</span> <span class="dv">0L</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In Java, a <code>long</code> consumes 8 bytes. In a standard 64-bit
+JVM with compressed ordinary object pointers (OOPs), the object header
+takes 12 bytes. Consequently, <code>counterA</code> and
+<code>counterB</code> reside adjacent to each other well within a single
+64-byte window.</p>
+<p>If Thread 1 repeatedly updates <code>counterA</code> on Core 1, and
+Thread 2 repeatedly updates <code>counterB</code> on Core 2:</p>
+<ul>
+<li>Core 1 marks the shared cache line as Modified, invalidating Core
+2's cache line.</li>
+<li>Core 2 attempts to write to <code>counterB</code>, encounters an
+invalidation, forces a cache sync, and marks its line as Modified,
+invalidating Core 1's cache line.</li>
+<li>The cache line continuously bounces between cores over the
+interconnect bus (known as cache ping-ponging).</li>
+</ul>
+<p>Although there is no logical race condition between
+<code>counterA</code> and <code>counterB</code>, the hardware treats the
+updates as conflicting, reducing multicore throughput to speeds often
+slower than single-threaded execution.</p>
+<h3 id="resolving-false-sharing-with-cache-line-padding">Resolving False
+Sharing with Cache Line Padding</h3>
+<p>The fundamental solution to false sharing is spatial separation:
+ensuring that concurrently modified independent variables are allocated
+to separate cache lines. This is achieved through cache line padding,
+which inserts unused space around sensitive variables to push them past
+the 64-byte boundary.</p>
+<h4 id="1-manual-padding">1. Manual Padding</h4>
+<p>In early versions of Java, developers manually padded classes by
+declaring unused dummy variables around the target field:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> PaddedCounter <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 56 bytes of padding (7 longs * 8 bytes) to isolate counterA</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">long</span> p1<span class="op">,</span> p2<span class="op">,</span> p3<span class="op">,</span> p4<span class="op">,</span> p5<span class="op">,</span> p6<span class="op">,</span> p7<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="kw">volatile</span> <span class="dt">long</span> counterA <span class="op">=</span> <span class="dv">0L</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Another 56 bytes of padding to isolate counterB</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">long</span> p8<span class="op">,</span> p9<span class="op">,</span> p10<span class="op">,</span> p11<span class="op">,</span> p12<span class="op">,</span> p13<span class="op">,</span> p14<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="kw">volatile</span> <span class="dt">long</span> counterB <span class="op">=</span> <span class="dv">0L</span><span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>While functional in some scenarios, manual padding has severe
+limitations:</p>
+<ul>
+<li><strong>Field Reordering:</strong> The JVM specification allows the
+Just-In-Time (JIT) compiler and class loader to rearrange fields in
+memory to optimize layout, potentially clustering <code>counterA</code>
+and <code>counterB</code> together despite source-code ordering.</li>
+<li><strong>Inheritance Workarounds:</strong> Developers often had to
+distribute padding across multiple parent classes to prevent the JVM
+from compacting the layout.</li>
+<li><strong>Portability:</strong> Hardcoding padding sizes assumes a
+64-byte line, which may not match architectures with 128-byte cache
+lines.</li>
+</ul>
+<h4 id="2-jvm-managed-padding-contended">2. JVM-Managed Padding:
+<code>@Contended</code></h4>
+<p>To provide a robust, architecture-agnostic solution, Java 8
+introduced JEP 142 and the <code>@Contended</code> annotation (located
+in <code>jdk.internal.vm.annotation.Contended</code> in modern Java
+releases).</p>
+<p>When applied to a field or class, <code>@Contended</code> instructs
+the JVM to automatically insert the required padding based on the target
+architecture's detected cache line size:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">jdk</span><span class="op">.</span><span class="im">internal</span><span class="op">.</span><span class="im">vm</span><span class="op">.</span><span class="im">annotation</span><span class="op">.</span><span class="im">Contended</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> ContendedCounterHolder <span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Contended</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="kw">volatile</span> <span class="dt">long</span> counterA <span class="op">=</span> <span class="dv">0L</span><span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Contended</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="kw">volatile</span> <span class="dt">long</span> counterB <span class="op">=</span> <span class="dv">0L</span><span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The JVM guarantees that <code>counterA</code> and
+<code>counterB</code> will not share a cache line with each other or
+with any other field in the object. You can also group fields using
+contention groups (e.g., <code>@Contended("group1")</code>), ensuring
+that fields within the same group share a cache line, while isolated
+from fields in other groups.</p>
+<p>To use <code>@Contended</code> in application code outside the core
+JDK modules, you must explicitly enable it at runtime using the
+following JVM flag:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">-XX:-RestrictContended</span></span></code></pre></div>
+<h3 id="trade-offs-and-best-practices">Trade-Offs and Best
+Practices</h3>
+<p>Cache line padding increases memory consumption per object to
+eliminate cache contention. It is not a generic optimization for all
+data structures; rather, it should be reserved for high-throughput,
+latency-critical components such as lock-free ring buffers, concurrent
+queues, and shared thread counters. High-performance Java libraries,
+such as the LMAX Disruptor and the JDK's own
+<code>java.util.concurrent.atomic.LongAdder</code>, rely directly on
+cache line padding to scale write operations linearly across CPU
+cores.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

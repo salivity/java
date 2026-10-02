@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Primitive Obsession Degrades Java Domain Models - java</title>
+    <meta name="description" content="Primitive obsession is a code smell where developers rely excessively on built-in scalar types—such as String, Integer, Long, and BigDecimal—to represent domain concepts instead of creating dedicated classes. This article examines how this practice c">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-primitive-obsession-degrades-java-domain-models">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Primitive Obsession Degrades Java Domain Models - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-primitive-obsession-degrades-java-domain-models" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Primitive obsession is a code smell where developers rely excessively on built-in scalar types—such as String, Integer, Long, and BigDecimal—to represent domain concepts instead of creating dedicated classes. This article examines how this practice c" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-primitive-obsession-degrades-java-domain-models">How
+Primitive Obsession Degrades Java Domain Models</h1>
+<p>Primitive obsession is a code smell where developers rely excessively
+on built-in scalar types—such as <code>String</code>,
+<code>Integer</code>, <code>Long</code>, and <code>BigDecimal</code>—to
+represent domain concepts instead of creating dedicated classes. This
+article examines how this practice compromises domain modeling and
+validation in Java systems, explains why it leads to fragile codebases,
+and demonstrates how adopting Domain-Driven Design (DDD) Value Objects
+restores type safety and business logic encapsulation.</p>
+<h2 id="the-semantic-loss-in-domain-modeling">The Semantic Loss in
+Domain Modeling</h2>
+<p>When a domain model represents critical business concepts using basic
+primitives, the domain's ubiquitous language disappears from the code. A
+system handling financial transactions might represent an account
+identifier, an email address, and a currency code all as
+<code>String</code>.</p>
+<p>This practice strips Java’s strong type system of its ability to
+prevent logical errors at compile time. Consider a method signature
+like:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">transferFunds</span><span class="op">(</span><span class="bu">String</span> sourceAccountId<span class="op">,</span> <span class="bu">String</span> targetAccountId<span class="op">,</span> <span class="bu">BigDecimal</span> amount<span class="op">,</span> <span class="bu">String</span> currency<span class="op">)</span></span></code></pre></div>
+<p>Because both account identifiers share the same primitive type, a
+developer can accidentally swap the order of
+<code>sourceAccountId</code> and <code>targetAccountId</code>. The Java
+compiler will accept this code without error, allowing critical runtime
+bugs to bypass static analysis. When entities are modeled using
+primitives, the domain structure becomes implicit rather than explicit,
+forcing developers to rely on variable naming conventions rather than
+structural enforcement.</p>
+<h2 id="fragmented-and-duplicated-validation-logic">Fragmented and
+Duplicated Validation Logic</h2>
+<p>A key consequence of primitive obsession is the erosion of consistent
+validation. When an email or a customer ID is simply a
+<code>String</code>, the primitive itself cannot enforce its own
+invariants. Consequently, validation logic scatters across the
+application layers:</p>
+<ol type="1">
+<li><strong>Controller Layer:</strong> Checking formats using
+annotations like <code>@Pattern</code> or manual checks before passing
+data downward.</li>
+<li><strong>Service Layer:</strong> Re-validating inputs to ensure
+business rules are met before processing.</li>
+<li><strong>Database Layer:</strong> Relying on database column
+constraints as a final, defensive measure.</li>
+</ol>
+<p>This dispersion leads to code duplication and the "shotgun surgery"
+smell, where a change in a validation rule (such as altering an ID
+format) requires updates across multiple endpoints and services. More
+critically, it permits the existence of unvalidated or partially
+validated primitives in memory. An entity instantiated with an invalid
+state can traverse deep into the execution stack before failing,
+violating the fail-fast principle.</p>
+<h2 id="loss-of-encapsulation-and-anemic-models">Loss of Encapsulation
+and Anemic Models</h2>
+<p>Primitives cannot host domain behavior. When values are stored as raw
+types, the operations that naturally belong with those values end up in
+external utility classes or procedural service methods.</p>
+<p>For instance, representing monetary amounts with
+<code>BigDecimal</code> often leads to helper methods like
+<code>MoneyUtils.add(BigDecimal a, BigDecimal b, String currency)</code>
+scattered throughout the codebase. This design divorces data from
+behavior, creating anemic domain models where classes are mere data
+holders and business logic is handled procedurally.</p>
+<h2 id="remediation-encapsulation-with-value-objects">Remediation:
+Encapsulation with Value Objects</h2>
+<p>Java provides lightweight mechanisms, notably records, to eliminate
+primitive obsession by encapsulating data and its corresponding
+validation rules into immutable Value Objects.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">record</span> <span class="fu">EmailAddress</span><span class="op">(</span><span class="bu">String</span> value<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">static</span> <span class="dt">final</span> <span class="bu">Pattern</span> EMAIL_PATTERN <span class="op">=</span> </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Pattern</span><span class="op">.</span><span class="fu">compile</span><span class="op">(</span><span class="st">&quot;^[A-Za-z0-9+_.-]+@(.+)$&quot;</span><span class="op">);</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> EmailAddress <span class="op">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        Objects<span class="op">.</span><span class="fu">requireNonNull</span><span class="op">(</span>value<span class="op">,</span> <span class="st">&quot;Email address cannot be null&quot;</span><span class="op">);</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(!</span>EMAIL_PATTERN<span class="op">.</span><span class="fu">matcher</span><span class="op">(</span>value<span class="op">).</span><span class="fu">matches</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">IllegalArgumentException</span><span class="op">(</span><span class="st">&quot;Invalid email format: &quot;</span> <span class="op">+</span> value<span class="op">);</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>By enforcing validation in the compact constructor of a Java
+record:</p>
+<ul>
+<li><strong>Invariants Are Guaranteed:</strong> An instance of
+<code>EmailAddress</code> cannot exist in an invalid state.</li>
+<li><strong>Type Safety Is Restored:</strong> Methods can accept
+<code>EmailAddress</code> instead of <code>String</code>, eliminating
+argument-swapping bugs.</li>
+<li><strong>Behavior Stays Local:</strong> Logic associated with email
+manipulation (such as domain extraction) resides directly within the
+<code>EmailAddress</code> type.</li>
+</ul>
+<p>Moving away from excessive primitive usage transforms a Java
+application from a loose collection of raw values into a
+self-validating, highly expressive domain model.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

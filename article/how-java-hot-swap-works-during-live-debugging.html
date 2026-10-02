@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java HotSwap Works During Live Debugging - java</title>
+    <meta name="description" content="HotSwap is a Java Virtual Machine (JVM) mechanism that allows developers to update application code during an active debugging session without restarting the entire runtime. By utilizing the JVM Tool Interface (JVMTI) and the Java Debug Wire Protocol (JD">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-hot-swap-works-during-live-debugging">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java HotSwap Works During Live Debugging - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-hot-swap-works-during-live-debugging" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="HotSwap is a Java Virtual Machine (JVM) mechanism that allows developers to update application code during an active debugging session without restarting the entire runtime. By utilizing the JVM Tool Interface (JVMTI) and the Java Debug Wire Protocol (JD" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-hotswap-works-during-live-debugging">How Java HotSwap
+Works During Live Debugging</h1>
+<p>HotSwap is a Java Virtual Machine (JVM) mechanism that allows
+developers to update application code during an active debugging session
+without restarting the entire runtime. By utilizing the JVM Tool
+Interface (JVMTI) and the Java Debug Wire Protocol (JDWP), HotSwap
+accepts modified bytecode from an integrated development environment
+(IDE) and swaps existing method bodies in memory. This article explains
+the underlying architecture, execution mechanics, and constraints that
+govern live method replacement in the JVM.</p>
+<h2 id="the-underlying-architecture-jpda-and-jvmti">The Underlying
+Architecture: JPDA and JVMTI</h2>
+<p>HotSwap operates within the Java Platform Debugger Architecture
+(JPDA), a multi-tiered debugging framework. At its core sits the JVM
+Tool Interface (JVMTI), a native programming interface provided by the
+JVM.</p>
+<p>Introduced in Java 1.4, JVMTI exposes an operation called
+<code>RedefineClasses</code>. When you edit and compile a file in an IDE
+such as IntelliJ IDEA or Eclipse during a debug session, the IDE acts as
+a debugger client. It sends the newly compiled <code>.class</code> file
+as a raw byte array over the Java Debug Wire Protocol (JDWP) to the
+target JVM. The target JVM receives this payload and passes it directly
+to the <code>RedefineClasses</code> function.</p>
+<h2 id="the-step-by-step-replacement-process">The Step-by-Step
+Replacement Process</h2>
+<p>Once the JVM receives the updated class definition, it executes
+several low-level operations to replace the method body safely:</p>
+<ol type="1">
+<li><strong>Bytecode Verification:</strong> The JVM validates the
+incoming class bytecode using the standard class verifier. It checks
+that the bytecode complies with the Java Virtual Machine Specification
+and adheres to strict HotSwap constraints.</li>
+<li><strong>Schema Compatibility Check:</strong> The JVM verifies that
+the class structure remains identical to the currently loaded version.
+The method names, signatures, return types, class modifiers, interfaces,
+and field declarations must match the original class exactly.</li>
+<li><strong>Internal Metadata Updates:</strong> In runtimes like
+OpenJDK's HotSpot, classes are represented internally by C++ metadata
+structures (such as <code>InstanceKlass</code> and <code>Method</code>
+objects). The JVM allocates a new <code>Method</code> structure
+containing the updated bytecode, constant pool cache references, and
+execution attributes.</li>
+<li><strong>Pointer Redirection:</strong> The JVM updates the class’s
+virtual method table (vtable) and internal method arrays. The pointers
+that previously pointed to the old bytecode are reassigned to point to
+the memory location of the new <code>Method</code> structure.</li>
+</ol>
+<h2 id="handling-active-stack-frames">Handling Active Stack Frames</h2>
+<p>When a method is redefined while a thread is actively executing it,
+the JVM cannot simply interrupt execution mid-instruction without
+risking data corruption. HotSpot handles this scenario through stack
+frame preservation:</p>
+<ul>
+<li><strong>Current Invocations:</strong> If a thread is currently
+paused on or executing a stack frame of the modified method, that
+specific invocation continues executing the <em>old</em> bytecode until
+the method returns or exits via an exception.</li>
+<li><strong>Subsequent Invocations:</strong> Any subsequent call to that
+method—whether from the same thread or another thread—resolves to the
+newly updated vtable entry and executes the new bytecode.</li>
+<li><strong>Drop to Frame:</strong> Some advanced debuggers offer a
+"Drop to Frame" or "Pop Frame" feature. This mechanism artificially
+unwinds the call stack back to the caller's frame, discarding local
+variables of the modified method and re-entering it immediately to
+execute the new code.</li>
+</ul>
+<h2 id="why-hotswap-is-limited-to-method-bodies">Why HotSwap is Limited
+to Method Bodies</h2>
+<p>The standard JVM HotSwap implementation intentionally restricts
+changes strictly to method bodies and constant pool additions. Modifying
+class hierarchies, adding or removing methods, or altering instance
+fields would alter the memory footprint of loaded objects.</p>
+<p>If field layouts were permitted to change, the JVM would be forced to
+pause all threads, locate every existing instance of that class across
+the entire heap, reallocate memory, update all object references, and
+rebuild internal type metadata. To maintain performance, stability, and
+safety during live execution, the default HotSwap mechanism only permits
+in-place swaps where the object memory layout remains completely
+untouched.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

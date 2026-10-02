@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compressed OOPs in 64-Bit Java Virtual Machines - java</title>
+    <meta name="description" content="Compressed Ordinary Object Pointers (Compressed OOPs) are an optimization technique used by 64-bit Java Virtual Machines (JVMs) to reduce memory overhead and improve CPU cache utilization. Transitioning from a 32-bit to a 64-bit architecture solves heap">
+    <link rel="canonical" href="https://salivity.github.io/java/article/compressed-oo-ps-in-64-bit-java-virtual-machines">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Compressed OOPs in 64-Bit Java Virtual Machines - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/compressed-oo-ps-in-64-bit-java-virtual-machines" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Compressed Ordinary Object Pointers (Compressed OOPs) are an optimization technique used by 64-bit Java Virtual Machines (JVMs) to reduce memory overhead and improve CPU cache utilization. Transitioning from a 32-bit to a 64-bit architecture solves heap" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="compressed-oops-in-64-bit-java-virtual-machines">Compressed OOPs
+in 64-Bit Java Virtual Machines</h1>
+<p>Compressed Ordinary Object Pointers (Compressed OOPs) are an
+optimization technique used by 64-bit Java Virtual Machines (JVMs) to
+reduce memory overhead and improve CPU cache utilization. Transitioning
+from a 32-bit to a 64-bit architecture solves heap size limitations but
+doubles the size of object references from 4 bytes to 8 bytes.
+Compressed OOPs bridge this gap by enabling a 64-bit JVM to represent
+object references using 32-bit pointers, allowing applications to
+utilize heaps up to 32 GB without suffering the memory consumption
+penalties typical of 64-bit pointers.</p>
+<h3 id="the-32-bit-vs-64-bit-trade-off">The 32-Bit vs. 64-Bit
+Trade-Off</h3>
+<p>In a 32-bit JVM, an object pointer is 32 bits (4 bytes) wide, which
+limits the maximum addressable heap space to 4 GB (<span
+class="math inline">\(2^{32}\)</span> bytes). Moving to a 64-bit JVM
+removes this limitation, allowing virtually unlimited heap
+allocation.</p>
+<p>However, this transition causes every object reference (ordinary
+object pointer, or OOP) to expand from 4 bytes to 8 bytes. Because Java
+applications often contain a large volume of references, this doubling
+causes two major issues:</p>
+<ol type="1">
+<li><strong>Memory Bloat:</strong> The JVM can consume up to 40% to 50%
+more memory simply to hold the same number of objects.</li>
+<li><strong>Reduced Cache Efficiency:</strong> Larger pointers mean
+fewer references fit inside the CPU's L1, L2, and L3 caches, which leads
+to increased cache misses and reduced execution performance.</li>
+</ol>
+<h3 id="how-compressed-oops-work">How Compressed OOPs Work</h3>
+<p>Compressed OOPs resolve this inefficiency by taking advantage of
+memory alignment. In the HotSpot JVM, all objects allocated on the heap
+are aligned to 8-byte boundaries. Because every object address is a
+multiple of 8, the lowest 3 bits of any object's memory address are
+always zeros:</p>
+<ul>
+<li><code>0x00000000</code> (ends in <code>000</code> in binary)</li>
+<li><code>0x00000008</code> (ends in <code>000</code> in binary)</li>
+<li><code>0x00000010</code> (ends in <code>000</code> in binary)</li>
+</ul>
+<p>Because these three bits never change, the JVM does not need to store
+them.</p>
+<p>Instead of storing direct byte addresses, the JVM stores object
+references as zero-based indices of 8-byte blocks. When the JVM reads a
+compressed OOP from memory into a CPU register, it performs a bitwise
+logical shift to the left by 3 bits (<code>&lt;&lt; 3</code>). This
+restores the original 64-bit address. When writing an address back to
+memory, it shifts the value to the right by 3 bits
+(<code>&gt;&gt;&gt; 3</code>) to compress it into a 32-bit integer.</p>
+<p>By scaling 32-bit integers by a factor of 8 (<span
+class="math inline">\(2^{32} \times 8\)</span>), a 32-bit reference can
+successfully address up to 32 GB (<span
+class="math inline">\(2^{35}\)</span> bytes) of heap memory.</p>
+<h3 id="address-ranges-and-jvm-modes">Address Ranges and JVM Modes</h3>
+<p>The JVM dynamically configures its addressing mode based on the
+maximum heap size (<code>-Xmx</code>):</p>
+<ul>
+<li><strong>Heaps under 4 GB:</strong> The JVM uses standard 32-bit
+pointers without shifting, as addresses naturally fit within 32
+bits.</li>
+<li><strong>Heaps between 4 GB and 32 GB:</strong> The JVM activates
+Compressed OOPs with a 3-bit shift. This provides the memory density of
+a 32-bit JVM alongside the capacity to address up to 32 GB of
+memory.</li>
+<li><strong>Heaps above 32 GB:</strong> A standard 32-bit pointer can no
+longer reference every 8-byte aligned address. The JVM automatically
+disables Compressed OOPs and reverts to full 64-bit pointers, which
+causes an immediate jump in reference size and overall heap
+consumption.</li>
+</ul>
+<h3 id="managing-compressed-oops">Managing Compressed OOPs</h3>
+<p>Compressed OOPs are enabled by default in modern 64-bit Java versions
+for compatible heap sizes. They are controlled using the JVM flag:</p>
+<p><code>-XX:+UseCompressedOops</code> (enable)<br />
+<code>-XX:-UseCompressedOops</code> (disable)</p>
+<p>Because of the 32 GB threshold, setting a Java heap to 33 GB often
+results in less usable object space than setting it to 31 GB, as the
+overhead of 64-bit pointers consumes the additional memory. Therefore,
+applications requiring close to 32 GB should generally be sized just
+below this boundary to retain the performance and memory savings of
+compressed references.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

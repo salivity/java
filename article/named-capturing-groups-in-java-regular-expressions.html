@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Named Capturing Groups in Java Regular Expressions - java</title>
+    <meta name="description" content="Named capturing groups in Java regular expressions allow developers to assign readable, descriptive names to matched subexpressions instead of relying on numeric indices. This article explains what named capturing groups are, discusses their advantages o">
+    <link rel="canonical" href="https://salivity.github.io/java/article/named-capturing-groups-in-java-regular-expressions">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Named Capturing Groups in Java Regular Expressions - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/named-capturing-groups-in-java-regular-expressions" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Named capturing groups in Java regular expressions allow developers to assign readable, descriptive names to matched subexpressions instead of relying on numeric indices. This article explains what named capturing groups are, discusses their advantages o" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="named-capturing-groups-in-java-regular-expressions">Named
+Capturing Groups in Java Regular Expressions</h1>
+<p>Named capturing groups in Java regular expressions allow developers
+to assign readable, descriptive names to matched subexpressions instead
+of relying on numeric indices. This article explains what named
+capturing groups are, discusses their advantages over traditional
+numbered groups, and provides a clear, step-by-step implementation guide
+showing how to define and extract them using the
+<code>java.util.regex</code> package.</p>
+<hr />
+<h3 id="what-are-named-capturing-groups">What Are Named Capturing
+Groups?</h3>
+<p>In standard regular expressions, capturing groups are defined by
+enclosing characters in parentheses: <code>(...)</code>. By default,
+Java assigns an automatic 1-based index to each group based on the order
+of its opening parenthesis. While functional, numbered groups can make
+code fragile and difficult to maintain; modifying the regular expression
+to add or remove a group alters the index of every subsequent group.</p>
+<p>Introduced in Java 7, <strong>named capturing groups</strong> solve
+this issue by allowing you to attach an explicit name to any group.</p>
+<p>The syntax for defining a named group is:</p>
+<pre class="text"><code>(?&lt;groupName&gt;pattern)</code></pre>
+<p>The <code>groupName</code> must begin with an ASCII letter and
+contain only alphanumeric characters.</p>
+<hr />
+<h3 id="how-to-extract-named-groups-in-java">How to Extract Named Groups
+in Java</h3>
+<p>Extracting named groups involves the
+<code>java.util.regex.Pattern</code> and
+<code>java.util.regex.Matcher</code> classes:</p>
+<ol type="1">
+<li><strong>Compile the Regex</strong>: Call
+<code>Pattern.compile(regex)</code> with your named group patterns
+included.</li>
+<li><strong>Create the Matcher</strong>: Call
+<code>pattern.matcher(inputSequence)</code> to match against the target
+string.</li>
+<li><strong>Locate the Match</strong>: Execute
+<code>matcher.find()</code> or <code>matcher.matches()</code>.</li>
+<li><strong>Retrieve Values by Name</strong>: Access matched segments
+using <code>matcher.group("groupName")</code>. You can also determine
+group boundary indices using <code>matcher.start("groupName")</code> and
+<code>matcher.end("groupName")</code>.</li>
+</ol>
+<hr />
+<h3 id="practical-example">Practical Example</h3>
+<p>The following example demonstrates how to extract the year, month,
+and day components from a date string using named groups:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">regex</span><span class="op">.</span><span class="im">Matcher</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">regex</span><span class="op">.</span><span class="im">Pattern</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> NamedGroupExample <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="bu">String</span> input <span class="op">=</span> <span class="st">&quot;Release date: 2026-03-31&quot;</span><span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Define regex with named capturing groups: year, month, and day</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="bu">String</span> regex <span class="op">=</span> <span class="st">&quot;(?&lt;year&gt;</span><span class="sc">\\</span><span class="st">d{4})-(?&lt;month&gt;</span><span class="sc">\\</span><span class="st">d{2})-(?&lt;day&gt;</span><span class="sc">\\</span><span class="st">d{2})&quot;</span><span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Pattern</span> pattern <span class="op">=</span> <span class="bu">Pattern</span><span class="op">.</span><span class="fu">compile</span><span class="op">(</span>regex<span class="op">);</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Matcher</span> matcher <span class="op">=</span> pattern<span class="op">.</span><span class="fu">matcher</span><span class="op">(</span>input<span class="op">);</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>matcher<span class="op">.</span><span class="fu">find</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Extract captured values by name</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>            <span class="bu">String</span> year <span class="op">=</span> matcher<span class="op">.</span><span class="fu">group</span><span class="op">(</span><span class="st">&quot;year&quot;</span><span class="op">);</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>            <span class="bu">String</span> month <span class="op">=</span> matcher<span class="op">.</span><span class="fu">group</span><span class="op">(</span><span class="st">&quot;month&quot;</span><span class="op">);</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>            <span class="bu">String</span> day <span class="op">=</span> matcher<span class="op">.</span><span class="fu">group</span><span class="op">(</span><span class="st">&quot;day&quot;</span><span class="op">);</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Year: &quot;</span> <span class="op">+</span> year<span class="op">);</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Month: &quot;</span> <span class="op">+</span> month<span class="op">);</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Day: &quot;</span> <span class="op">+</span> day<span class="op">);</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;No match found.&quot;</span><span class="op">);</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="output">Output</h3>
+<pre class="text"><code>Year: 2026
+Month: 03
+Day: 31</code></pre>
+<hr />
+<h3 id="error-handling">Error Handling</h3>
+<p>If you pass a group name to <code>matcher.group(String name)</code>
+that was not declared in the regular expression, Java throws an
+<code>IllegalArgumentException</code>. If the named group exists in the
+pattern but was not matched during the operation (for example, if it was
+inside an optional branch), the method returns <code>null</code>.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

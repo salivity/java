@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How invokeinterface Resolves Methods in Java Bytecode - java</title>
+    <meta name="description" content="In Java bytecode, the invokeinterface instruction handles calling methods declared by interfaces on runtime objects. Unlike invokevirtual, which uses predictable vtable offsets from single-inheritance class hierarchies, invokeinterface must account for t">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-invokeinterface-resolves-methods-in-java-bytecode">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How invokeinterface Resolves Methods in Java Bytecode - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-invokeinterface-resolves-methods-in-java-bytecode" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java bytecode, the invokeinterface instruction handles calling methods declared by interfaces on runtime objects. Unlike invokevirtual, which uses predictable vtable offsets from single-inheritance class hierarchies, invokeinterface must account for t" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-invokeinterface-resolves-methods-in-java-bytecode">How
+invokeinterface Resolves Methods in Java Bytecode</h1>
+<p>In Java bytecode, the <code>invokeinterface</code> instruction
+handles calling methods declared by interfaces on runtime objects.
+Unlike <code>invokevirtual</code>, which uses predictable vtable offsets
+from single-inheritance class hierarchies, <code>invokeinterface</code>
+must account for the fact that unrelated classes can implement multiple
+interfaces in arbitrary order. This article breaks down the mechanics of
+interface method resolution, explores the role of interface tables
+(itables), and explains how JVM runtimes optimize dynamic dispatch using
+inline caching.</p>
+<h3 id="the-challenge-of-multiple-inheritance-of-interfaces">The
+Challenge of Multiple Inheritance of Interfaces</h3>
+<p>Java allows single class inheritance but multiple interface
+implementation. In standard virtual method invocation
+(<code>invokevirtual</code>), the JVM builds a virtual method table
+(vtable) where a subclass preserves the exact method layout of its
+superclasses. Because offsets remain constant across the inheritance
+chain, the compiler and class linker can determine the exact vtable
+index for a method call ahead of time.</p>
+<p>This constant-offset approach fails with interfaces:</p>
+<ul>
+<li><code>Class A</code> may implement <code>Interface X</code> and
+<code>Interface Y</code>.</li>
+<li><code>Class B</code> may implement <code>Interface Y</code> and
+<code>Interface Z</code>.</li>
+</ul>
+<p>Because <code>Class A</code> and <code>Class B</code> do not share a
+common inheritance path, the methods defined in <code>Interface Y</code>
+cannot occupy the same offset in both classes' vtables without causing
+collisions or wasting massive amounts of memory with sparse tables.</p>
+<h3 id="bytecode-structure-of-invokeinterface">Bytecode Structure of
+<code>invokeinterface</code></h3>
+<p>The <code>invokeinterface</code> instruction requires 5 bytes:</p>
+<pre class="text"><code>invokeinterface &lt;indexbyte1&gt; &lt;indexbyte2&gt; &lt;count&gt; &lt;zero&gt;</code></pre>
+<ol type="1">
+<li><strong><code>indexbyte1</code> and
+<code>indexbyte2</code></strong>: Combine to form an index into the
+runtime constant pool pointing to a
+<code>CONSTANT_InterfaceMethodref_info</code> structure.</li>
+<li><strong><code>count</code></strong>: An unsigned byte representing
+the number of argument slots passed to the method (historical legacy
+maintained for verification).</li>
+<li><strong><code>zero</code></strong>: A reserved byte that must always
+be zero for backward compatibility.</li>
+</ol>
+<h3 id="resolution-and-dispatch-process">Resolution and Dispatch
+Process</h3>
+<p>Interface method invocation proceeds through two main phases: static
+resolution and dynamic dispatch.</p>
+<h4 id="1-constant-pool-resolution">1. Constant Pool Resolution</h4>
+<p>Before executing the instruction, the JVM resolves the symbolic
+reference to an interface method
+(<code>CONSTANT_InterfaceMethodref</code>):</p>
+<ul>
+<li>The JVM verifies that the symbolic reference names an existing
+interface.</li>
+<li>It searches for the matching method signature within the target
+interface, its superinterfaces, and fallback declarations in
+<code>java.lang.Object</code>.</li>
+<li>If no matching method exists, it throws
+<code>NoSuchMethodError</code>.</li>
+<li>If the resolved method is <code>static</code> or
+<code>private</code> (introduced in Java 8 and 9), distinct rules or
+instructions (<code>invokestatic</code>, <code>invokespecial</code>)
+apply instead.</li>
+</ul>
+<h4 id="2-dynamic-target-lookup">2. Dynamic Target Lookup</h4>
+<p>At runtime, the JVM pops the receiver object reference from the
+operand stack. Let <span class="math inline">\(C\)</span> be the runtime
+class of the receiver:</p>
+<ul>
+<li>If the receiver is <code>null</code>, a
+<code>NullPointerException</code> is thrown.</li>
+<li>The JVM checks whether class <span class="math inline">\(C\)</span>
+implements the resolved interface. If not, it throws an
+<code>IncompatibleClassChangeError</code>.</li>
+<li>The JVM traverses the class hierarchy starting at <span
+class="math inline">\(C\)</span> to find the most specific concrete
+implementation matching the method name and descriptor.</li>
+<li>If a concrete method is found, it is executed. If the method is
+abstract, an <code>AbstractMethodError</code> is thrown.</li>
+<li>If the interface method is a <code>default</code> method and the
+class does not override it, the JVM selects the default method
+implementation from the interface hierarchy using standard
+conflict-resolution rules.</li>
+</ul>
+<h3 id="implementation-mechanism-the-itable">Implementation Mechanism:
+The Itable</h3>
+<p>To execute dynamic lookups efficiently without scanning method
+signatures on every invocation, JVM implementations (such as OpenJDK's
+HotSpot) use an <strong>itable</strong> (interface table) alongside the
+vtable.</p>
+<p>Every class that implements at least one interface has an itable
+embedded in its internal class metadata structure (<code>Klass</code>).
+An itable consists of two parts:</p>
+<ol type="1">
+<li><strong>Itable Offsets Table</strong>: An array of pairs containing
+references to implemented interface classes and their corresponding
+offsets into the itable method array.</li>
+<li><strong>Itable Method Table</strong>: An array of concrete method
+pointers corresponding to the interface's declarations.</li>
+</ol>
+<p>During a naive invocation:</p>
+<ol type="1">
+<li>The JVM takes the receiver's <code>Klass</code> pointer.</li>
+<li>It linearly scans the receiver's itable offset entries until it
+finds the target interface.</li>
+<li>Once the matching interface block is located, it uses a fixed offset
+(known for that specific interface) to retrieve the concrete function
+pointer.</li>
+<li>It branches to the resolved function address.</li>
+</ol>
+<h3 id="runtime-optimizations-inline-caching">Runtime Optimizations:
+Inline Caching</h3>
+<p>A linear scan of the itable incurs significant runtime overhead
+compared to a direct vtable index lookup. Modern Just-In-Time (JIT)
+compilers mitigate this performance penalty using <strong>inline
+caching</strong>:</p>
+<ul>
+<li><strong>Monomorphic Call Sites</strong>: In most Java applications,
+a particular call site encounters instances of only a single concrete
+class. The JIT compiler patches the call site to compare the incoming
+receiver's class directly against the cached class. If they match, it
+performs a direct call to the compiled method code, bypassing the itable
+scan entirely.</li>
+<li><strong>Polymorphic Call Sites</strong>: If a call site encounters a
+small number of classes (typically two to four), the JIT compiler
+generates a short sequence of class checks (a polymorphic inline cache)
+directing execution to the appropriate compiled targets.</li>
+<li><strong>Megamorphic Call Sites</strong>: If the call site encounters
+many different implementations, it falls back to a global stub or a
+hash-based itable lookup mechanism to resolve the target pointer.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

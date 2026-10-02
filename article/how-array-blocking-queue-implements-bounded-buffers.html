@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How ArrayBlockingQueue Implements Bounded Buffers - java</title>
+    <meta name="description" content="In Java, ArrayBlockingQueue implements bounded buffer synchronization by combining a fixed-size circular array with the thread-coordination capabilities of ReentrantLock and two Condition variables. It provides a thread-safe, bounded FIFO (First-In, Firs">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-array-blocking-queue-implements-bounded-buffers">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How ArrayBlockingQueue Implements Bounded Buffers - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-array-blocking-queue-implements-bounded-buffers" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, ArrayBlockingQueue implements bounded buffer synchronization by combining a fixed-size circular array with the thread-coordination capabilities of ReentrantLock and two Condition variables. It provides a thread-safe, bounded FIFO (First-In, Firs" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-arrayblockingqueue-implements-bounded-buffers">How
+ArrayBlockingQueue Implements Bounded Buffers</h1>
+<p>In Java, <code>ArrayBlockingQueue</code> implements bounded buffer
+synchronization by combining a fixed-size circular array with the
+thread-coordination capabilities of <code>ReentrantLock</code> and two
+<code>Condition</code> variables. It provides a thread-safe, bounded
+FIFO (First-In, First-Out) data structure where producer threads wait
+when the buffer is full and consumer threads wait when the buffer is
+empty. This classic producer-consumer problem is resolved efficiently
+through explicit lock management, state-checking loops, and targeted
+thread signaling.</p>
+<h3 id="core-components">Core Components</h3>
+<p>The synchronization mechanism relies on four primary internal
+variables:</p>
+<ol type="1">
+<li><strong>Circular Object Array
+(<code>Object[] items</code>):</strong> The fixed-capacity backing array
+storing the elements.</li>
+<li><strong>ReentrantLock
+(<code>final ReentrantLock lock</code>):</strong> A single mutual
+exclusion lock that guards all access to internal state, including array
+insertions, removals, and counter modifications. It can be configured
+with a fairness policy via its constructor.</li>
+<li><strong>Condition <code>notEmpty</code>:</strong> A condition
+variable associated with <code>lock</code> that causes consumer threads
+to block when the buffer contains zero elements.</li>
+<li><strong>Condition <code>notFull</code>:</strong> A condition
+variable associated with <code>lock</code> that causes producer threads
+to block when the array reaches its maximum capacity.</li>
+</ol>
+<p>Pointers <code>putIndex</code>, <code>takeIndex</code>, and an
+integer <code>count</code> track the insertion index, removal index, and
+current total elements, respectively.</p>
+<h3 id="the-enqueue-process-producers">The Enqueue Process
+(Producers)</h3>
+<p>When a producer inserts an item using blocking methods like
+<code>put(E e)</code>, synchronization proceeds as follows:</p>
+<ol type="1">
+<li><strong>Lock Acquisition:</strong> The thread acquires the lock
+using <code>lock.lockInterruptibly()</code>.</li>
+<li><strong>Buffer Capacity Check:</strong> The method checks if the
+buffer is full using a <code>while</code> loop:
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> <span class="op">(</span>count <span class="op">==</span> items<span class="op">.</span><span class="fu">length</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    notFull<span class="op">.</span><span class="fu">await</span><span class="op">();</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+A loop is mandatory instead of an <code>if</code> statement to guard
+against spurious wakeups and state changes caused by other threads
+before this thread reacquires the lock.</li>
+<li><strong>Item Insertion:</strong> Once space is available, the
+element is placed into <code>items[putIndex]</code>.</li>
+<li><strong>Pointer and Count Update:</strong> The <code>putIndex</code>
+increments. If it reaches the end of the array, it wraps around to
+<code>0</code> (circular buffer design). The <code>count</code> variable
+is incremented.</li>
+<li><strong>Signaling Consumers:</strong> The method signals the
+<code>notEmpty</code> condition via <code>notEmpty.signal()</code>,
+notifying one blocked consumer that an item is ready for
+processing.</li>
+<li><strong>Lock Release:</strong> The lock is released in a
+<code>finally</code> block.</li>
+</ol>
+<h3 id="the-dequeue-process-consumers">The Dequeue Process
+(Consumers)</h3>
+<p>When a consumer removes an item via <code>take()</code>, the
+complementary process occurs:</p>
+<ol type="1">
+<li><strong>Lock Acquisition:</strong> The consumer acquires the lock
+using <code>lock.lockInterruptibly()</code>.</li>
+<li><strong>Buffer Emptiness Check:</strong> The method checks if the
+queue is empty:
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> <span class="op">(</span>count <span class="op">==</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    notEmpty<span class="op">.</span><span class="fu">await</span><span class="op">();</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+If empty, the consumer thread releases the lock and transitions to a
+waiting state until signaled.</li>
+<li><strong>Item Extraction:</strong> The item at
+<code>items[takeIndex]</code> is retrieved, and the reference in the
+array is set to <code>null</code> to facilitate garbage collection.</li>
+<li><strong>Pointer and Count Update:</strong> The
+<code>takeIndex</code> increments, wrapping back to <code>0</code> if it
+reaches capacity. The <code>count</code> variable is decremented.</li>
+<li><strong>Signaling Producers:</strong> The method invokes
+<code>notFull.signal()</code>, alerting one waiting producer that buffer
+space has been freed.</li>
+<li><strong>Lock Release:</strong> The lock is unconditionally released
+in a <code>finally</code> block.</li>
+</ol>
+<h3 id="circular-buffer-mechanics">Circular Buffer Mechanics</h3>
+<p><code>ArrayBlockingQueue</code> avoids shifting elements when items
+are removed. Instead, it moves its internal pointers
+<code>putIndex</code> and <code>takeIndex</code> sequentially through
+the array. When either index reaches the end of the backing array
+(<code>items.length</code>), it resets to index <code>0</code>. This
+makes insertion and removal operations <span
+class="math inline">\(O(1)\)</span> while eliminating the memory
+overhead of node allocations.</p>
+<h3 id="single-lock-architecture-trade-off">Single-Lock Architecture
+Trade-Off</h3>
+<p>Unlike <code>LinkedBlockingQueue</code>, which uses two separate
+locks for reading and writing, <code>ArrayBlockingQueue</code> relies on
+a single <code>ReentrantLock</code> for both operations. Because
+producers and consumers share modifications to the array indices and the
+single <code>count</code> variable, sharing one lock minimizes memory
+footprint and simplifies concurrency invariants. The trade-off is higher
+contention, as producers and consumers cannot mutate the queue
+concurrently.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

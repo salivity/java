@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Javap Disassembler Guide: Analyzing Java Bytecode - java</title>
+    <meta name="description" content="The javap command-line tool, bundled with the Java Development Kit (JDK), is the standard disassembler used to inspect and analyze compiled Java class files. This article covers the core purpose of javap, how it bridges the gap between high-level Java co">
+    <link rel="canonical" href="https://salivity.github.io/java/article/javap-disassembler-guide-analyzing-java-bytecode">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Javap Disassembler Guide: Analyzing Java Bytecode - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/javap-disassembler-guide-analyzing-java-bytecode" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The javap command-line tool, bundled with the Java Development Kit (JDK), is the standard disassembler used to inspect and analyze compiled Java class files. This article covers the core purpose of javap, how it bridges the gap between high-level Java co" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="javap-disassembler-guide-analyzing-java-bytecode">Javap
+Disassembler Guide: Analyzing Java Bytecode</h1>
+<p>The <code>javap</code> command-line tool, bundled with the Java
+Development Kit (JDK), is the standard disassembler used to inspect and
+analyze compiled Java class files. This article covers the core purpose
+of <code>javap</code>, how it bridges the gap between high-level Java
+code and low-level Java Virtual Machine (JVM) instructions, and why
+developers rely on it to understand compiler behavior, verify
+optimizations, and debug compiled binaries.</p>
+<h3 id="what-is-the-javap-tool">What Is the Javap Tool?</h3>
+<p>When the Java compiler (<code>javac</code>) processes source code, it
+converts <code>.java</code> files into platform-independent bytecode
+stored in <code>.class</code> files. Because <code>.class</code> files
+are binary streams that cannot be read directly in a standard text
+editor, developers need a tool to decode them. The <code>javap</code>
+utility reads these binary class files and prints a human-readable
+representation of their internal structure, including fields, method
+signatures, attributes, and raw bytecode instructions.</p>
+<h3 id="primary-purposes-of-javap">Primary Purposes of Javap</h3>
+<h4 id="1-decoding-bytecode-instructions">1. Decoding Bytecode
+Instructions</h4>
+<p>The most frequent use of <code>javap</code> is decoding the JVM
+instructions executed at runtime. By running
+<code>javap -c &lt;ClassName&gt;</code>, developers can view the
+assembly-like mnemonic instructions (such as <code>iload</code>,
+<code>invokevirtual</code>, <code>bipush</code>, or
+<code>areturn</code>) that correspond to each line of Java source code.
+This reveals exactly how the JVM stack machine processes statements,
+handles branching, and allocates memory on the stack.</p>
+<h4 id="2-uncovering-syntactic-sugar-and-compiler-transformations">2.
+Uncovering Syntactic Sugar and Compiler Transformations</h4>
+<p>Java provides numerous high-level language conveniences that do not
+exist natively at the bytecode level. <code>javap</code> allows
+developers to see how the compiler translates features such as:</p>
+<ul>
+<li><strong>String Concatenation:</strong> Demonstrating whether the
+compiler uses <code>StringBuilder</code> or invokedynamic
+(<code>StringConcatFactory</code>).</li>
+<li><strong>Auto-boxing and Unboxing:</strong> Revealing hidden calls to
+<code>Integer.valueOf()</code> or <code>intValue()</code>.</li>
+<li><strong>Generics:</strong> Showing how type erasure replaces generic
+types with <code>Object</code> or specific bounds, alongside synthetic
+bridge methods.</li>
+<li><strong>Lambdas and Method References:</strong> Displaying the
+<code>invokedynamic</code> call sites and bootstrap methods generated
+for functional interfaces.</li>
+<li><strong>Enhanced For-Loops and Enums:</strong> Exposing underlying
+iterators, array indexing, and generated static arrays.</li>
+</ul>
+<h4 id="3-inspecting-the-constant-pool">3. Inspecting the Constant
+Pool</h4>
+<p>Running <code>javap -v</code> (verbose mode) outputs the class's
+constant pool. The constant pool is a lookup table containing string
+literals, class references, method names, numeric constants, and field
+descriptors. Analyzing the constant pool helps developers identify
+memory overhead, monitor class dependencies, and understand symbolic
+resolution within the JVM.</p>
+<h4 id="4-verifying-bytecode-manipulation-and-framework-generation">4.
+Verifying Bytecode Manipulation and Framework Generation</h4>
+<p>Modern enterprise Java frameworks (such as Spring, Hibernate, and
+Mockito) frequently manipulate bytecode at compile time or runtime using
+libraries like Byte Buddy, ASM, or cglib. The <code>javap</code> tool
+provides a reliable mechanism to inspect these dynamically generated or
+transformed classes, allowing developers to verify proxy generation,
+injected aspects, or bytecode instrumentation.</p>
+<h4 id="5-performance-tuning-and-optimization">5. Performance Tuning and
+Optimization</h4>
+<p>While the Just-In-Time (JIT) compiler performs runtime optimizations,
+compiler-level efficiency still dictates initial execution speed and
+memory pressure. By examining bytecode with <code>javap</code>,
+engineers can:</p>
+<ul>
+<li>Evaluate method length to check if methods fall within JIT inlining
+thresholds (typically 35 bytes for aggressive inlining).</li>
+<li>Inspect local variable table allocations and operand stack
+depths.</li>
+<li>Check whether redundant objects or temporary variables are
+instantiated.</li>
+</ul>
+<h3 id="essential-javap-flags">Essential Javap Flags</h3>
+<ul>
+<li><code>javap -c</code>: Disassembles the code, showing the bytecode
+instructions for each method.</li>
+<li><code>javap -v</code> or <code>-verbose</code>: Prints full details,
+including stack sizes, local variable counts, method args, and the
+constant pool.</li>
+<li><code>javap -p</code> or <code>-private</code>: Displays all classes
+and members, including <code>private</code> fields and methods.</li>
+<li><code>javap -s</code>: Outputs internal type signatures for fields
+and methods, which is useful when working with the Java Native Interface
+(JNI).</li>
+<li><code>javap -l</code>: Displays line number tables and local
+variable tables, mapping bytecode offsets back to the original source
+lines.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

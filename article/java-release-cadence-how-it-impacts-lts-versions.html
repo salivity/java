@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Release Cadence: How It Impacts LTS Versions - java</title>
+    <meta name="description" content="In 2018, Java shifted to a predictable, rapid six-month release cycle that fundamentally transformed how Long-Term Support (LTS) releases are designated, maintained, and adopted. This article examines the mechanics of the modern release cadence, how LTS">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-release-cadence-how-it-impacts-lts-versions">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Release Cadence: How It Impacts LTS Versions - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-release-cadence-how-it-impacts-lts-versions" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In 2018, Java shifted to a predictable, rapid six-month release cycle that fundamentally transformed how Long-Term Support (LTS) releases are designated, maintained, and adopted. This article examines the mechanics of the modern release cadence, how LTS" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-release-cadence-how-it-impacts-lts-versions">Java Release
+Cadence: How It Impacts LTS Versions</h1>
+<p>In 2018, Java shifted to a predictable, rapid six-month release cycle
+that fundamentally transformed how Long-Term Support (LTS) releases are
+designated, maintained, and adopted. This article examines the mechanics
+of the modern release cadence, how LTS designations operate within
+standard OpenJDK and commercial distributions, the shift from a
+three-year to a two-year LTS cadence, and the practical implications for
+enterprise stability and feature adoption.</p>
+<h3 id="the-mechanism-of-the-six-month-cadence">The Mechanism of the
+Six-Month Cadence</h3>
+<p>Under the modern model, general availability (GA) releases of Java
+arrive strictly every six months, specifically in March and September.
+Feature releases between LTS versions—often referred to as feature or
+interim releases—have a fixed lifespan of only six months. As soon as
+the next version arrives, public updates and bug fixes for the prior
+non-LTS release cease entirely. This predictable timeline ensures that
+completed language features, JVM enhancements, and platform APIs reach
+developers immediately rather than waiting years for a massive
+monolithic release.</p>
+<h3 id="decoupling-lts-from-the-openjdk-specification">Decoupling LTS
+from the OpenJDK Specification</h3>
+<p>An essential aspect of the modern cadence is that "Long-Term Support"
+is not an inherent technical property of the Java Language
+Specification. Instead, LTS is a commercial and operational service
+designation provided by vendors such as Oracle, Red Hat, Amazon
+(Corretto), Microsoft, and the Eclipse Adoptium working group
+(Temurin).</p>
+<p>While all vendors coordinate around the same specific versions to
+designate as LTS—such as Java 11, Java 17, and Java 21—the actual
+duration, security patches, and support guarantees are dictated by the
+vendor providing the OpenJDK binary.</p>
+<h3 id="the-shift-from-three-year-to-two-year-lts-intervals">The Shift
+from Three-Year to Two-Year LTS Intervals</h3>
+<p>Originally, the six-month cadence was paired with an LTS designation
+occurring once every three years (every six releases). However,
+following the release of Java 17, Oracle proposed reducing the interval
+between LTS versions to two years (every four releases), a cadence
+widely accepted across the ecosystem.</p>
+<p>This reduction addresses enterprise hesitation to adopt new platform
+features. By lowering the gap to two years, enterprises do not have to
+wait an excessive amount of time to deploy features like Virtual Threads
+(Project Loom) or Pattern Matching in production-grade, long-supported
+environments.</p>
+<h3 id="practical-impact-on-enterprise-strategy">Practical Impact on
+Enterprise Strategy</h3>
+<p>The interplay between the rapid release cycle and LTS designations
+forces organizations to choose one of two distinct operational
+strategies:</p>
+<ul>
+<li><strong>LTS-to-LTS Migration:</strong> The majority of risk-averse
+enterprises only deploy LTS versions in production. For these teams, the
+six-month releases serve as an ongoing preview of upcoming changes,
+allowing testing and migration preparation in non-production
+environments well before the next LTS launch.</li>
+<li><strong>Continuous Modernization:</strong> Development teams
+practicing modern DevOps and containerized deployments often update
+their runtime every six months. This strategy avoids the high cost of
+large, multi-year migration projects by absorbing small, incremental
+changes continuously.</li>
+</ul>
+<p>Ultimately, the six-month cadence eliminates the historical risk of
+multi-year upgrade cliffs. It allows the Java ecosystem to innovate at a
+modern pace while preserving the operational stability that enterprises
+require through strategically timed LTS milestones.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

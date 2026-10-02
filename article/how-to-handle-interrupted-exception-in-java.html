@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Handle InterruptedException in Java - java</title>
+    <meta name="description" content="Handling InterruptedException correctly is critical for writing responsive, cancellable multithreaded applications in Java. When a blocking method encounters an interruption, it throws this checked exception to signal that another thread has requested ca">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-to-handle-interrupted-exception-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Handle InterruptedException in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-to-handle-interrupted-exception-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Handling InterruptedException correctly is critical for writing responsive, cancellable multithreaded applications in Java. When a blocking method encounters an interruption, it throws this checked exception to signal that another thread has requested ca" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-handle-interruptedexception-in-java">How to Handle
+InterruptedException in Java</h1>
+<p>Handling <code>InterruptedException</code> correctly is critical for
+writing responsive, cancellable multithreaded applications in Java. When
+a blocking method encounters an interruption, it throws this checked
+exception to signal that another thread has requested cancellation. A
+well-behaved task must respect this cooperative cancellation mechanism
+rather than ignoring it. This article outlines the underlying mechanics
+of thread interruption, the anti-patterns to avoid, and the two standard
+approaches to handling <code>InterruptedException</code>: propagating
+the exception upward or restoring the thread's interrupted status.</p>
+<h3 id="understand-the-interruption-mechanism">Understand the
+Interruption Mechanism</h3>
+<p>Java uses cooperative cancellation. Calling
+<code>Thread.interrupt()</code> on a target thread sets its internal
+interruption flag. If that thread is currently blocked by an
+interruptible method—such as <code>Thread.sleep()</code>,
+<code>Object.wait()</code>, or <code>BlockingQueue.take()</code>—the
+blocking operation aborts and immediately throws
+<code>InterruptedException</code>.</p>
+<p>Crucially, when the JVM throws <code>InterruptedException</code>, it
+<strong>clears the interruption flag</strong>. If your code does not
+take explicit action to acknowledge or preserve this state, the evidence
+of the cancellation request is permanently lost.</p>
+<h3 id="strategy-1-propagate-the-exception">Strategy 1: Propagate the
+Exception</h3>
+<p>The preferred approach for reusable code, internal utilities, and
+library methods is to declare <code>throws InterruptedException</code>
+in the method signature.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">processQueue</span><span class="op">(</span><span class="bu">BlockingQueue</span><span class="op">&lt;</span>Task<span class="op">&gt;</span> queue<span class="op">)</span> <span class="kw">throws</span> <span class="bu">InterruptedException</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="op">(!</span><span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">isInterrupted</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        Task task <span class="op">=</span> queue<span class="op">.</span><span class="fu">take</span><span class="op">();</span> <span class="co">// Throws InterruptedException directly</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        task<span class="op">.</span><span class="fu">execute</span><span class="op">();</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>By allowing the exception to propagate:</p>
+<ul>
+<li>You avoid making arbitrary decisions about how the caller should
+recover.</li>
+<li>Higher-level callers (such as task frameworks or application
+controllers) maintain full control over task cancellation policies and
+cleanup workflows.</li>
+</ul>
+<h3 id="strategy-2-restore-the-interrupted-status">Strategy 2: Restore
+the Interrupted Status</h3>
+<p>When implementing interfaces whose method signatures do not declare
+checked exceptions—most notably <code>Runnable.run()</code> or
+<code>Callable.call()</code>—you cannot rethrow
+<code>InterruptedException</code>. In this scenario, catch the exception
+and immediately restore the thread's interrupted state by calling
+<code>Thread.currentThread().interrupt()</code>.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> WorkerTask <span class="kw">implements</span> <span class="bu">Runnable</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">final</span> <span class="bu">BlockingQueue</span><span class="op">&lt;</span>Task<span class="op">&gt;</span> queue<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">WorkerTask</span><span class="op">(</span><span class="bu">BlockingQueue</span><span class="op">&lt;</span>Task<span class="op">&gt;</span> queue<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">queue</span> <span class="op">=</span> queue<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">run</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">while</span> <span class="op">(!</span><span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">isInterrupted</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>                Task task <span class="op">=</span> queue<span class="op">.</span><span class="fu">take</span><span class="op">();</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>                task<span class="op">.</span><span class="fu">execute</span><span class="op">();</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">InterruptedException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Restore interrupted status</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>            <span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">interrupt</span><span class="op">();</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">finally</span> <span class="op">{</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>            <span class="fu">cleanUp</span><span class="op">();</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">void</span> <span class="fu">cleanUp</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Release resources, close streams, or flush state</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Restoring the flag ensures that callers higher up the call stack
+(such as an <code>ExecutorService</code> thread pool) can detect that an
+interruption occurred and act accordingly, such as shutting down worker
+threads cleanly.</p>
+<h3 id="critical-rules-for-handling-interruptedexception">Critical Rules
+for Handling InterruptedException</h3>
+<ol type="1">
+<li><strong>Never Swallow the Exception:</strong> Catching
+<code>InterruptedException</code> with an empty block
+(<code>catch (InterruptedException ignored) {}</code>) or merely logging
+it via <code>e.printStackTrace()</code> is an anti-pattern. Doing so
+destroys the cancellation signal, leaving the thread running
+indefinitely and making thread pools impossible to shut down
+gracefully.</li>
+<li><strong>Clean Up Resources Promptly:</strong> When an
+<code>InterruptedException</code> occurs, treat it as a signal to
+terminate execution early. Use <code>finally</code> blocks or
+<code>try-with-resources</code> to close open sockets, release database
+connections, and unlock synchronization primitives before
+returning.</li>
+<li><strong>Exit the Task Gracefully:</strong> Once you restore the
+interrupt flag inside a <code>Runnable</code>, immediately exit the loop
+or method. Do not continue processing additional work, as doing so
+contradicts the caller's request to stop execution.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

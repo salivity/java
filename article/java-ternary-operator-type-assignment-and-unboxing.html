@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Ternary Operator Type Assignment and Unboxing - java</title>
+    <meta name="description" content="The ternary conditional operator (? :) in Java is an expression that computes a single result with a type determined entirely at compile time. This article explores how the Java compiler evaluates the return type of a ternary expression, how it applies a">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-ternary-operator-type-assignment-and-unboxing">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Ternary Operator Type Assignment and Unboxing - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-ternary-operator-type-assignment-and-unboxing" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The ternary conditional operator (? :) in Java is an expression that computes a single result with a type determined entirely at compile time. This article explores how the Java compiler evaluates the return type of a ternary expression, how it applies a" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-ternary-operator-type-assignment-and-unboxing">Java Ternary
+Operator Type Assignment and Unboxing</h1>
+<p>The ternary conditional operator (<code>? :</code>) in Java is an
+expression that computes a single result with a type determined entirely
+at compile time. This article explores how the Java compiler evaluates
+the return type of a ternary expression, how it applies automatic
+numeric promotion and unboxing conversions, and the subtle
+<code>NullPointerException</code> pitfalls that arise when mixing
+primitive types with wrapper objects.</p>
+<h2 id="determining-the-expression-type-at-compile-time">Determining the
+Expression Type at Compile Time</h2>
+<p>Unlike an <code>if-else</code> statement, the ternary operator is an
+expression, meaning it must resolve to a definitive type when code is
+compiled. The Java Language Specification (JLS §15.25) categorizes
+ternary expressions into three distinct forms to determine the return
+type:</p>
+<ol type="1">
+<li><strong>Boolean Conditional Expressions</strong>: Both second and
+third operands are of type <code>boolean</code> or
+<code>Boolean</code>.</li>
+<li><strong>Numeric Conditional Expressions</strong>: Operands are
+primitive numeric types or their boxed equivalents (e.g.,
+<code>int</code>, <code>double</code>, <code>Integer</code>,
+<code>Double</code>).</li>
+<li><strong>Reference Conditional Expressions</strong>: Operands are
+object reference types.</li>
+</ol>
+<p>The compiler examines the types of both the second
+(<code>expr1</code>) and third (<code>expr2</code>) operands—not the
+condition itself—to identify the most specific common type.</p>
+<h2 id="unboxing-and-numeric-promotion">Unboxing and Numeric
+Promotion</h2>
+<p>When mixing primitives and wrapper classes in a ternary expression,
+Java applies binary numeric promotion and auto-unboxing according to
+strict rules:</p>
+<h3 id="1-matching-primitive-and-wrapper-types">1. Matching Primitive
+and Wrapper Types</h3>
+<p>If one operand is a primitive type (such as <code>int</code>) and the
+other is its corresponding wrapper class (such as <code>Integer</code>),
+the wrapper object is unboxed into the primitive type. The resulting
+type of the overall expression is the primitive type.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> wrapper <span class="op">=</span> <span class="bu">Integer</span><span class="op">.</span><span class="fu">valueOf</span><span class="op">(</span><span class="dv">42</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">boolean</span> flag <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">// The resulting type of the ternary expression is int, not Integer</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> result <span class="op">=</span> flag <span class="op">?</span> wrapper <span class="op">:</span> <span class="dv">0</span><span class="op">;</span></span></code></pre></div>
+<h3 id="2-mixed-numeric-types">2. Mixed Numeric Types</h3>
+<p>If one operand is a wrapper type and the other is a different
+primitive numeric type, the wrapper is first unboxed, and then binary
+numeric promotion is applied to widen the value to the larger type.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> count <span class="op">=</span> <span class="bu">Integer</span><span class="op">.</span><span class="fu">valueOf</span><span class="op">(</span><span class="dv">10</span><span class="op">);</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">boolean</span> flag <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">// &#39;count&#39; is unboxed to int, then promoted to double to match 1.5</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">// The expression type is double</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="dt">double</span> value <span class="op">=</span> flag <span class="op">?</span> count <span class="op">:</span> <span class="fl">1.5</span><span class="op">;</span></span></code></pre></div>
+<h3 id="3-constant-expressions-and-narrowing">3. Constant Expressions
+and Narrowing</h3>
+<p>If one operand is of type <code>byte</code>, <code>short</code>, or
+<code>char</code>, and the other is a constant expression of type
+<code>int</code> whose value fits within the range of that type, the
+resulting type is the narrower type (<code>byte</code>,
+<code>short</code>, or <code>char</code>).</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">char</span> c <span class="op">=</span> <span class="ch">&#39;A&#39;</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co">// The constant 0 fits into a char, so the expression type is char</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="dt">char</span> result <span class="op">=</span> <span class="kw">true</span> <span class="op">?</span> c <span class="op">:</span> <span class="dv">0</span><span class="op">;</span></span></code></pre></div>
+<h2 id="the-unboxing-nullpointerexception-pitfall">The Unboxing
+NullPointerException Pitfall</h2>
+<p>Because unboxing rules take precedence over the reference assignment
+target, developers frequently encounter unexpected
+<code>NullPointerException</code> (NPE) errors.</p>
+<p>Consider this common scenario:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> conditionResult <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> defaultValue <span class="op">=</span> <span class="kw">null</span><span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Throws NullPointerException at runtime</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> finalValue <span class="op">=</span> conditionResult <span class="op">?</span> <span class="dv">1</span> <span class="op">:</span> defaultValue<span class="op">;</span></span></code></pre></div>
+<p>Even though <code>finalValue</code> is an <code>Integer</code> and
+<code>defaultValue</code> is an <code>Integer</code>, the presence of
+the primitive literal <code>1</code> forces the entire ternary
+expression to evaluate to the primitive type <code>int</code>.
+Consequently, the compiler generates bytecode that unboxes
+<code>defaultValue</code> via <code>.intValue()</code> when the
+condition evaluates to <code>false</code>. Because
+<code>defaultValue</code> is <code>null</code>, an unboxing
+<code>NullPointerException</code> occurs before the value can ever be
+boxed back into <code>finalValue</code>.</p>
+<p>To prevent this issue, ensure both branches share the same wrapper
+type:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Prevents unboxing because both operands are Integer objects</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Integer</span> finalValue <span class="op">=</span> conditionResult <span class="op">?</span> <span class="bu">Integer</span><span class="op">.</span><span class="fu">valueOf</span><span class="op">(</span><span class="dv">1</span><span class="op">)</span> <span class="op">:</span> defaultValue<span class="op">;</span></span></code></pre></div>
+<h2 id="reference-types-and-target-typing">Reference Types and Target
+Typing</h2>
+<p>When both operands are non-numeric reference types, the compiler
+determines the type using the Least Upper Bound (LUB)—the most specific
+superclass or common interface shared by both operands.</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Returns Serializable &amp; Comparable&lt;?&gt; &amp; Constable (common interfaces)</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Serializable</span> item <span class="op">=</span> condition <span class="op">?</span> <span class="st">&quot;Hello&quot;</span> <span class="op">:</span> <span class="bu">Integer</span><span class="op">.</span><span class="fu">valueOf</span><span class="op">(</span><span class="dv">5</span><span class="op">);</span></span></code></pre></div>
+<p>Starting with Java 8, the ternary operator is also classified as a
+"poly expression" in assignment contexts. This means the target type
+provided on the left-hand side of the assignment can influence the type
+inference of the branches, enabling generic type inference to determine
+the intended return type seamlessly:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="bu">List</span><span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> list <span class="op">=</span> condition <span class="op">?</span> <span class="bu">Collections</span><span class="op">.</span><span class="fu">emptyList</span><span class="op">()</span> <span class="op">:</span> <span class="kw">new</span> <span class="bu">ArrayList</span><span class="op">&lt;&gt;();</span></span></code></pre></div>
+<p>Here, the compiler uses the target type
+<code>List&lt;String&gt;</code> to infer the type parameter of
+<code>Collections.emptyList()</code> rather than resolving it to
+<code>List&lt;Object&gt;</code>.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

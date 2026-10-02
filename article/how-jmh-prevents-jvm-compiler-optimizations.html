@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How JMH Prevents JVM Compiler Optimizations - java</title>
+    <meta name="description" content="Benchmarking Java code is notoriously unreliable when using standard timing loops because the Just-In-Time (JIT) compiler aggressively optimizes code at runtime. The Java Microbenchmark Harness (JMH) solves this problem by using purpose-built constructs">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-jmh-prevents-jvm-compiler-optimizations">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How JMH Prevents JVM Compiler Optimizations - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-jmh-prevents-jvm-compiler-optimizations" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Benchmarking Java code is notoriously unreliable when using standard timing loops because the Just-In-Time (JIT) compiler aggressively optimizes code at runtime. The Java Microbenchmark Harness (JMH) solves this problem by using purpose-built constructs" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-jmh-prevents-jvm-compiler-optimizations">How JMH Prevents
+JVM Compiler Optimizations</h1>
+<p>Benchmarking Java code is notoriously unreliable when using standard
+timing loops because the Just-In-Time (JIT) compiler aggressively
+optimizes code at runtime. The Java Microbenchmark Harness (JMH) solves
+this problem by using purpose-built constructs to neutralize specific
+JIT compiler optimizations—such as Dead Code Elimination, Constant
+Folding, and Loop Unrolling—that would otherwise distort benchmark
+results.</p>
+<h3 id="countering-dead-code-elimination">Countering Dead Code
+Elimination</h3>
+<p>Dead Code Elimination (DCE) occurs when the JIT compiler determines
+that a computed result is never used later in execution. If the result
+is never read, the compiler completely eliminates the computation,
+yielding benchmark results that artificially report near-zero execution
+times.</p>
+<p>JMH neutralizes DCE through two primary mechanisms:</p>
+<ul>
+<li><strong>Benchmark Method Return Values:</strong> When a
+<code>@Benchmark</code> method returns a non-void value, JMH
+automatically consumes that value behind the scenes, signaling to the
+compiler that the computation has observable side effects and cannot be
+discarded.</li>
+<li><strong>The Blackhole Class:</strong> For benchmarks generating
+multiple results or operations within a loop, JMH provides the
+<code>Blackhole</code> object. Passing variables into
+<code>blackhole.consume(...)</code> guarantees that the value is
+registered as used without introducing significant CPU overhead. JMH
+achieves this by writing the values to volatile fields or leveraging
+compiler intrinsics that prevent DCE without skewing runtime
+metrics.</li>
+</ul>
+<h3 id="preventing-constant-folding-and-propagation">Preventing Constant
+Folding and Propagation</h3>
+<p>If the JIT compiler detects that an operation uses fixed, predictable
+inputs, it computes the result at compile time (Constant Folding) or
+substitutes the variable with a constant value across the method
+(Constant Propagation). This produces measurements of a static lookup
+rather than the actual computational cost.</p>
+<p>To eliminate this artifact:</p>
+<ul>
+<li><strong>State Management (<code>@State</code>):</strong> JMH
+requires mutable state and input variables to reside within dedicated
+<code>@State</code> classes rather than being declared as local
+constants or final fields inside the benchmark method.</li>
+<li><strong>Dynamic Injection:</strong> JMH injects state variables at
+runtime, preventing the JIT compiler from treating values as constants.
+Because the compiler cannot statically predict the state of the object,
+it is forced to execute the real operations during each measurement
+iteration.</li>
+</ul>
+<h3 id="controlling-loop-optimizations">Controlling Loop
+Optimizations</h3>
+<p>Writing standard <code>for</code> or <code>while</code> loops inside
+a microbenchmark causes the JIT compiler to apply advanced loop
+optimizations, such as loop unrolling, vectorization, and loop-invariant
+code motion. These optimizations alter the instruction profile of the
+code being measured.</p>
+<ul>
+<li><strong>Framework-Managed Iterations:</strong> JMH abstracts loop
+control out of user code. Instead of measuring manual loops, the harness
+generates synthetic iteration loops that are carefully calibrated to
+measure individual operations without allowing loop management overhead
+or excessive unrolling to dominate the sample.</li>
+<li><strong>Operations Per Invocation:</strong> When a batch of
+operations must be measured, developers can use the
+<code>@OperationsPerInvocation</code> annotation, which informs JMH of
+the batch size so it can accurately calculate per-operation metrics
+while controlling JIT loop expansion.</li>
+</ul>
+<h3 id="mitigating-warmup-and-tiered-compilation-distortion">Mitigating
+Warmup and Tiered Compilation Distortion</h3>
+<p>The JVM uses tiered compilation (switching from interpreted bytecode
+to C1, and eventually to fully optimized C2 native code). Measuring
+execution while the JIT compiler is actively profiling, compiling, or
+deoptimizing code leads to high variance and inaccurate data.</p>
+<p>JMH enforces automated warmup iterations via <code>@Warmup</code>
+phases before triggering measurement iterations
+(<code>@Measurement</code>). This ensures that:</p>
+<ol type="1">
+<li>Code paths are fully profiled and reach a steady JIT compilation
+tier.</li>
+<li>Deoptimizations triggered by initial edge cases occur before
+measurement begins.</li>
+<li>The JVM garbage collector and runtime caches settle into normal
+operational patterns.</li>
+</ol>
+<h3 id="preventing-false-sharing">Preventing False Sharing</h3>
+<p>In multi-threaded benchmarks, variables located on the same CPU cache
+line can cause cache-coherency contention (false sharing), severely
+degrading performance independent of the code's efficiency. JMH
+mitigates this by automatically padding <code>@State</code> objects with
+dummy fields, ensuring that state instances used by different benchmark
+threads reside on separate hardware cache lines.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

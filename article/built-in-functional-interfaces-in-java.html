@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Built-In Functional Interfaces in Java - java</title>
+    <meta name="description" content="The java.util.function package, introduced in Java 8, provides a comprehensive set of built-in functional interfaces designed to serve as target types for lambda expressions and method references. This article breaks down the four fundamental categories">
+    <link rel="canonical" href="https://salivity.github.io/java/article/built-in-functional-interfaces-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Built-In Functional Interfaces in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/built-in-functional-interfaces-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The java.util.function package, introduced in Java 8, provides a comprehensive set of built-in functional interfaces designed to serve as target types for lambda expressions and method references. This article breaks down the four fundamental categories" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="built-in-functional-interfaces-in-java">Built-In Functional
+Interfaces in Java</h1>
+<p>The <code>java.util.function</code> package, introduced in Java 8,
+provides a comprehensive set of built-in functional interfaces designed
+to serve as target types for lambda expressions and method references.
+This article breaks down the four fundamental categories of functional
+interfaces—Predicates, Functions, Suppliers, and Consumers—along with
+their primitive and multi-argument specializations to help you write
+cleaner, more idiomatic functional code in Java.</p>
+<hr />
+<h3 id="1-the-four-core-interfaces">1. The Four Core Interfaces</h3>
+<p>Almost all interfaces in <code>java.util.function</code> derive from
+four primary shapes determined by input parameters and return types:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Interface</th>
+<th style="text-align: left;">Method Signature</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td
+style="text-align: left;"><strong><code>Predicate&lt;T&gt;</code></strong></td>
+<td style="text-align: left;"><code>boolean test(T t)</code></td>
+<td style="text-align: left;">Evaluates a condition on input
+<code>T</code> and returns a boolean.</td>
+</tr>
+<tr>
+<td
+style="text-align: left;"><strong><code>Function&lt;T, R&gt;</code></strong></td>
+<td style="text-align: left;"><code>R apply(T t)</code></td>
+<td style="text-align: left;">Accepts argument <code>T</code> and
+produces a result of type <code>R</code>.</td>
+</tr>
+<tr>
+<td
+style="text-align: left;"><strong><code>Consumer&lt;T&gt;</code></strong></td>
+<td style="text-align: left;"><code>void accept(T t)</code></td>
+<td style="text-align: left;">Accepts argument <code>T</code> and
+performs an operation without returning a result.</td>
+</tr>
+<tr>
+<td
+style="text-align: left;"><strong><code>Supplier&lt;T&gt;</code></strong></td>
+<td style="text-align: left;"><code>T get()</code></td>
+<td style="text-align: left;">Takes no arguments and produces a result
+of type <code>T</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="examples-of-core-interfaces">Examples of Core Interfaces</h4>
+<ul>
+<li><strong><code>Predicate&lt;T&gt;</code></strong>: Used for filtering
+or conditional checks.
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Predicate</span><span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> isNotEmpty <span class="op">=</span> s <span class="op">-&gt;</span> <span class="op">!</span>s<span class="op">.</span><span class="fu">isEmpty</span><span class="op">();</span></span></code></pre></div></li>
+<li><strong><code>Function&lt;T, R&gt;</code></strong>: Used for
+transforming data from one type to another.
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>Function<span class="op">&lt;</span><span class="bu">String</span><span class="op">,</span> <span class="bu">Integer</span><span class="op">&gt;</span> stringLength <span class="op">=</span> s <span class="op">-&gt;</span> s<span class="op">.</span><span class="fu">length</span><span class="op">();</span></span></code></pre></div></li>
+<li><strong><code>Consumer&lt;T&gt;</code></strong>: Used for side
+effects such as logging or printing.
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>Consumer<span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> printer <span class="op">=</span> s <span class="op">-&gt;</span> <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>s<span class="op">);</span></span></code></pre></div></li>
+<li><strong><code>Supplier&lt;T&gt;</code></strong>: Used for lazy
+generation of values or object factories.
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>Supplier<span class="op">&lt;</span><span class="bu">Double</span><span class="op">&gt;</span> randomValue <span class="op">=</span> <span class="op">()</span> <span class="op">-&gt;</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">random</span><span class="op">();</span></span></code></pre></div></li>
+</ul>
+<hr />
+<h3 id="2-two-arity-bi--specializations">2. Two-Arity (Bi-)
+Specializations</h3>
+<p>When an operation requires two inputs instead of one, Java provides
+two-argument variations:</p>
+<ul>
+<li><strong><code>BiPredicate&lt;T, U&gt;</code></strong>:
+<code>boolean test(T t, U u)</code> — Evaluates two inputs and returns a
+boolean.</li>
+<li><strong><code>BiFunction&lt;T, U, R&gt;</code></strong>:
+<code>R apply(T t, U u)</code> — Transforms two inputs into a single
+output.</li>
+<li><strong><code>BiConsumer&lt;T, U&gt;</code></strong>:
+<code>void accept(T t, U u)</code> — Performs an operation on two inputs
+without returning a result.</li>
+</ul>
+<p><em>(Note: There is no <code>BiSupplier</code> because a supplier
+takes no arguments.)</em></p>
+<hr />
+<h3 id="3-operator-specializations">3. Operator Specializations</h3>
+<p>Operators are specialized forms of <code>Function</code> where the
+input and output types are identical.</p>
+<ul>
+<li><strong><code>UnaryOperator&lt;T&gt;</code></strong>: Extends
+<code>Function&lt;T, T&gt;</code>. Takes a single operand of type
+<code>T</code> and returns a result of the same type <code>T</code>.
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>UnaryOperator<span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> toUpperCase <span class="op">=</span> s <span class="op">-&gt;</span> s<span class="op">.</span><span class="fu">toUpperCase</span><span class="op">();</span></span></code></pre></div></li>
+<li><strong><code>BinaryOperator&lt;T&gt;</code></strong>: Extends
+<code>BiFunction&lt;T, T, T&gt;</code>. Takes two operands of type
+<code>T</code> and returns a result of type <code>T</code>.
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>BinaryOperator<span class="op">&lt;</span><span class="bu">Integer</span><span class="op">&gt;</span> add <span class="op">=</span> <span class="op">(</span>a<span class="op">,</span> b<span class="op">)</span> <span class="op">-&gt;</span> a <span class="op">+</span> b<span class="op">;</span></span></code></pre></div></li>
+</ul>
+<hr />
+<h3 id="4-primitive-specializations">4. Primitive Specializations</h3>
+<p>To avoid the performance overhead of boxing and unboxing primitives
+(<code>int</code>, <code>long</code>, <code>double</code>), the package
+includes specialized interfaces:</p>
+<h4 id="primitive-predicates-consumers-and-suppliers">Primitive
+Predicates, Consumers, and Suppliers</h4>
+<ul>
+<li><strong>Predicates</strong>: <code>IntPredicate</code>,
+<code>LongPredicate</code>, <code>DoublePredicate</code></li>
+<li><strong>Consumers</strong>: <code>IntConsumer</code>,
+<code>LongConsumer</code>, <code>DoubleConsumer</code></li>
+<li><strong>Suppliers</strong>: <code>IntSupplier</code>,
+<code>LongSupplier</code>, <code>DoubleSupplier</code>,
+<code>BooleanSupplier</code></li>
+</ul>
+<h4 id="primitive-functions-and-operators">Primitive Functions and
+Operators</h4>
+<ul>
+<li><strong>Input-specific Functions</strong>:
+<code>IntFunction&lt;R&gt;</code>, <code>LongFunction&lt;R&gt;</code>,
+<code>DoubleFunction&lt;R&gt;</code></li>
+<li><strong>Output-specific Functions</strong>:
+<code>ToIntFunction&lt;T&gt;</code>,
+<code>ToLongFunction&lt;T&gt;</code>,
+<code>ToDoubleFunction&lt;T&gt;</code></li>
+<li><strong>Primitive-to-Primitive Functions</strong>:
+<code>IntToLongFunction</code>, <code>IntToDoubleFunction</code>,
+<code>LongToIntFunction</code>, <code>LongToDoubleFunction</code>,
+<code>DoubleToIntFunction</code>, <code>DoubleToLongFunction</code></li>
+<li><strong>Primitive Operators</strong>:
+<ul>
+<li>Unary: <code>IntUnaryOperator</code>,
+<code>LongUnaryOperator</code>, <code>DoubleUnaryOperator</code></li>
+<li>Binary: <code>IntBinaryOperator</code>,
+<code>LongBinaryOperator</code>, <code>DoubleBinaryOperator</code></li>
+</ul></li>
+<li><strong>Two-Arity Primitive Variations</strong>:
+<code>ObjIntConsumer&lt;T&gt;</code>,
+<code>ObjLongConsumer&lt;T&gt;</code>,
+<code>ObjDoubleConsumer&lt;T&gt;</code>,
+<code>ToIntBiFunction&lt;T, U&gt;</code>,
+<code>ToLongBiFunction&lt;T, U&gt;</code>,
+<code>ToDoubleBiFunction&lt;T, U&gt;</code></li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

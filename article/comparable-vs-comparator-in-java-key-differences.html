@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparable vs Comparator in Java: Key Differences - java</title>
+    <meta name="description" content="In Java, sorting collections of objects relies on two foundational interfaces: Comparable and Comparator. While both are designed to define the ordering of objects, they serve fundamentally different architectural and functional purposes. This article br">
+    <link rel="canonical" href="https://salivity.github.io/java/article/comparable-vs-comparator-in-java-key-differences">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Comparable vs Comparator in Java: Key Differences - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/comparable-vs-comparator-in-java-key-differences" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, sorting collections of objects relies on two foundational interfaces: Comparable and Comparator. While both are designed to define the ordering of objects, they serve fundamentally different architectural and functional purposes. This article br" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="comparable-vs-comparator-in-java-key-differences">Comparable vs
+Comparator in Java: Key Differences</h1>
+<p>In Java, sorting collections of objects relies on two foundational
+interfaces: <code>Comparable</code> and <code>Comparator</code>. While
+both are designed to define the ordering of objects, they serve
+fundamentally different architectural and functional purposes. This
+article breaks down the functional differences between
+<code>Comparable</code> and <code>Comparator</code>, focusing on their
+method signatures, package locations, modification requirements, and
+flexibility, allowing you to determine the right tool for your specific
+sorting requirements.</p>
+<h2 id="what-is-comparable">What is Comparable?</h2>
+<p>The <code>Comparable</code> interface is used to define the
+<strong>natural ordering</strong> of an object. A class that implements
+<code>Comparable</code> defines how its own instances should be compared
+to one another by default.</p>
+<ul>
+<li><strong>Package:</strong> <code>java.lang</code> (no import
+statement required).</li>
+<li><strong>Core Method:</strong> <code>int compareTo(T o)</code></li>
+<li><strong>Design Approach:</strong> Intrusive. You must modify the
+source code of the class being sorted to implement the interface.</li>
+</ul>
+<p>When you implement <code>Comparable</code>, you override the
+<code>compareTo</code> method:</p>
+<ul>
+<li>Returns a <strong>negative integer</strong> if the current object
+(<code>this</code>) is less than the specified object.</li>
+<li>Returns <strong>zero</strong> if the current object is equal to the
+specified object.</li>
+<li>Returns a <strong>positive integer</strong> if the current object is
+greater than the specified object.</li>
+</ul>
+<p>Because the logic is embedded inside the class, a class can only have
+<strong>one</strong> <code>Comparable</code> implementation. Common Java
+classes like <code>String</code>, <code>Integer</code>, and
+<code>Date</code> implement <code>Comparable</code> to provide standard
+alphabetical or numerical ordering.</p>
+<h2 id="what-is-comparator">What is Comparator?</h2>
+<p>The <code>Comparator</code> interface is used to define
+<strong>custom, multiple, or external sorting sequences</strong>.
+Instead of being embedded in the class of the objects being sorted, a
+<code>Comparator</code> is typically implemented in a separate class, an
+anonymous inner class, or via a lambda expression.</p>
+<ul>
+<li><strong>Package:</strong> <code>java.util</code></li>
+<li><strong>Core Method:</strong>
+<code>int compare(T o1, T o2)</code></li>
+<li><strong>Design Approach:</strong> Non-intrusive. You do not need to
+modify the source code of the class whose objects are being sorted.</li>
+</ul>
+<p>The <code>compare</code> method evaluates two objects passed as
+arguments:</p>
+<ul>
+<li>Returns a <strong>negative integer</strong> if <code>o1</code> is
+less than <code>o2</code>.</li>
+<li>Returns <strong>zero</strong> if <code>o1</code> is equal to
+<code>o2</code>.</li>
+<li>Returns a <strong>positive integer</strong> if <code>o1</code> is
+greater than <code>o2</code>.</li>
+</ul>
+<p>Because <code>Comparator</code> instances exist outside the data
+class, you can create as many comparators as necessary to sort by
+different attributes (e.g., by name, by age, or in descending
+order).</p>
+<h2 id="key-functional-differences">Key Functional Differences</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Comparable</th>
+<th style="text-align: left;">Comparator</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Package</strong></td>
+<td style="text-align: left;"><code>java.lang</code></td>
+<td style="text-align: left;"><code>java.util</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Method</strong></td>
+<td style="text-align: left;"><code>compareTo(T o)</code></td>
+<td style="text-align: left;"><code>compare(T o1, T o2)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Sorting Type</strong></td>
+<td style="text-align: left;">Natural/Default ordering</td>
+<td style="text-align: left;">Custom/Alternate ordering</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Number of Strategies</strong></td>
+<td style="text-align: left;">Single sorting sequence</td>
+<td style="text-align: left;">Multiple sorting sequences</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Class Modification</strong></td>
+<td style="text-align: left;">Requires modifying the target class</td>
+<td style="text-align: left;">Does not require modifying the target
+class</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Arguments</strong></td>
+<td style="text-align: left;">Compares <code>this</code> with one
+argument</td>
+<td style="text-align: left;">Compares two independent arguments</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Invocation</strong></td>
+<td style="text-align: left;"><code>Collections.sort(list)</code></td>
+<td
+style="text-align: left;"><code>Collections.sort(list, comparator)</code>
+or <code>list.sort(comparator)</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="when-to-use-which">When to Use Which</h2>
+<h3 id="use-comparable-when">Use <code>Comparable</code> when:</h3>
+<ul>
+<li>There is a clear, standard "natural" order for instances of the
+class (such as IDs or dates).</li>
+<li>You own and can safely modify the source code of the target
+class.</li>
+<li>You only need one consistent sorting behavior throughout the
+application.</li>
+</ul>
+<h3 id="use-comparator-when">Use <code>Comparator</code> when:</h3>
+<ul>
+<li>You need multiple sorting criteria (e.g., sorting an
+<code>Employee</code> list by salary in one view, and by hire date in
+another).</li>
+<li>You cannot modify the class source code (e.g., third-party library
+classes).</li>
+<li>You want to write dynamic, inline sorting logic using Java 8+
+features like lambda expressions and methods such as
+<code>Comparator.comparing()</code>.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Is the N+1 Select Problem in Java ORMs? - java</title>
+    <meta name="description" content="The N+1 select problem is a critical database performance issue that occurs when an Object-Relational Mapping (ORM) framework executes an excessive number of SQL queries to fetch related data. In Java ecosystems relying on frameworks like Hibernate or Ec">
+    <link rel="canonical" href="https://salivity.github.io/java/article/what-is-the-n-1-select-problem-in-java-or-ms">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What Is the N+1 Select Problem in Java ORMs? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/what-is-the-n-1-select-problem-in-java-or-ms" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The N+1 select problem is a critical database performance issue that occurs when an Object-Relational Mapping (ORM) framework executes an excessive number of SQL queries to fetch related data. In Java ecosystems relying on frameworks like Hibernate or Ec" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="what-is-the-n1-select-problem-in-java-orms">What Is the N+1
+Select Problem in Java ORMs?</h1>
+<p>The N+1 select problem is a critical database performance issue that
+occurs when an Object-Relational Mapping (ORM) framework executes an
+excessive number of SQL queries to fetch related data. In Java
+ecosystems relying on frameworks like Hibernate or EclipseLink, this
+anti-pattern emerges when an application executes one initial query to
+retrieve a set of parent entities, followed by N subsequent queries to
+fetch child data for each individual entity returned. This article
+explains the underlying mechanisms that cause the N+1 select problem in
+Java ORMs and demonstrates how standard object mapping behaviors trigger
+it.</p>
+<h3 id="the-mechanics-of-the-n1-problem">The Mechanics of the N+1
+Problem</h3>
+<p>The issue arises from the mismatch between the object-oriented
+paradigm—where relationships are traversed as object references—and the
+relational paradigm, which relies on set-based joins.</p>
+<p>Consider a standard parent-child relationship: an <code>Author</code>
+entity that holds a collection of <code>Book</code> entities mapped via
+<code>@OneToMany</code>.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="at">@Entity</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Author <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Id</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="bu">Long</span> id<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="bu">String</span> name<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">@OneToMany</span><span class="op">(</span>mappedBy <span class="op">=</span> <span class="st">&quot;author&quot;</span><span class="op">)</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="bu">List</span><span class="op">&lt;</span><span class="bu">Book</span><span class="op">&gt;</span> books<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>When you query for authors using a basic JPA query:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">List</span><span class="op">&lt;</span>Author<span class="op">&gt;</span> authors <span class="op">=</span> entityManager</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">createQuery</span><span class="op">(</span><span class="st">&quot;SELECT a FROM Author a&quot;</span><span class="op">,</span> Author<span class="op">.</span><span class="fu">class</span><span class="op">)</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">getResultList</span><span class="op">();</span></span></code></pre></div>
+<p>The ORM executes a single SQL query:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="kw">id</span>, name <span class="kw">FROM</span> author;</span></code></pre></div>
+<p>If this query returns 50 authors (<span class="math inline">\(N =
+50\)</span>), the persistence context now holds 50 <code>Author</code>
+instances. The problem surfaces when the application iterates through
+these authors to access their associated books:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span>Author author <span class="op">:</span> authors<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>author<span class="op">.</span><span class="fu">getBooks</span><span class="op">().</span><span class="fu">size</span><span class="op">());</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Because the collection is not yet loaded in memory, the ORM
+intercepts the getter call and issues a separate SQL query for each
+author:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="kw">id</span>, title, author_id <span class="kw">FROM</span> book <span class="kw">WHERE</span> author_id <span class="op">=</span> ?;</span></code></pre></div>
+<p>Executing this statement once for each of the 50 authors results in
+50 additional queries. Combined with the initial query to retrieve the
+authors, the application executes <span class="math inline">\(1 + 50 =
+51\)</span> queries to load data that could have been fetched in a
+single round-trip.</p>
+<h3 id="why-fetch-strategies-fail-to-prevent-it-automatically">Why Fetch
+Strategies Fail to Prevent It Automatically</h3>
+<p>A common misconception is that switching from lazy loading
+(<code>FetchType.LAZY</code>) to eager loading
+(<code>FetchType.EAGER</code>) solves the problem. In reality, eager
+loading often worsens the situation.</p>
+<h4 id="1-lazy-loading-triggers">1. Lazy Loading Triggers</h4>
+<p>By default, <code>@OneToMany</code> and <code>@ManyToMany</code>
+associations use lazy loading. The ORM substitutes the child collection
+with a dynamic proxy. The framework does not fetch the related records
+until the collection is explicitly accessed in the code. If that access
+occurs inside a loop, the ORM executes an isolated <code>SELECT</code>
+statement on every iteration.</p>
+<h4 id="2-eager-loading-limitations">2. Eager Loading Limitations</h4>
+<p>When a relation is configured with <code>FetchType.EAGER</code>, the
+ORM is required to load the related data immediately. However, when
+executing a JPQL or HQL query such as
+<code>SELECT a FROM Author a</code>, the framework parses the query
+strictly as written without automatically injecting SQL
+<code>JOIN</code> clauses. The persistence provider first executes the
+primary query, realizes that each <code>Author</code> has an eager
+association to <code>Book</code>, and immediately fires <span
+class="math inline">\(N\)</span> individual queries to populate those
+collections before returning the list to the caller. This produces the
+exact same N+1 behavior without requiring the developer to loop over the
+data.</p>
+<h3 id="impact-on-application-performance">Impact on Application
+Performance</h3>
+<p>The N+1 select problem rarely causes noticeable issues in development
+environments with small datasets. However, in production systems, it
+introduces severe bottlenecks:</p>
+<ul>
+<li><strong>High Network Latency:</strong> Each query requires a
+complete database round-trip. Even with sub-millisecond query execution
+times, the cumulative network latency of dozens or hundreds of
+sequential calls slows application response times.</li>
+<li><strong>Database Connection Saturation:</strong> Firing hundreds of
+small queries rapidly exhausts the database connection pool, leading to
+thread starvation and system-wide performance degradation.</li>
+<li><strong>Database CPU Overhead:</strong> The database engine spends
+unnecessary resources parsing, planning, and executing repetitive
+queries instead of processing a single, optimized relational join.</li>
+</ul>
+<h3 id="common-solutions-in-java">Common Solutions in Java</h3>
+<p>Resolving the N+1 problem requires directing the ORM to fetch the
+parent and child records in a single operation or in batches:</p>
+<ul>
+<li><strong>JPQL JOIN FETCH:</strong> Using an explicit
+<code>JOIN FETCH</code> clause forces the ORM to generate an inner or
+left outer join in the underlying SQL statement (e.g.,
+<code>SELECT a FROM Author a JOIN FETCH a.books</code>).</li>
+<li><strong>Entity Graphs:</strong> The JPA <code>@EntityGraph</code>
+annotation allows developers to dynamically override fetch plans at
+query time, instructing the persistence provider to fetch specific
+associations via joins for a particular repository method.</li>
+<li><strong>Batch Fetching:</strong> Framework-specific annotations like
+Hibernate’s <code>@BatchSize</code> allow the ORM to group child queries
+using the SQL <code>IN</code> operator (e.g.,
+<code>WHERE author_id IN (?, ?, ?, ...)</code>), reducing the subsequent
+query count from <span class="math inline">\(N\)</span> to a fraction
+such as <span class="math inline">\(N / \text{batch size}\)</span>.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C1 Client vs C2 Server Compiler in Java - java</title>
+    <meta name="description" content="The Java Virtual Machine (JVM) uses Just-In-Time (JIT) compilation to translate platform-independent bytecode into highly optimized native machine code during runtime. At the core of the HotSpot JVM's execution engine are two distinct JIT compilers: the">
+    <link rel="canonical" href="https://salivity.github.io/java/article/c-1-client-vs-c-2-server-compiler-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="C1 Client vs C2 Server Compiler in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/c-1-client-vs-c-2-server-compiler-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Virtual Machine (JVM) uses Just-In-Time (JIT) compilation to translate platform-independent bytecode into highly optimized native machine code during runtime. At the core of the HotSpot JVM's execution engine are two distinct JIT compilers: the" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="c1-client-vs-c2-server-compiler-in-java">C1 Client vs C2 Server
+Compiler in Java</h1>
+<p>The Java Virtual Machine (JVM) uses Just-In-Time (JIT) compilation to
+translate platform-independent bytecode into highly optimized native
+machine code during runtime. At the core of the HotSpot JVM's execution
+engine are two distinct JIT compilers: the C1 compiler (traditionally
+known as the Client compiler) and the C2 compiler (the Server compiler).
+This article breaks down the primary differences between C1 and C2,
+detailing their optimization strategies, resource usage, and how modern
+JVMs combine both via Tiered Compilation.</p>
+<h3 id="core-objectives-and-design-philosophy">Core Objectives and
+Design Philosophy</h3>
+<ul>
+<li><strong>The C1 Compiler (Client):</strong> The primary goal of the
+C1 compiler is fast compilation speed. It is engineered to compile code
+rapidly so that applications can achieve acceptable execution
+performance as quickly as possible. Because it prioritizes low
+compilation overhead, it applies a conservative set of
+optimizations.</li>
+<li><strong>The C2 Compiler (Server):</strong> The primary goal of the
+C2 compiler is peak execution throughput. It is built for long-running
+processes where the upfront cost of compilation time and CPU usage is an
+acceptable tradeoff for heavily optimized native code.</li>
+</ul>
+<h3 id="key-differences">Key Differences</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">C1 (Client Compiler)</th>
+<th style="text-align: left;">C2 (Server Compiler)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Startup Time</strong></td>
+<td style="text-align: left;">Fast</td>
+<td style="text-align: left;">Slow</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Peak Performance</strong></td>
+<td style="text-align: left;">Moderate</td>
+<td style="text-align: left;">High (Optimal)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Compilation Overhead</strong></td>
+<td style="text-align: left;">Low CPU and memory footprint</td>
+<td style="text-align: left;">High CPU and memory footprint</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Optimization Depth</strong></td>
+<td style="text-align: left;">Basic (e.g., local optimizations, simple
+inlining)</td>
+<td style="text-align: left;">Advanced (e.g., escape analysis,
+aggressive inlining, loop unrolling)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Historical Target</strong></td>
+<td style="text-align: left;">Desktop applications and GUI clients</td>
+<td style="text-align: left;">Long-running backend servers</td>
+</tr>
+</tbody>
+</table>
+<h3 id="optimization-techniques">Optimization Techniques</h3>
+<p>The two compilers differ significantly in how deeply they analyze
+code before generating assembly.</p>
+<ul>
+<li><strong>C1 Optimizations:</strong> C1 conducts basic profiling and
+simple optimizations. It focuses on local value numbering, method
+inlining of small methods, and basic dead-code elimination. It avoids
+complex, global data-flow analysis to prevent consuming excessive memory
+and CPU during runtime.</li>
+<li><strong>C2 Optimizations:</strong> C2 performs aggressive global
+optimizations. It uses profiling data gathered during execution to make
+speculative optimizations, such as assuming certain conditional branches
+are never taken or that a specific interface has only one concrete
+implementation. Key techniques include:
+<ul>
+<li><strong>Escape Analysis:</strong> Determines if an object's scope is
+confined to a single method or thread, allowing the JVM to eliminate
+heap allocations in favor of stack allocations or scalar
+replacement.</li>
+<li><strong>Aggressive Inlining:</strong> Inlines deeply nested and
+larger method calls to eliminate call overhead and expose further
+optimization targets.</li>
+<li><strong>Loop Optimization:</strong> Unrolls loops, eliminates bounds
+checks, and reorders instructions to maximize hardware pipelining.</li>
+<li><strong>Deoptimization Support:</strong> If speculative assumptions
+fail at runtime, C2 can deoptimize the code back to interpreted mode or
+a lower tier.</li>
+</ul></li>
+</ul>
+<h3 id="tiered-compilation-modern-integration">Tiered Compilation:
+Modern Integration</h3>
+<p>Historically, developers had to choose between running the JVM with
+the <code>-client</code> flag or the <code>-server</code> flag. Modern
+Java implementations (Java 7+ and enabled by default in Java 8 and
+later) eliminate this trade-off using <strong>Tiered
+Compilation</strong> (<code>-XX:+TieredCompilation</code>).</p>
+<p>Tiered Compilation uses a multi-level execution pipeline:</p>
+<ol type="1">
+<li><strong>Level 0 (Interpreter):</strong> Bytecode executes via the
+interpreter while basic profiling data is collected.</li>
+<li><strong>Level 1 to 3 (C1 Compiler):</strong> Hot methods are
+compiled by C1 at varying levels of profiling intensity to deliver quick
+performance gains.</li>
+<li><strong>Level 4 (C2 Compiler):</strong> Methods that are invoked
+frequently are promoted to C2, which uses the accumulated profiling data
+from Level 3 to compile fully optimized native code.</li>
+</ol>
+<p>Through Tiered Compilation, the JVM achieves the fast startup
+benefits of the C1 compiler alongside the sustained, high-throughput
+execution of the C2 compiler.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

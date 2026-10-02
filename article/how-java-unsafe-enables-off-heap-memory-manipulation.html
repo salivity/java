@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Unsafe Enables Off-Heap Memory Manipulation - java</title>
+    <meta name="description" content="The sun.misc.Unsafe class provides low-level mechanisms that bypass standard Java Virtual Machine (JVM) safety barriers, granting internal packages the ability to allocate, read, write, and deallocate memory directly outside the garbage-collected heap. B">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-unsafe-enables-off-heap-memory-manipulation">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Unsafe Enables Off-Heap Memory Manipulation - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-unsafe-enables-off-heap-memory-manipulation" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The sun.misc.Unsafe class provides low-level mechanisms that bypass standard Java Virtual Machine (JVM) safety barriers, granting internal packages the ability to allocate, read, write, and deallocate memory directly outside the garbage-collected heap. B" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-unsafe-enables-off-heap-memory-manipulation">How Java
+Unsafe Enables Off-Heap Memory Manipulation</h1>
+<p>The <code>sun.misc.Unsafe</code> class provides low-level mechanisms
+that bypass standard Java Virtual Machine (JVM) safety barriers,
+granting internal packages the ability to allocate, read, write, and
+deallocate memory directly outside the garbage-collected heap. By
+circumventing standard object abstractions and type checks,
+<code>Unsafe</code> gives critical internal frameworks—such as Java NIO
+direct buffers and concurrency utilities—the capability to interface
+directly with native operating system memory for maximum I/O performance
+and minimal latency.</p>
+<h3 id="bypassing-jvm-allocations-via-native-system-calls">Bypassing JVM
+Allocations via Native System Calls</h3>
+<p>Under normal circumstances, Java manages memory entirely within the
+garbage collection (GC) heap, allocating objects and periodically
+reclaiming unreachable memory. The <code>Unsafe</code> class circumvents
+this lifecycle through native methods that map directly to underlying
+C-style memory management calls.</p>
+<p>Using <code>allocateMemory(long bytes)</code>, <code>Unsafe</code>
+requests a contiguous block of raw memory from the host operating
+system, effectively wrapping the native <code>malloc</code> call. This
+creates memory outside the GC's purview—known as off-heap memory. The
+method returns a primitive 64-bit <code>long</code> value representing
+the direct physical memory address (pointer) of the allocated region.
+Because the GC never inspects or tracks these memory addresses, off-heap
+data avoids garbage collection pauses, making it ideal for systems with
+large caches or stringent latency requirements.</p>
+<h3 id="direct-memory-access-with-native-pointers">Direct Memory Access
+with Native Pointers</h3>
+<p>Once an address is acquired, <code>Unsafe</code> provides
+primitive-specific memory access methods to manipulate raw bytes without
+any safety or bounds checks:</p>
+<ul>
+<li><strong>Direct Writing:</strong> Methods such as
+<code>putByte(long address, byte x)</code>,
+<code>putInt(long address, int x)</code>, and
+<code>putLong(long address, long x)</code> store values directly into
+the physical memory offset specified by the address pointer.</li>
+<li><strong>Direct Reading:</strong> Corresponding methods such as
+<code>getByte(long address)</code> and
+<code>getLong(long address)</code> retrieve data from raw memory
+locations without confirming whether the target contains valid data or
+conforms to an active Java type.</li>
+<li><strong>Bulk Operations:</strong> Methods like
+<code>copyMemory</code> allow rapid block copies across native memory or
+between on-heap array structures and native addresses, minimizing CPU
+overhead during large data transfers.</li>
+</ul>
+<p>Because these operations lack the bounds checking enforced on
+standard Java arrays, read and write operations execute with minimal CPU
+instruction overhead, mirroring the speed of direct pointer arithmetic
+in C.</p>
+<h3 id="internal-jdk-usage-directbytebuffers-and-zero-copy-io">Internal
+JDK Usage: DirectByteBuffers and Zero-Copy I/O</h3>
+<p>The primary internal consumer of off-heap memory via
+<code>Unsafe</code> is Java's New I/O (NIO) subsystem, specifically
+implementations like <code>java.nio.DirectByteBuffer</code>.</p>
+<p>Standard Java I/O relies on byte arrays stored in the GC heap. To
+send this data over a network or write it to disk, the JVM must first
+copy the on-heap array to an intermediate native buffer to prevent the
+GC from moving the data while the operating system accesses it. By using
+<code>Unsafe.allocateMemory</code>, a <code>DirectByteBuffer</code>
+allocates the target buffer directly in native memory from the outset.
+This allows network cards and disk controllers to perform direct Direct
+Memory Access (DMA) operations using native system calls, eliminating
+redundant data copying and enabling zero-copy network architectures.</p>
+<h3 id="manual-lifecycle-and-deallocation">Manual Lifecycle and
+Deallocation</h3>
+<p>Because off-heap memory is outside the GC's control, it does not
+clean up automatically when Java object references go out of scope.
+Failing to release this memory results in native memory leaks that can
+consume all host RAM.</p>
+<p>The <code>Unsafe</code> class exposes
+<code>freeMemory(long address)</code> to release allocated blocks back
+to the operating system, mirroring native <code>free()</code>. Internal
+JDK classes encapsulate this behavior using custom references such as
+<code>java.lang.ref.Cleaner</code>. When a high-level wrapper object
+(like a <code>DirectByteBuffer</code>) becomes unreachable, the internal
+cleaner triggers <code>Unsafe.freeMemory</code> on a separate thread,
+safely releasing the underlying native block without exposing the manual
+lifecycle management to standard application code.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

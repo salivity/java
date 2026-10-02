@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intermediate vs Terminal Operations in Java Streams - java</title>
+    <meta name="description" content="In the Java Stream API, processing pipelines rely on a clear distinction between intermediate and terminal operations. Intermediate operations configure and transform the data pipeline lazily without executing any processing, returning a new stream to al">
+    <link rel="canonical" href="https://salivity.github.io/java/article/intermediate-vs-terminal-operations-in-java-streams">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Intermediate vs Terminal Operations in Java Streams - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/intermediate-vs-terminal-operations-in-java-streams" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In the Java Stream API, processing pipelines rely on a clear distinction between intermediate and terminal operations. Intermediate operations configure and transform the data pipeline lazily without executing any processing, returning a new stream to al" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="intermediate-vs-terminal-operations-in-java-streams">Intermediate vs
+Terminal Operations in Java Streams</h1>
+<p>In the Java Stream API, processing pipelines rely on a clear
+distinction between intermediate and terminal operations. Intermediate
+operations configure and transform the data pipeline lazily without
+executing any processing, returning a new stream to allow method
+chaining. In contrast, terminal operations initiate the data traversal,
+perform the accumulated operations, and produce a non-stream result or
+side-effect, effectively closing the stream pipeline.</p>
+<h3 id="return-types-and-method-chaining">Return Types and Method
+Chaining</h3>
+<p>The most immediate syntactic difference between the two operations is
+their return type. Intermediate operations always return a new
+<code>Stream</code> (such as <code>Stream&lt;T&gt;</code>,
+<code>IntStream</code>, or <code>DoubleStream</code>). This enables
+method chaining, often referred to as building a stream pipeline.</p>
+<p>Terminal operations return a non-stream type—such as an
+<code>Optional</code>, a <code>Collection</code>, a primitive value
+(like <code>long</code> or <code>boolean</code>), or <code>void</code>.
+Because a terminal operation does not return a <code>Stream</code>, it
+marks the end of the method chain.</p>
+<h3 id="execution-behavior-laziness-vs-eagerness">Execution Behavior:
+Laziness vs. Eagerness</h3>
+<p>Intermediate operations are strictly lazy. When you call an
+intermediate method, the elements of the underlying data source are not
+actually processed; instead, a new stream is instantiated with the
+specified operation added to its execution plan.</p>
+<p>Terminal operations are eager. They trigger the traversal of the
+pipeline. When a terminal operation is called, the JVM pulls elements
+through the intermediate operations one by one (or in parallel) to
+compute the final outcome. Without a terminal operation, no intermediate
+operation will ever execute.</p>
+<h3 id="stream-lifecycle-and-consumption">Stream Lifecycle and
+Consumption</h3>
+<p>A stream pipeline can contain zero or more intermediate operations,
+but it must contain exactly one terminal operation.</p>
+<p>Intermediate operations do not consume the stream; they simply extend
+the processing logic. Once a terminal operation is invoked, the stream
+is considered consumed and cannot be traversed or operated on again.
+Attempting to call another operation on a stream that has already
+executed a terminal operation throws an
+<code>IllegalStateException</code>.</p>
+<h3 id="short-circuiting-capabilities">Short-Circuiting
+Capabilities</h3>
+<p>Both intermediate and terminal operations can be short-circuiting,
+but they achieve this in different ways:</p>
+<ul>
+<li><strong>Intermediate short-circuiting operations</strong> (e.g.,
+<code>limit()</code>, <code>skip()</code>) restrict the number of
+elements passed down the pipeline, allowing infinite streams to be
+reduced to finite ones.</li>
+<li><strong>Terminal short-circuiting operations</strong> (e.g.,
+<code>findFirst()</code>, <code>findAny()</code>,
+<code>anyMatch()</code>, <code>allMatch()</code>) can complete early
+without processing every element in the stream once a condition is
+satisfied.</li>
+</ul>
+<h3 id="summary-of-common-operations">Summary of Common Operations</h3>
+<ul>
+<li><strong>Intermediate Operations:</strong> <code>filter()</code>,
+<code>map()</code>, <code>flatMap()</code>, <code>distinct()</code>,
+<code>sorted()</code>, <code>peek()</code>, <code>limit()</code>,
+<code>skip()</code>.</li>
+<li><strong>Terminal Operations:</strong> <code>collect()</code>,
+<code>forEach()</code>, <code>reduce()</code>, <code>count()</code>,
+<code>min()</code>, <code>max()</code>, <code>anyMatch()</code>,
+<code>allMatch()</code>, <code>noneMatch()</code>,
+<code>findFirst()</code>, <code>findAny()</code>,
+<code>toArray()</code>.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

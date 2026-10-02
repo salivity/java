@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java enable-preview Flag Unlocks Preview APIs - java</title>
+    <meta name="description" content="The --enable-preview flag in Java provides a controlled mechanism for developers to test upcoming, non-final language features and APIs before they become permanent components of the Java platform. By requiring this flag at both compile time and runtime,">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-enable-preview-flag-unlocks-preview-ap-is">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java enable-preview Flag Unlocks Preview APIs - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-enable-preview-flag-unlocks-preview-ap-is" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The --enable-preview flag in Java provides a controlled mechanism for developers to test upcoming, non-final language features and APIs before they become permanent components of the Java platform. By requiring this flag at both compile time and runtime," />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-enable-preview-flag-unlocks-preview-apis">How Java
+enable-preview Flag Unlocks Preview APIs</h1>
+<p>The <code>--enable-preview</code> flag in Java provides a controlled
+mechanism for developers to test upcoming, non-final language features
+and APIs before they become permanent components of the Java platform.
+By requiring this flag at both compile time and runtime, the Java
+Virtual Machine (JVM) prevents experimental code from inadvertently
+running in production environments. This article details the internal
+mechanics of how the flag functions, how class file versioning enforces
+preview boundaries, and how the runtime gates access to experimental
+APIs.</p>
+<h3 id="the-lifecycle-of-preview-features">The Lifecycle of Preview
+Features</h3>
+<p>Preview features are fully specified and fully implemented language
+changes, JVM modifications, or API additions introduced to gather
+real-world developer feedback. Because these features are subject to
+breaking changes or complete removal in subsequent releases, they are
+strictly quarantined. The <code>--enable-preview</code> flag serves as
+the explicit opt-in mechanism required to interact with this quarantined
+code.</p>
+<h3 id="compile-time-enforcement">Compile-Time Enforcement</h3>
+<p>Access to preview APIs begins during the compilation phase with
+<code>javac</code>. To use a preview API or language feature, you must
+compile your source code using both the target release version and the
+preview flag:</p>
+<pre class="text"><code>javac --release &lt;version&gt; --enable-preview YourClass.java</code></pre>
+<p>When <code>javac</code> compiles code with
+<code>--enable-preview</code>, it modifies the compiled bytecode's
+binary header:</p>
+<ol type="1">
+<li><strong>Major Version:</strong> Corresponds to the specific Java
+version (for example, Java 21 uses major version 65).</li>
+<li><strong>Minor Version:</strong> Rather than using the standard minor
+version <code>0</code>, <code>javac</code> sets the minor version to
+<code>65535</code> (<code>0xFFFF</code>).</li>
+</ol>
+<p>This special minor version permanently marks the <code>.class</code>
+file as a preview artifact tied directly to that specific major Java
+release.</p>
+<h3 id="runtime-verification-and-class-loading">Runtime Verification and
+Class Loading</h3>
+<p>When launching an application using <code>java</code>, the JVM’s
+class verifier reads the bytecode header before loading any class file
+into memory:</p>
+<ol type="1">
+<li><strong>Header Inspection:</strong> The class loader inspects the
+major and minor version numbers of the incoming <code>.class</code>
+file.</li>
+<li><strong>Flag Check:</strong> If the minor version is detected as
+<code>65535</code>, the JVM checks whether the
+<code>--enable-preview</code> flag was provided on the command
+line.</li>
+<li><strong>Execution or Rejection:</strong>
+<ul>
+<li>If <code>--enable-preview</code> is present and the major version
+matches the JVM’s version, the class is loaded, verified, and
+executed.</li>
+<li>If the flag is missing, the JVM immediately terminates the class
+loading process and throws an <code>UnsupportedClassVersionError</code>,
+stating that preview features are not enabled.</li>
+</ul></li>
+</ol>
+<p>Because preview bytecode is tied to an exact major version, a preview
+class compiled on one Java version will not run on a newer Java version,
+even if <code>--enable-preview</code> is supplied. The code must be
+recompiled for the newer runtime.</p>
+<h3 id="api-level-gating-with-previewfeature">API-Level Gating with
+<code>@PreviewFeature</code></h3>
+<p>At the library level, preview classes, methods, and fields inside the
+Java standard library are annotated with the internal
+<code>@PreviewFeature</code> annotation.</p>
+<p>During compilation, <code>javac</code> consults this metadata:</p>
+<ul>
+<li>If a program references an element marked with
+<code>@PreviewFeature</code> without the <code>--enable-preview</code>
+compiler flag, the compiler raises a compilation error.</li>
+<li>When both <code>--enable-preview</code> and a compatible
+<code>--release</code> or <code>-source</code> value are present, the
+compiler allows the symbol resolution, issues a preview warning, and
+tags the generated bytecode with the preview minor version.</li>
+</ul>
+<p>Through this combination of binary file tagging, strict class loader
+checks, and metadata-driven compilation, the
+<code>--enable-preview</code> command-line flag ensures experimental
+APIs remain strictly isolated until they are standardized.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

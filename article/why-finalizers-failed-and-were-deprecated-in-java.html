@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Finalizers Failed and Were Deprecated in Java - java</title>
+    <meta name="description" content="Java finalizers (finalize()) were originally introduced to provide a safety net for cleaning up native resources before an object is reclaimed by the garbage collector. However, severe design flaws—including unpredictable execution timing, lack of exec">
+    <link rel="canonical" href="https://salivity.github.io/java/article/why-finalizers-failed-and-were-deprecated-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Finalizers Failed and Were Deprecated in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/why-finalizers-failed-and-were-deprecated-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java finalizers (finalize()) were originally introduced to provide a safety net for cleaning up native resources before an object is reclaimed by the garbage collector. However, severe design flaws—including unpredictable execution timing, lack of exec" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-finalizers-failed-and-were-deprecated-in-java">Why
+Finalizers Failed and Were Deprecated in Java</h1>
+<p>Java finalizers (<code>finalize()</code>) were originally introduced
+to provide a safety net for cleaning up native resources before an
+object is reclaimed by the garbage collector. However, severe design
+flaws—including unpredictable execution timing, lack of execution
+guarantees, heavy performance overhead, and critical security
+vulnerabilities—made them inherently unreliable. As a result, finalizers
+were deprecated in Java 9 and marked for removal in subsequent releases
+in favor of safer, explicit alternatives.</p>
+<h3 id="unpredictable-scheduling-and-latency">Unpredictable Scheduling
+and Latency</h3>
+<p>The fundamental flaw in Java's finalization mechanism is its lack of
+promptness. The garbage collector (GC) triggers finalization only when
+memory pressure demands reclamation, not when a resource runs out.
+External system resources like file handles, database connections, and
+sockets are finite and non-memory-related. If an application opens
+hundreds of files without explicit closing, relying on finalizers will
+exhaust OS-level handles long before the JVM triggers a garbage
+collection cycle to reclaim the enclosing Java objects.</p>
+<h3 id="no-guarantee-of-execution">No Guarantee of Execution</h3>
+<p>The Java Virtual Machine provides no guarantee that a finalizer will
+ever execute. If an application exits normally, crashes, or halts before
+the GC visits an unreachable object, the finalizer will simply never
+run. Historic attempts to enforce execution on shutdown, such as
+<code>System.runFinalizersOnExit</code>, were inherently unsafe due to
+deadlocks and were quickly deprecated. Writing critical cleanup logic in
+a finalizer invariably introduces data loss and resource leaks.</p>
+<h3 id="performance-degradation">Performance Degradation</h3>
+<p>Objects implementing <code>finalize()</code> require special handling
+from the garbage collector, severely degrading throughput:</p>
+<ul>
+<li><strong>Delayed Reclamation:</strong> An object with an active
+finalizer cannot be collected immediately upon becoming unreachable. It
+is placed into a finalization queue, meaning it survives at least one
+additional garbage collection cycle and often gets promoted to older
+generations.</li>
+<li><strong>Allocation Overhead:</strong> Allocating objects with
+non-trivial finalizers is significantly slower because the JVM must
+track their life cycles using internal references.</li>
+<li><strong>Queuing Bottlenecks:</strong> Finalization runs on a
+dedicated system thread. If finalizers perform blocking operations, such
+as network calls or disk I/O, the queue backs up, driving the JVM toward
+an <code>OutOfMemoryError</code>.</li>
+</ul>
+<h3 id="swallowed-exceptions-and-thread-safety">Swallowed Exceptions and
+Thread Safety</h3>
+<p>When an uncaught exception is thrown inside a <code>finalize()</code>
+method, the JVM abruptly terminates the execution of that specific
+finalizer and silently ignores the exception. No stack trace is printed
+by default, and no failure signals propagate to the calling application,
+leaving the system in a corrupted or partially cleaned-up state that is
+exceptionally difficult to debug.</p>
+<h3 id="security-vulnerabilities-finalizer-attacks">Security
+Vulnerabilities: Finalizer Attacks</h3>
+<p>Finalizers expose classes to "finalizer attacks." If an attacker
+passes malicious input to a constructor, causing it to throw an
+exception, the partially initialized object still exists in memory.
+Because the constructor failed, the object should be discarded. However,
+if the class has a finalizer, the garbage collector will still schedule
+<code>finalize()</code>. Inside <code>finalize()</code>, the malicious
+object can save a reference to <code>this</code> into a static field,
+resurrecting the broken instance and bypassing all constructor-based
+security validations.</p>
+<h3 id="modern-alternatives">Modern Alternatives</h3>
+<p>To overcome the architectural shortcomings of finalization, Java
+adopted deterministic and safer resource management patterns:</p>
+<ul>
+<li><strong><code>AutoCloseable</code> and
+<code>try-with-resources</code>:</strong> Introduced in Java 7, this is
+the standard, deterministic way to release resources as soon as
+execution exits a defined scope.</li>
+<li><strong><code>java.lang.ref.Cleaner</code>:</strong> Introduced in
+Java 9 to replace finalization for non-deterministic fallback cleanup.
+Cleaners decouple the cleanup action from the object instance,
+preventing object resurrection attacks, avoiding slow finalizer queues,
+and providing better control over background cleanup threads.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

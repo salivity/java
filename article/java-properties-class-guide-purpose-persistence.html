@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Properties Class Guide: Purpose & Persistence - java</title>
+    <meta name="description" content="The java.util.Properties class is a specialized data structure in Java designed to manage configuration settings, application preferences, and localization data through string-based key-value pairs. This article explains the primary purpose of the Proper">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-properties-class-guide-purpose-persistence">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Properties Class Guide: Purpose & Persistence - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-properties-class-guide-purpose-persistence" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The java.util.Properties class is a specialized data structure in Java designed to manage configuration settings, application preferences, and localization data through string-based key-value pairs. This article explains the primary purpose of the Proper" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-properties-class-guide-purpose--persistence">Java
+Properties Class Guide: Purpose &amp; Persistence</h1>
+<p>The <code>java.util.Properties</code> class is a specialized data
+structure in Java designed to manage configuration settings, application
+preferences, and localization data through string-based key-value pairs.
+This article explains the primary purpose of the <code>Properties</code>
+class, highlights its core characteristics, and demonstrates how it
+serializes and persists key-value data to external storage mediums such
+as plain text and XML files.</p>
+<h3 id="purpose-of-the-properties-class">Purpose of the Properties
+Class</h3>
+<p>The <code>Properties</code> class represents a persistent set of
+properties where both the keys and values are treated as
+<code>String</code> objects. Although it extends
+<code>Hashtable&lt;Object, Object&gt;</code>, standard practice dictates
+using its dedicated methods—specifically
+<code>getProperty(String key)</code> and
+<code>setProperty(String key, String value)</code>—to enforce type
+consistency.</p>
+<p>Key purposes include:</p>
+<ul>
+<li><strong>Decoupling Configuration from Code:</strong> It allows
+developers to change application configurations (such as database URLs,
+credentials, or feature flags) without recompiling Java source
+code.</li>
+<li><strong>Internationalization (i18n):</strong> It serves as the
+underlying mechanism for Java ResourceBundles to store localized text
+strings.</li>
+<li><strong>Thread Safety:</strong> Because it inherits from
+<code>Hashtable</code>, access to read and write operations is
+inherently synchronized.</li>
+</ul>
+<h3 id="how-properties-persists-key-value-pairs">How Properties Persists
+Key-Value Pairs</h3>
+<p>The <code>Properties</code> class persists key-value pairs by
+serializing its in-memory state into output streams or writer objects,
+and vice versa when reading back the data. It natively supports two file
+formats: standard flat text files (typically using the
+<code>.properties</code> extension) and structured XML documents.</p>
+<h4 id="1-persisting-to-flat-text-files">1. Persisting to Flat Text
+Files</h4>
+<p>To write key-value pairs to a flat file, the class provides the
+<code>store(OutputStream out, String comments)</code> and
+<code>store(Writer writer, String comments)</code> methods.</p>
+<p>When saved:</p>
+<ul>
+<li>Pairs are written line-by-line using the format
+<code>key=value</code> (or <code>key: value</code>).</li>
+<li>Special characters (like newlines or unicode characters) are
+automatically escaped using standard ISO-8859-1 formatting (or UTF-8
+when using a <code>Writer</code>).</li>
+<li>An optional comment header can be written at the top of the file,
+accompanied by an automatically generated timestamp.</li>
+</ul>
+<p>To read the data back into memory, the
+<code>load(InputStream inStream)</code> or
+<code>load(Reader reader)</code> method parses the file line-by-line and
+repopulates the instance.</p>
+<h4 id="2-persisting-to-xml">2. Persisting to XML</h4>
+<p>The class also includes XML-specific persistence methods:</p>
+<ul>
+<li><code>storeToXML(OutputStream os, String comment, String encoding)</code>:
+Serializes the properties into an XML document conforming to the
+predefined Java Properties DTD.</li>
+<li><code>loadFromXML(InputStream in)</code>: Parses standard XML
+property files back into a <code>Properties</code> object.</li>
+</ul>
+<h3 id="implementation-example">Implementation Example</h3>
+<p>The following code illustrates writing key-value pairs to disk and
+reading them back:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">io</span><span class="op">.</span><span class="im">FileInputStream</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">io</span><span class="op">.</span><span class="im">FileOutputStream</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">io</span><span class="op">.</span><span class="im">IOException</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">Properties</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> ConfigurationManager <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="bu">String</span> filePath <span class="op">=</span> <span class="st">&quot;config.properties&quot;</span><span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Properties</span> props <span class="op">=</span> <span class="kw">new</span> <span class="bu">Properties</span><span class="op">();</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 1. Setting values in memory</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        props<span class="op">.</span><span class="fu">setProperty</span><span class="op">(</span><span class="st">&quot;app.name&quot;</span><span class="op">,</span> <span class="st">&quot;InventorySystem&quot;</span><span class="op">);</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        props<span class="op">.</span><span class="fu">setProperty</span><span class="op">(</span><span class="st">&quot;app.version&quot;</span><span class="op">,</span> <span class="st">&quot;1.4.0&quot;</span><span class="op">);</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        props<span class="op">.</span><span class="fu">setProperty</span><span class="op">(</span><span class="st">&quot;db.timeout&quot;</span><span class="op">,</span> <span class="st">&quot;30&quot;</span><span class="op">);</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 2. Persisting to a file</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span> <span class="op">(</span><span class="bu">FileOutputStream</span> out <span class="op">=</span> <span class="kw">new</span> <span class="bu">FileOutputStream</span><span class="op">(</span>filePath<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>            props<span class="op">.</span><span class="fu">store</span><span class="op">(</span>out<span class="op">,</span> <span class="st">&quot;Application Configuration Settings&quot;</span><span class="op">);</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">IOException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>            e<span class="op">.</span><span class="fu">printStackTrace</span><span class="op">();</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 3. Loading the persisted file back into a new object</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Properties</span> loadedProps <span class="op">=</span> <span class="kw">new</span> <span class="bu">Properties</span><span class="op">();</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span> <span class="op">(</span><span class="bu">FileInputStream</span> in <span class="op">=</span> <span class="kw">new</span> <span class="bu">FileInputStream</span><span class="op">(</span>filePath<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>            loadedProps<span class="op">.</span><span class="fu">load</span><span class="op">(</span>in<span class="op">);</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;App Name: &quot;</span> <span class="op">+</span> loadedProps<span class="op">.</span><span class="fu">getProperty</span><span class="op">(</span><span class="st">&quot;app.name&quot;</span><span class="op">));</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Timeout: &quot;</span> <span class="op">+</span> loadedProps<span class="op">.</span><span class="fu">getProperty</span><span class="op">(</span><span class="st">&quot;db.timeout&quot;</span><span class="op">));</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">IOException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>            e<span class="op">.</span><span class="fu">printStackTrace</span><span class="op">();</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Through this mechanism, the <code>Properties</code> class bridges
+runtime application memory and permanent storage, ensuring simple,
+reliable key-value persistence.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

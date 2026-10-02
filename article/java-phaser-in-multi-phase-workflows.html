@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Phaser in Multi-Phase Workflows - java</title>
+    <meta name="description" content="This article explores the role of the Phaser synchronization construct in Java, specifically how it coordinates concurrent tasks across complex, multi-phase workflows. It examines how Phaser overcomes the limitations of traditional barriers like CountDow">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-phaser-in-multi-phase-workflows">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Phaser in Multi-Phase Workflows - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-phaser-in-multi-phase-workflows" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the role of the Phaser synchronization construct in Java, specifically how it coordinates concurrent tasks across complex, multi-phase workflows. It examines how Phaser overcomes the limitations of traditional barriers like CountDow" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-phaser-in-multi-phase-workflows">Java Phaser in Multi-Phase
+Workflows</h1>
+<p>This article explores the role of the <code>Phaser</code>
+synchronization construct in Java, specifically how it coordinates
+concurrent tasks across complex, multi-phase workflows. It examines how
+<code>Phaser</code> overcomes the limitations of traditional barriers
+like <code>CountDownLatch</code> and <code>CyclicBarrier</code>, details
+its core mechanisms such as dynamic party registration and phase
+tracking, and explains how to customize state transitions to orchestrate
+sophisticated parallel pipelines.</p>
+<h2 id="the-need-for-phaser-in-java-concurrency">The Need for Phaser in
+Java Concurrency</h2>
+<p>In concurrent programming, workflows often consist of discrete,
+sequential stages where a set of threads must complete their tasks in
+one stage before any thread can proceed to the next. Prior to Java 7,
+developers relied primarily on <code>CountDownLatch</code> and
+<code>CyclicBarrier</code> for barrier synchronization.</p>
+<p>However, both classes suffer from rigid constraints:</p>
+<ul>
+<li><strong>CountDownLatch:</strong> It is a single-use construct; once
+the latch count reaches zero, it cannot be reset for subsequent workflow
+phases.</li>
+<li><strong>CyclicBarrier:</strong> While reusable across cycles, the
+number of participating threads is fixed at instantiation and cannot
+change at runtime.</li>
+</ul>
+<p>The <code>Phaser</code> class
+(<code>java.util.concurrent.Phaser</code>) solves these issues by
+providing a dynamic, reusable barrier that supports an evolving set of
+registered parties and native tracking of distinct workflow phases.</p>
+<h2 id="dynamic-party-registration-and-deregistration">Dynamic Party
+Registration and Deregistration</h2>
+<p>A primary role of <code>Phaser</code> in complex workflows is
+handling variable concurrency. In real-world data pipelines, tasks may
+spawn subtasks or fail gracefully, requiring the number of tracked
+threads to change dynamically between or during execution phases.</p>
+<p><code>Phaser</code> facilitates this flexibility through dynamic
+registration methods:</p>
+<ul>
+<li><strong><code>register()</code> and
+<code>bulkRegister(int parties)</code>:</strong> Dynamically increases
+the count of unarrived parties needed to complete the current
+phase.</li>
+<li><strong><code>arriveAndDeregister()</code>:</strong> Signals that a
+thread has finished its work for the current phase and will not
+participate in subsequent phases, decrementing the required party count
+for the next phase.</li>
+</ul>
+<p>This dynamic nature makes <code>Phaser</code> ideal for tree-like or
+fork-join processing models where the exact number of active workers
+fluctuates based on workload volume.</p>
+<h2 id="explicit-phase-tracking-and-synchronization">Explicit Phase
+Tracking and Synchronization</h2>
+<p><code>Phaser</code> maintains an internal integer representing the
+current phase number, starting at zero and incrementing by one upon the
+completion of each phase. This allows worker threads to query their
+current state using <code>getPhase()</code> and adapt their execution
+logic accordingly.</p>
+<p>Threads coordinate using distinct arrival semantics:</p>
+<ul>
+<li><strong><code>arriveAndAwaitAdvance()</code>:</strong> Blocks the
+calling thread until all other registered parties arrive at the barrier
+for the current phase.</li>
+<li><strong><code>arrive()</code>:</strong> Signals that the thread has
+completed its phase obligations without blocking, allowing it to perform
+asynchronous cleanup or unrelated background tasks while waiting for
+other parties.</li>
+<li><strong><code>awaitAdvance(int phase)</code>:</strong> Suspends
+execution until the phaser moves beyond the specified phase number,
+allowing non-registered observer threads to monitor workflow
+progress.</li>
+</ul>
+<h2 id="custom-phase-transitions-via-onadvance">Custom Phase Transitions
+via <code>onAdvance</code></h2>
+<p>In complex workflows, state management between phases is critical.
+<code>Phaser</code> provides a protected hook,
+<code>onAdvance(int phase, int registeredParties)</code>, which
+automatically executes when all registered parties arrive at the
+barrier, immediately before the phase advances and the threads are
+released.</p>
+<p>By extending <code>Phaser</code> and overriding this method,
+developers can:</p>
+<ol type="1">
+<li><strong>Execute Inter-Phase Logic:</strong> Perform actions such as
+aggregating intermediate results, writing checkpoints to disk, or
+reallocating resources before worker threads resume.</li>
+<li><strong>Control Workflow Termination:</strong> Returning
+<code>true</code> from <code>onAdvance()</code> marks the phaser as
+terminated, causing all waiting threads to proceed and future barrier
+checks to return negative phase numbers. Returning <code>false</code>
+allows the phaser to proceed to the next phase.</li>
+</ol>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Phaser phaser <span class="op">=</span> <span class="kw">new</span> <span class="fu">Phaser</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">protected</span> <span class="dt">boolean</span> <span class="fu">onAdvance</span><span class="op">(</span><span class="dt">int</span> phase<span class="op">,</span> <span class="dt">int</span> registeredParties<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Phase &quot;</span> <span class="op">+</span> phase <span class="op">+</span> <span class="st">&quot; completed by &quot;</span> <span class="op">+</span> registeredParties <span class="op">+</span> <span class="st">&quot; parties.&quot;</span><span class="op">);</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Terminate after phase 3 or if all workers deregister</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> phase <span class="op">&gt;=</span> <span class="dv">3</span> <span class="op">||</span> registeredParties <span class="op">==</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<h2 id="hierarchical-tiering-for-high-throughput-pipelines">Hierarchical
+Tiering for High-Throughput Pipelines</h2>
+<p>A major architectural challenge in massive multi-threaded
+applications is thread contention on a single synchronization barrier.
+<code>Phaser</code> directly mitigates this through tree-structured or
+hierarchical configurations.</p>
+<p>Sub-phasers can be constructed with a parent phaser:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>Phaser parent <span class="op">=</span> <span class="kw">new</span> <span class="fu">Phaser</span><span class="op">();</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>Phaser child <span class="op">=</span> <span class="kw">new</span> <span class="fu">Phaser</span><span class="op">(</span>parent<span class="op">);</span></span></code></pre></div>
+<p>In this model, child phasers manage local groups of threads and
+register as a single party with the parent phaser. This reduces
+cache-line bouncing and synchronization overhead on shared memory
+systems, allowing workflows to scale across hundreds of threads across
+multi-socket hardware architectures.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

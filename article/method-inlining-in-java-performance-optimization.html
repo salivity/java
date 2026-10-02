@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Method Inlining in Java Performance Optimization - java</title>
+    <meta name="description" content="Method inlining is the foundational optimization technique used by the Java Virtual Machine (JVM) Just-In-Time (JIT) compilers to achieve high runtime performance. By replacing a method invocation directly with the body of the target method, the JVM elim">
+    <link rel="canonical" href="https://salivity.github.io/java/article/method-inlining-in-java-performance-optimization">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Method Inlining in Java Performance Optimization - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/method-inlining-in-java-performance-optimization" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Method inlining is the foundational optimization technique used by the Java Virtual Machine (JVM) Just-In-Time (JIT) compilers to achieve high runtime performance. By replacing a method invocation directly with the body of the target method, the JVM elim" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="method-inlining-in-java-performance-optimization">Method
+Inlining in Java Performance Optimization</h1>
+<p>Method inlining is the foundational optimization technique used by
+the Java Virtual Machine (JVM) Just-In-Time (JIT) compilers to achieve
+high runtime performance. By replacing a method invocation directly with
+the body of the target method, the JVM eliminates the overhead of call
+instructions and call-stack management. More importantly, inlining acts
+as a gateway optimization, expanding the scope of code visibility so the
+compiler can execute advanced optimizations such as dead code
+elimination, escape analysis, and loop vectorization.</p>
+<h3 id="eliminating-invocation-overhead">Eliminating Invocation
+Overhead</h3>
+<p>Every standard method invocation in Java introduces overhead at the
+CPU level. The runtime must allocate a stack frame, pass arguments via
+registers or the stack, branch to a different instruction address, and
+clean up the frame upon return.</p>
+<p>In modern idiomatic Java, software design encourages small, focused
+methods, getters, setters, and short lambda expressions. Calling these
+micro-methods millions of times per second adds significant execution
+tax. Method inlining completely removes these instruction jumps and
+stack-frame allocations, transforming multiple fragmented operations
+into a contiguous block of machine code.</p>
+<h3 id="the-catalyst-for-downstream-optimizations">The Catalyst for
+Downstream Optimizations</h3>
+<p>While removing call overhead improves speed, the primary power of
+method inlining lies in context expansion. Modern JIT compilers (such as
+HotSpot C2 or Graal) optimize code within a single compilation unit. A
+standalone method invocation acts as an opaque boundary that limits what
+the compiler can deduce.</p>
+<p>Once a target method is inlined into its caller, the compiler
+analyzes both methods as a unified block, unlocking several key
+optimizations:</p>
+<ul>
+<li><strong>Escape Analysis and Scalar Replacement:</strong> The
+compiler can verify whether an object allocated within a method escapes
+to other threads or outer scopes. If it does not, the JVM can
+deconstruct the object into primitive fields on the stack or in CPU
+registers, avoiding heap allocation and garbage collection overhead
+entirely.</li>
+<li><strong>Constant Propagation and Dead Code Elimination:</strong>
+When method arguments are constants, inlining exposes these values to
+the target method's logic. Branches predicated on these constants can be
+calculated at compile time, allowing the JIT to prune unused branches
+and eliminate dead code.</li>
+<li><strong>Loop Optimizations:</strong> If a loop repeatedly calls an
+inlined method, the compiler can apply loop invariant code
+motion—pulling invariant calculations outside of the loop—or unroll the
+loop entirely to maximize CPU pipelining.</li>
+</ul>
+<h3 id="devirtualization-of-dynamic-method-calls">Devirtualization of
+Dynamic Method Calls</h3>
+<p>Java methods are virtual by default, meaning the specific
+implementation to execute is determined at runtime based on the receiver
+object's actual class (dynamic dispatch). Virtual dispatch typically
+requires looking up addresses in a Virtual Method Table (vtable), which
+hinders inlining.</p>
+<p>To overcome this, the JVM uses Class Hierarchy Analysis (CHA) and
+runtime profiling via Inline Caching:</p>
+<ul>
+<li><strong>Monomorphic Call Sites:</strong> If profile data shows that
+a call site consistently executes a single concrete implementation, the
+JIT devirtualizes the call and inlines the target directly.</li>
+<li><strong>Bimorphic Call Sites:</strong> If two implementations
+dominate the call site, the compiler generates a conditional check
+(<code>instanceof</code>) and inlines both branches.</li>
+<li><strong>Megamorphic Call Sites:</strong> If three or more classes
+are invoked frequently at the same site, the compiler abandons inlining
+and falls back to standard dynamic dispatch to prevent excessive code
+expansion.</li>
+</ul>
+<p>To ensure safety, inlined virtual calls are protected by "uncommon
+traps." If an application dynamically loads a new class that violates
+the compiler's assumptions, the JVM deoptimizes the compiled code and
+falls back to interpreted mode or recompilation.</p>
+<h3 id="trade-offs-and-inlining-thresholds">Trade-Offs and Inlining
+Thresholds</h3>
+<p>Method inlining is not applied universally because uncontrolled
+inlining leads to code bloat. Bloated native binaries exhaust the CPU's
+Instruction Cache (I-cache), causing cache misses that degrade
+performance far more than method calls do.</p>
+<p>The JVM manages this trade-off using heuristics and bytecode size
+limits, configured via flags such as:</p>
+<ul>
+<li><code>-XX:MaxInlineSize</code>: Defines the maximum bytecode size
+(defaulting to 35 bytes) for a method to be inlined
+unconditionally.</li>
+<li><code>-XX:FreqInlineSize</code>: Defines the maximum bytecode size
+(often around 325 bytes) for a method that is frequently executed
+("hot") to be considered for inlining.</li>
+</ul>
+<p>Because of these thresholds, writing compact, cohesive methods
+directly aids the JVM in selecting optimal candidates for inlining,
+directly influencing the final throughput and latency of
+high-performance Java applications.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

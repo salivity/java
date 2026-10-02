@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Read and Modify POSIX File Permissions in Java - java</title>
+    <meta name="description" content="The java.nio.file.attribute package provides robust tools to read and modify standard POSIX (Portable Operating System Interface) file permissions on Unix-like operating systems like Linux and macOS. By leveraging classes such as PosixFileAttributeView,">
+    <link rel="canonical" href="https://salivity.github.io/java/article/read-and-modify-posix-file-permissions-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Read and Modify POSIX File Permissions in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/read-and-modify-posix-file-permissions-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The java.nio.file.attribute package provides robust tools to read and modify standard POSIX (Portable Operating System Interface) file permissions on Unix-like operating systems like Linux and macOS. By leveraging classes such as PosixFileAttributeView," />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="read-and-modify-posix-file-permissions-in-java">Read and Modify
+POSIX File Permissions in Java</h1>
+<p>The <code>java.nio.file.attribute</code> package provides robust
+tools to read and modify standard POSIX (Portable Operating System
+Interface) file permissions on Unix-like operating systems like Linux
+and macOS. By leveraging classes such as
+<code>PosixFileAttributeView</code>, <code>PosixFileAttributes</code>,
+and the <code>PosixFilePermissions</code> utility, Java applications can
+inspect access rights, update user and group permissions, and assign
+security flags directly upon file creation. This guide demonstrates how
+to interact with POSIX permissions using modern Java NIO methods, handle
+string-based permission masks, and avoid common platform compatibility
+issues.</p>
+<h2 id="core-posix-classes-in-java-nio">Core POSIX Classes in Java
+NIO</h2>
+<p>The NIO.2 file system API encapsulates POSIX permissions in several
+core types within the <code>java.nio.file.attribute</code> package:</p>
+<ul>
+<li><strong><code>PosixFilePermission</code></strong>: An
+<code>enum</code> representing individual permissions:
+<code>OWNER_READ</code>, <code>OWNER_WRITE</code>,
+<code>OWNER_EXECUTE</code>, <code>GROUP_READ</code>,
+<code>GROUP_WRITE</code>, <code>GROUP_EXECUTE</code>,
+<code>OTHERS_READ</code>, <code>OTHERS_WRITE</code>, and
+<code>OTHERS_EXECUTE</code>.</li>
+<li><strong><code>PosixFileAttributes</code></strong>: A read-only
+interface providing access to file metadata, including the owner, group,
+and the <code>Set&lt;PosixFilePermission&gt;</code>.</li>
+<li><strong><code>PosixFileAttributeView</code></strong>: An interface
+providing methods to read and write POSIX attributes, including updating
+permissions, owner, and group.</li>
+<li><strong><code>PosixFilePermissions</code></strong>: A helper class
+containing static methods to convert permissions between Java sets and
+traditional Unix <code>rwxrwxrwx</code> string notations.</li>
+</ul>
+<h2 id="checking-for-posix-support">Checking for POSIX Support</h2>
+<p>POSIX attributes are only supported on file systems that implement
+them (such as ext4, APFS, or ZFS). Attempting to use these APIs on
+unsupported platforms (like standard Windows NTFS) will throw an
+<code>UnsupportedOperationException</code>. You can check support at
+runtime:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Files</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Path</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Paths</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFileAttributeView</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>Path path <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="st">&quot;/var/log/app.log&quot;</span><span class="op">);</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="dt">boolean</span> isPosixSupported <span class="op">=</span> Files<span class="op">.</span><span class="fu">getFileStore</span><span class="op">(</span>path<span class="op">)</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">supportsFileAttributeView</span><span class="op">(</span>PosixFileAttributeView<span class="op">.</span><span class="fu">class</span><span class="op">);</span></span></code></pre></div>
+<h2 id="reading-posix-permissions">Reading POSIX Permissions</h2>
+<p>Java offers two primary ways to retrieve permissions: using the
+convenience method in <code>Files</code> or reading the entire
+attributes object.</p>
+<h3 id="method-1-using-filesgetposixfilepermissions">Method 1: Using
+<code>Files.getPosixFilePermissions</code></h3>
+<p>For simple permission checks,
+<code>Files.getPosixFilePermissions(Path)</code> directly returns a
+<code>Set&lt;PosixFilePermission&gt;</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Files</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Path</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Paths</span><span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFilePermission</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFilePermissions</span><span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">Set</span><span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>Path path <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="st">&quot;example.txt&quot;</span><span class="op">);</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="bu">Set</span><span class="op">&lt;</span>PosixFilePermission<span class="op">&gt;</span> permissions <span class="op">=</span> Files<span class="op">.</span><span class="fu">getPosixFilePermissions</span><span class="op">(</span>path<span class="op">);</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">// Print permissions in POSIX string format (e.g., &quot;rw-r--r--&quot;)</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> formatted <span class="op">=</span> PosixFilePermissions<span class="op">.</span><span class="fu">toString</span><span class="op">(</span>permissions<span class="op">);</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Permissions: &quot;</span> <span class="op">+</span> formatted<span class="op">);</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="co">// Check for a specific permission</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>permissions<span class="op">.</span><span class="fu">contains</span><span class="op">(</span>PosixFilePermission<span class="op">.</span><span class="fu">OWNER_EXECUTE</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;The owner can execute this file.&quot;</span><span class="op">);</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="method-2-using-posixfileattributes">Method 2: Using
+<code>PosixFileAttributes</code></h3>
+<p>If you also need other file metadata (such as owner, group, or
+timestamps), use <code>Files.readAttributes</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Files</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Path</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Paths</span><span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFileAttributes</span><span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>Path path <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="st">&quot;example.txt&quot;</span><span class="op">);</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>PosixFileAttributes attrs <span class="op">=</span> Files<span class="op">.</span><span class="fu">readAttributes</span><span class="op">(</span>path<span class="op">,</span> PosixFileAttributes<span class="op">.</span><span class="fu">class</span><span class="op">);</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Owner: &quot;</span> <span class="op">+</span> attrs<span class="op">.</span><span class="fu">owner</span><span class="op">().</span><span class="fu">getName</span><span class="op">());</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Group: &quot;</span> <span class="op">+</span> attrs<span class="op">.</span><span class="fu">group</span><span class="op">().</span><span class="fu">getName</span><span class="op">());</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Permissions: &quot;</span> <span class="op">+</span> PosixFilePermissions<span class="op">.</span><span class="fu">toString</span><span class="op">(</span>attrs<span class="op">.</span><span class="fu">permissions</span><span class="op">()));</span></span></code></pre></div>
+<h2 id="modifying-posix-permissions">Modifying POSIX Permissions</h2>
+<p>Permissions can be modified using either string-based representations
+or typed sets.</p>
+<h3 id="method-1-using-filessetposixfilepermissions">Method 1: Using
+<code>Files.setPosixFilePermissions</code></h3>
+<p>The simplest approach is passing a
+<code>Set&lt;PosixFilePermission&gt;</code> to
+<code>Files.setPosixFilePermissions</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Files</span><span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Path</span><span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Paths</span><span class="op">;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFilePermission</span><span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFilePermissions</span><span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">Set</span><span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>Path path <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="st">&quot;example.txt&quot;</span><span class="op">);</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="co">// Define permissions using standard 9-character notation</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="bu">Set</span><span class="op">&lt;</span>PosixFilePermission<span class="op">&gt;</span> perms <span class="op">=</span> PosixFilePermissions<span class="op">.</span><span class="fu">fromString</span><span class="op">(</span><span class="st">&quot;rwxr-x---&quot;</span><span class="op">);</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co">// Apply the permissions to the file</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>Files<span class="op">.</span><span class="fu">setPosixFilePermissions</span><span class="op">(</span>path<span class="op">,</span> perms<span class="op">);</span></span></code></pre></div>
+<h3 id="method-2-using-posixfileattributeview">Method 2: Using
+<code>PosixFileAttributeView</code></h3>
+<p>When performing multiple updates (such as changing the owner and
+permissions simultaneously), obtain a
+<code>PosixFileAttributeView</code>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Files</span><span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Path</span><span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Paths</span><span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFileAttributeView</span><span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFilePermissions</span><span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>Path path <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="st">&quot;example.txt&quot;</span><span class="op">);</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>PosixFileAttributeView view <span class="op">=</span> Files<span class="op">.</span><span class="fu">getFileAttributeView</span><span class="op">(</span>path<span class="op">,</span> PosixFileAttributeView<span class="op">.</span><span class="fu">class</span><span class="op">);</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>view <span class="op">!=</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    view<span class="op">.</span><span class="fu">setPermissions</span><span class="op">(</span>PosixFilePermissions<span class="op">.</span><span class="fu">fromString</span><span class="op">(</span><span class="st">&quot;rw-rw----&quot;</span><span class="op">));</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="setting-permissions-at-file-creation">Setting Permissions at
+File Creation</h2>
+<p>To avoid race conditions where a file is briefly accessible with
+default permissions before being restricted, apply permissions
+atomically during creation using <code>FileAttribute</code>:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Files</span><span class="op">;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Path</span><span class="op">;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">Paths</span><span class="op">;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">FileAttribute</span><span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFilePermission</span><span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">file</span><span class="op">.</span><span class="im">attribute</span><span class="op">.</span><span class="im">PosixFilePermissions</span><span class="op">;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">Set</span><span class="op">;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="bu">Set</span><span class="op">&lt;</span>PosixFilePermission<span class="op">&gt;</span> perms <span class="op">=</span> PosixFilePermissions<span class="op">.</span><span class="fu">fromString</span><span class="op">(</span><span class="st">&quot;rw-------&quot;</span><span class="op">);</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>FileAttribute<span class="op">&lt;</span><span class="bu">Set</span><span class="op">&lt;</span>PosixFilePermission<span class="op">&gt;&gt;</span> attr <span class="op">=</span> PosixFilePermissions<span class="op">.</span><span class="fu">asFileAttribute</span><span class="op">(</span>perms<span class="op">);</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>Path secureFile <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="st">&quot;credentials.key&quot;</span><span class="op">);</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>Files<span class="op">.</span><span class="fu">createFile</span><span class="op">(</span>secureFile<span class="op">,</span> attr<span class="op">);</span></span></code></pre></div></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

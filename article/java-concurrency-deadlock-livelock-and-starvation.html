@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Concurrency: Deadlock, Livelock, and Starvation - java</title>
+    <meta name="description" content="Multithreading in Java significantly improves application performance, but it also introduces concurrency hazards that can stall or severely degrade execution. This article explores the primary causes of deadlocks, livelocks, and thread starvation in Jav">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-concurrency-deadlock-livelock-and-starvation">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Concurrency: Deadlock, Livelock, and Starvation - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-concurrency-deadlock-livelock-and-starvation" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Multithreading in Java significantly improves application performance, but it also introduces concurrency hazards that can stall or severely degrade execution. This article explores the primary causes of deadlocks, livelocks, and thread starvation in Jav" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-concurrency-deadlock-livelock-and-starvation">Java
+Concurrency: Deadlock, Livelock, and Starvation</h1>
+<p>Multithreading in Java significantly improves application
+performance, but it also introduces concurrency hazards that can stall
+or severely degrade execution. This article explores the primary causes
+of deadlocks, livelocks, and thread starvation in Java concurrent
+systems, examining the synchronization mechanics, improper
+resource-handling patterns, and scheduling behaviors that trigger these
+distinct thread-liveness failures.</p>
+<hr />
+<h3 id="causes-of-deadlocks">Causes of Deadlocks</h3>
+<p>A deadlock occurs when two or more threads are permanently blocked,
+each waiting for a monitor lock or resource held by another thread in
+the group. In Java, deadlocks occur when the four Coffman conditions are
+met simultaneously:</p>
+<ol type="1">
+<li><strong>Mutual Exclusion:</strong> At least one resource must be
+held in a non-shareable mode (e.g., intrinsic locks via the
+<code>synchronized</code> keyword or explicit <code>ReentrantLock</code>
+instances).</li>
+<li><strong>Hold and Wait:</strong> A thread holds at least one lock
+while actively waiting to acquire an additional lock held by another
+thread.</li>
+<li><strong>No Preemption:</strong> Resources cannot be forcibly
+confiscated from a thread; locks are only released voluntarily by the
+holding thread.</li>
+<li><strong>Circular Wait:</strong> A closed chain of threads exists
+where Thread A waits for a lock held by Thread B, and Thread B waits for
+a lock held by Thread A.</li>
+</ol>
+<p>The most frequent programmatic cause in Java is <strong>inconsistent
+lock ordering</strong>. When multiple threads acquire nested locks in
+different sequences, circular wait conditions emerge:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Thread 1</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">synchronized</span> <span class="op">(</span>lockA<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">synchronized</span> <span class="op">(</span>lockB<span class="op">)</span> <span class="op">{</span> <span class="co">/* work */</span> <span class="op">}</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Thread 2</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">synchronized</span> <span class="op">(</span>lockB<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">synchronized</span> <span class="op">(</span>lockA<span class="op">)</span> <span class="op">{</span> <span class="co">/* work */</span> <span class="op">}</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>If Thread 1 acquires <code>lockA</code> at the same time Thread 2
+acquires <code>lockB</code>, neither can proceed, causing a permanent
+freeze.</p>
+<hr />
+<h3 id="causes-of-livelocks">Causes of Livelocks</h3>
+<p>A livelock occurs when two or more threads continuously change their
+states in response to each other without making any practical forward
+progress. Unlike deadlocked threads, livelocked threads are not blocked;
+they remain in an active running state, consuming CPU cycles while
+trapped in an infinite loop of mutual evasion or compensation.</p>
+<p>Primary causes in Java include:</p>
+<ul>
+<li><strong>Symmetrical Conflict Resolution:</strong> Implementing
+recovery mechanisms using <code>Lock.tryLock()</code> where both threads
+detect a potential deadlock, release their acquired locks
+simultaneously, wait for an identical duration, and immediately attempt
+re-acquisition at the same moment.</li>
+<li><strong>Correlated Message Processing:</strong> In messaging or
+actor patterns, two nodes or threads continuously reject and re-queue
+unprocessable tasks back and forth without modifying the conditions that
+caused the initial rejection.</li>
+<li><strong>Lack of Randomness (Jitter):</strong> Failing to introduce
+randomized exponential backoff when backing off from contended
+resources, ensuring that threads remain lockstep in their
+collision-and-retry cycles.</li>
+</ul>
+<hr />
+<h3 id="causes-of-thread-starvation">Causes of Thread Starvation</h3>
+<p>Thread starvation happens when a runnable thread is perpetually
+denied CPU time or access to shared resources, preventing it from
+completing its work. Unlike deadlock, the resource is not permanently
+locked; other threads continue to use it, but a specific thread is
+consistently passed over.</p>
+<p>Common causes in Java systems include:</p>
+<ul>
+<li><strong>Non-Fair Locking Mechanisms:</strong> By default, Java
+intrinsic locks (<code>synchronized</code>) and standard
+<code>ReentrantLock</code> instances use non-fair queuing to maximize
+throughput. High-throughput environments can lead to "barging," where
+newly arriving threads acquire the lock immediately, repeatedly
+bypassing older threads waiting in the queue.</li>
+<li><strong>Thread Priority Misuse:</strong> Using
+<code>Thread.setPriority()</code> to grant certain threads
+<code>Thread.MAX_PRIORITY</code> can lead the underlying operating
+system scheduler to starve threads assigned lower priorities
+(<code>Thread.MIN_PRIORITY</code>). Java thread priorities map
+unpredictably to native OS schedulers and do not guarantee fair
+scheduling.</li>
+<li><strong>Long-Running Synchronized Blocks:</strong> Threads that
+perform blocking I/O operations, complex computations, or infinite
+polling loops inside critical sections monopolize shared locks,
+effectively starving any thread waiting to enter the synchronized
+block.</li>
+<li><strong>Improper Wait-Notify Usage:</strong> Calling
+<code>notify()</code> instead of <code>notifyAll()</code> inside a
+condition loop can wake the wrong thread. If the awakened thread cannot
+fulfill its condition, it goes back to sleep, potentially leaving the
+intended thread waiting indefinitely.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

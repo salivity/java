@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Structured Concurrency and Error Propagation - java</title>
+    <meta name="description" content="Structured concurrency treats multiple concurrent subtasks running in different threads as a single unit of work, significantly simplifying multithreaded programming in Java. Introduced as part of Project Loom, it enforces clear syntactical boundaries fo">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-structured-concurrency-and-error-propagation">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Structured Concurrency and Error Propagation - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-structured-concurrency-and-error-propagation" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Structured concurrency treats multiple concurrent subtasks running in different threads as a single unit of work, significantly simplifying multithreaded programming in Java. Introduced as part of Project Loom, it enforces clear syntactical boundaries fo" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-structured-concurrency-and-error-propagation">Java
+Structured Concurrency and Error Propagation</h1>
+<p>Structured concurrency treats multiple concurrent subtasks running in
+different threads as a single unit of work, significantly simplifying
+multithreaded programming in Java. Introduced as part of Project Loom,
+it enforces clear syntactical boundaries for concurrent operations,
+mirroring the structure of standard synchronous code blocks. This
+article explains what structured concurrency is, examines the pitfalls
+of traditional asynchronous models, and demonstrates how it
+fundamentally improves error propagation, task cancellation, and
+observability in Java applications.</p>
+<h2 id="what-is-structured-concurrency">What Is Structured
+Concurrency?</h2>
+<p>In traditional Java multithreading—known as unstructured
+concurrency—tasks can be submitted to an <code>ExecutorService</code> or
+spawned as arbitrary threads. Once initiated, these threads have no
+structural relationship with the caller that created them. A child
+thread can easily outlive its parent thread, leak resources, or fail
+silently without the parent ever knowing.</p>
+<p>Structured concurrency applies the principles of structured
+programming (like <code>if</code> statements and loops with single entry
+and exit points) to concurrent code. If an operation splits into
+concurrent subtasks, those subtasks must all complete or be cancelled
+before the parent operation can finish. In Java, this is primarily
+implemented using the <code>StructuredTaskScope</code> API.</p>
+<h2
+id="the-problem-with-error-propagation-in-unstructured-concurrency">The
+Problem with Error Propagation in Unstructured Concurrency</h2>
+<p>Before structured concurrency, coordinating errors among multiple
+parallel tasks required complex boilerplate. Consider a service that
+fetches user details and account balances simultaneously:</p>
+<ol type="1">
+<li><strong>Orphaned Tasks:</strong> If the user detail request fails
+immediately with an exception, the account balance request continues
+running, wasting CPU and network resources.</li>
+<li><strong>Lost Context:</strong> If multiple subtasks fail, only the
+exception caught by the caller is visible; other failures are often lost
+or swallowed.</li>
+<li><strong>Thread Leaks:</strong> If a thread fails and the
+coordinating thread crashes or times out, running worker threads might
+be left hanging indefinitely.</li>
+<li><strong>Disjointed Stack Traces:</strong> Stack traces in
+unstructured models only show the execution path within the specific
+child thread, making it difficult to trace which parent operation
+initiated the failed call.</li>
+</ol>
+<h2 id="how-structured-concurrency-improves-error-propagation">How
+Structured Concurrency Improves Error Propagation</h2>
+<p>Structured concurrency directly addresses these challenges through
+the <code>StructuredTaskScope</code> API, utilizing the
+<code>try-with-resources</code> pattern to enforce lifecycles and
+simplify failure management.</p>
+<h3 id="1-automatic-short-circuiting-and-cancellation">1. Automatic
+Short-Circuiting and Cancellation</h3>
+<p>Using policies such as
+<code>StructuredTaskScope.ShutdownOnFailure</code>, Java automatically
+handles failures across subtasks. If any subtask throws an unhandled
+exception:</p>
+<ul>
+<li>The scope automatically shuts down.</li>
+<li>All remaining sibling subtasks are sent an interrupt signal to stop
+their execution.</li>
+<li>The system avoids executing unnecessary work, freeing resources
+instantly.</li>
+</ul>
+<h3 id="2-consolidated-exception-handling">2. Consolidated Exception
+Handling</h3>
+<p>Instead of manually inspecting multiple <code>Future</code> objects,
+structured concurrency allows developers to rethrow the first
+encountered failure directly onto the parent thread. Calling
+<code>scope.throwIfFailed()</code> ensures that any exception
+originating from a subtask is propagated cleanly to the caller, behaving
+exactly like an exception thrown in standard sequential code.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Response</span> <span class="fu">handleRequest</span><span class="op">()</span> <span class="kw">throws</span> <span class="bu">ExecutionException</span><span class="op">,</span> <span class="bu">InterruptedException</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">try</span> <span class="op">(</span><span class="dt">var</span> scope <span class="op">=</span> <span class="kw">new</span> StructuredTaskScope<span class="op">.</span><span class="fu">ShutdownOnFailure</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        Supplier<span class="op">&lt;</span>User<span class="op">&gt;</span> userSubtask <span class="op">=</span> scope<span class="op">.</span><span class="fu">fork</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="fu">fetchUser</span><span class="op">());</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        Supplier<span class="op">&lt;</span>Account<span class="op">&gt;</span> accountSubtask <span class="op">=</span> scope<span class="op">.</span><span class="fu">fork</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="fu">fetchAccount</span><span class="op">());</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Wait for all subtasks to complete or for one to fail</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        scope<span class="op">.</span><span class="fu">join</span><span class="op">();</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Propagate the exception if any subtask failed</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        scope<span class="op">.</span><span class="fu">throwIfFailed</span><span class="op">();</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Both succeeded; assemble the result</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">new</span> <span class="bu">Response</span><span class="op">(</span>userSubtask<span class="op">.</span><span class="fu">get</span><span class="op">(),</span> accountSubtask<span class="op">.</span><span class="fu">get</span><span class="op">());</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="3-preserved-call-hierarchies-and-observability">3. Preserved
+Call Hierarchies and Observability</h3>
+<p>Because the parent and child tasks are bound together within a clear
+lexical scope, the runtime maintains a clear relationship between
+threads. When an error occurs:</p>
+<ul>
+<li>Thread dumps reflect a clear parent-child tree hierarchy, showing
+which subtasks belong to which request.</li>
+<li>Stack traces can preserve the context of the caller that forked the
+task, making root-cause analysis straightforward during production
+incidents.</li>
+</ul>
+<h3 id="4-guaranteed-cleanup-and-no-leaked-threads">4. Guaranteed
+Cleanup and No Leaked Threads</h3>
+<p>By tying concurrency to <code>try-with-resources</code>, Java
+guarantees that execution cannot exit the block until all forked threads
+have completed or been safely cancelled and joined. This completely
+eliminates orphaned background threads caused by unhandled
+exceptions.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

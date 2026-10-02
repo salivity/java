@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interface Segregation Principle in Public Java APIs - java</title>
+    <meta name="description" content="The Interface Segregation Principle (ISP)—the "I" in the SOLID design principles—states that clients should never be forced to depend on interfaces they do not use. When designing public Java APIs, adhering to ISP is critical because published APIs c">
+    <link rel="canonical" href="https://salivity.github.io/java/article/interface-segregation-principle-in-public-java-ap-is">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Interface Segregation Principle in Public Java APIs - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/interface-segregation-principle-in-public-java-ap-is" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Interface Segregation Principle (ISP)—the "I" in the SOLID design principles—states that clients should never be forced to depend on interfaces they do not use. When designing public Java APIs, adhering to ISP is critical because published APIs c" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="interface-segregation-principle-in-public-java-apis">Interface
+Segregation Principle in Public Java APIs</h1>
+<p>The Interface Segregation Principle (ISP)—the "I" in the SOLID design
+principles—states that clients should never be forced to depend on
+interfaces they do not use. When designing public Java APIs, adhering to
+ISP is critical because published APIs cannot be easily refactored once
+distributed to external consumers. Applying ISP prevents bloated "fat"
+interfaces, ensures backward compatibility, minimizes implementation
+overhead for library users, and fosters flexible, highly composable
+architectures.</p>
+<h3 id="preventing-implementation-bloat-and-fragility">Preventing
+Implementation Bloat and Fragility</h3>
+<p>When a public Java interface contains too many methods, it forces
+every implementing class to provide concrete implementations for every
+single method, even those completely irrelevant to the class's
+purpose.</p>
+<p>Without ISP, developers consuming your API are often forced to write
+boilerplate code, such as returning <code>null</code>, empty
+collections, or throwing <code>UnsupportedOperationException</code> for
+unneeded methods. This degrades the consumer's codebase and creates
+fragile runtimes where method calls compile successfully but fail
+unexpectedly during execution.</p>
+<h3 id="preserving-backward-compatibility">Preserving Backward
+Compatibility</h3>
+<p>Public APIs are contracts. Once an interface is released publicly,
+modifying it carries the risk of breaking downstream consumers:</p>
+<ul>
+<li><strong>Source Incompatibility:</strong> Prior to Java 8, adding a
+new method to an interface immediately broke all existing third-party
+implementations.</li>
+<li><strong>Overreliance on Default Methods:</strong> While Java 8
+introduced <code>default</code> methods to mitigate breaking changes,
+relying on them to patch poorly segregated interfaces is an
+anti-pattern. Default methods can cause ambiguity errors (the diamond
+problem) and encourage architectural decay by turning interfaces into
+dumping grounds for loosely related logic.</li>
+</ul>
+<p>Small, segregated interfaces are inherently stable. Rather than
+altering an existing interface, API designers can introduce new,
+specialized interfaces without breaking existing clients.</p>
+<h3 id="maximizing-flexibility-through-composition">Maximizing
+Flexibility Through Composition</h3>
+<p>Java does not support multiple inheritance of state, but it allows a
+class to implement multiple interfaces. Fine-grained interfaces enable
+library consumers to pick and choose exactly which contracts their
+classes fulfill.</p>
+<p>The Java standard library itself relies heavily on ISP:</p>
+<ul>
+<li><code>java.lang.AutoCloseable</code> has a single method:
+<code>close()</code>.</li>
+<li><code>java.lang.Runnable</code> has a single method:
+<code>run()</code>.</li>
+<li><code>java.lang.Comparable&lt;T&gt;</code> has a single method:
+<code>compareTo(T o)</code>.</li>
+</ul>
+<p>Because these interfaces are focused, utility classes like
+<code>Collections</code> or IO streams can accept the narrowest possible
+contract (e.g., accepting an <code>AutoCloseable</code> or
+<code>Readable</code> rather than an entire concrete stream hierarchy).
+This increases API reusability across diverse codebases.</p>
+<h3 id="enabling-functional-programming-and-lambdas">Enabling Functional
+Programming and Lambdas</h3>
+<p>In modern Java, small interfaces align naturally with functional
+paradigms. An interface with a single abstract method qualifies as a
+Functional Interface (annotated with
+<code>@FunctionalInterface</code>).</p>
+<p>By adhering to ISP and keeping interfaces focused on a single
+behavior, your public API unlocks the power of Java lambdas and method
+references. Consumers can pass inline behavior effortlessly rather than
+constructing anonymous inner classes for heavy interfaces.</p>
+<h3 id="enhancing-testability-for-consumers">Enhancing Testability for
+Consumers</h3>
+<p>When developers consume an API, they must write unit tests for their
+integration points. Mocking an interface with two or three well-defined
+methods takes seconds. Mocking an interface that bundles fifty distinct
+concerns requires extensive setup, dummy mocks, and fragile test
+fixtures. Applying ISP drastically simplifies testing and improves the
+developer experience for everyone using your API.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

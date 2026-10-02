@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Handles Type Erasure in Generics - java</title>
+    <meta name="description" content="Type erasure is the compile-time mechanism used by Java to enforce type safety without altering the underlying Java Virtual Machine (JVM) bytecode structure. During compilation, the Java compiler inspects all generic syntax, enforces strict type checks,">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-handles-type-erasure-in-generics">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Handles Type Erasure in Generics - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-handles-type-erasure-in-generics" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Type erasure is the compile-time mechanism used by Java to enforce type safety without altering the underlying Java Virtual Machine (JVM) bytecode structure. During compilation, the Java compiler inspects all generic syntax, enforces strict type checks," />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-handles-type-erasure-in-generics">How Java Handles Type
+Erasure in Generics</h1>
+<p>Type erasure is the compile-time mechanism used by Java to enforce
+type safety without altering the underlying Java Virtual Machine (JVM)
+bytecode structure. During compilation, the Java compiler inspects all
+generic syntax, enforces strict type checks, and then strips away—or
+"erases"—all generic type metadata. This article explains how the
+compiler replaces type parameters with their bounds, injects synthetic
+type casts, generates synthetic bridge methods to preserve polymorphism,
+and the architectural limitations this process creates at runtime.</p>
+<h3 id="replacing-type-parameters">Replacing Type Parameters</h3>
+<p>When compiling a generic class, interface, or method, the compiler
+replaces all type parameters with a concrete type. The replacement
+depends entirely on whether the type parameter is bounded:</p>
+<ul>
+<li><strong>Unbounded Type Parameters:</strong> If a type parameter is
+unbounded, such as <code>&lt;T&gt;</code>, the compiler replaces it with
+<code>Object</code>. For example, <code>List&lt;T&gt;</code> becomes a
+raw <code>List</code> where internal references to <code>T</code> are
+replaced by <code>Object</code>.</li>
+<li><strong>Bounded Type Parameters:</strong> If a type parameter is
+bounded, such as <code>&lt;T extends Number&gt;</code>, the compiler
+replaces every occurrence of <code>T</code> with the first bound, which
+in this case is <code>Number</code>. If multiple bounds are used, such
+as
+<code>&lt;T extends Comparable&lt;T&gt; &amp; Serializable&gt;</code>,
+the compiler replaces <code>T</code> with the first bound specified
+(<code>Comparable</code>).</li>
+</ul>
+<h3 id="automatic-insertion-of-type-casts">Automatic Insertion of Type
+Casts</h3>
+<p>Because generic types are converted to <code>Object</code> or their
+upper bound, the resulting bytecode would typically fail to compile or
+throw runtime errors when assigned to specific reference types. To
+resolve this, the compiler automatically inserts explicit, synthetic
+type casts in bytecode wherever a generic return value or variable is
+read.</p>
+<p>For example, consider the following code:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">List</span><span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> list <span class="op">=</span> <span class="kw">new</span> <span class="bu">ArrayList</span><span class="op">&lt;&gt;();</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>list<span class="op">.</span><span class="fu">add</span><span class="op">(</span><span class="st">&quot;Hello&quot;</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> item <span class="op">=</span> list<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="dv">0</span><span class="op">);</span></span></code></pre></div>
+<p>During compilation, type erasure translates this into bytecode
+functionally equivalent to:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">List</span> list <span class="op">=</span> <span class="kw">new</span> <span class="bu">ArrayList</span><span class="op">();</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>list<span class="op">.</span><span class="fu">add</span><span class="op">(</span><span class="st">&quot;Hello&quot;</span><span class="op">);</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> item <span class="op">=</span> <span class="op">(</span><span class="bu">String</span><span class="op">)</span> list<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="dv">0</span><span class="op">);</span></span></code></pre></div>
+<p>Because the compiler already validated the types prior to erasure,
+these synthetic casts are guaranteed to be safe and will not throw a
+<code>ClassCastException</code> under normal usage.</p>
+<h3 id="bridge-methods-for-polymorphism">Bridge Methods for
+Polymorphism</h3>
+<p>Type erasure can disrupt method overriding when a class extends a
+generic class or implements a generic interface with a specific type
+argument. To preserve polymorphic behavior, the compiler generates
+synthetic methods known as <strong>bridge methods</strong>.</p>
+<p>Consider a generic base class and a subclass:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> <span class="bu">Node</span><span class="op">&lt;</span>T<span class="op">&gt;</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">setData</span><span class="op">(</span>T data<span class="op">)</span> <span class="op">{</span> <span class="op">}</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> StringNode <span class="kw">extends</span> <span class="bu">Node</span><span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> <span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">setData</span><span class="op">(</span><span class="bu">String</span> data<span class="op">)</span> <span class="op">{</span> <span class="op">}</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>After type erasure, <code>Node.setData(T)</code> becomes
+<code>Node.setData(Object)</code>. However,
+<code>StringNode.setData(String)</code> does not match the signature of
+the parent method, breaking method overriding at the bytecode level.</p>
+<p>To resolve this, the compiler generates a bridge method inside
+<code>StringNode</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">setData</span><span class="op">(</span><span class="bu">Object</span> data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">setData</span><span class="op">((</span><span class="bu">String</span><span class="op">)</span> data<span class="op">);</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>This ensures that calls to <code>Node.setData</code> via polymorphism
+still correctly resolve to <code>StringNode.setData(String)</code>.</p>
+<h3 id="consequences-and-runtime-limitations">Consequences and Runtime
+Limitations</h3>
+<p>Because type arguments do not exist in the compiled
+<code>.class</code> bytecode or JVM memory, type erasure introduces
+specific constraints in Java:</p>
+<ul>
+<li><strong>No Runtime Type Queries:</strong> You cannot use
+<code>instanceof</code> with generic types (e.g.,
+<code>obj instanceof List&lt;String&gt;</code> is illegal; only
+<code>obj instanceof List&lt;?&gt;</code> is valid).</li>
+<li><strong>No Instance Creation:</strong> You cannot instantiate a type
+parameter directly (e.g., <code>new T()</code> or
+<code>new T[10]</code>) because the JVM does not know which class to
+instantiate at runtime.</li>
+<li><strong>Static Context Restrictions:</strong> Static fields and
+static methods cannot reference the generic type parameters of their
+enclosing class, as static members are shared across all parameterized
+instances.</li>
+<li><strong>Method Signature Conflicts:</strong> Methods cannot overload
+each other if their signatures become identical after type erasure
+(e.g., <code>void process(List&lt;String&gt; l)</code> and
+<code>void process(List&lt;Integer&gt; l)</code> cannot coexist in the
+same class).</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

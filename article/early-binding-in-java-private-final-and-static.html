@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Early Binding in Java: Private, Final, and Static - java</title>
+    <meta name="description" content="Early binding, also known as static binding, is the mechanism in Java where the compiler resolves method calls at compile time rather than during runtime. In standard object-oriented programming, method calls are typically polymorphic and resolved dynami">
+    <link rel="canonical" href="https://salivity.github.io/java/article/early-binding-in-java-private-final-and-static">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Early Binding in Java: Private, Final, and Static - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/early-binding-in-java-private-final-and-static" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Early binding, also known as static binding, is the mechanism in Java where the compiler resolves method calls at compile time rather than during runtime. In standard object-oriented programming, method calls are typically polymorphic and resolved dynami" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="early-binding-in-java-private-final-and-static">Early Binding in
+Java: Private, Final, and Static</h1>
+<p>Early binding, also known as static binding, is the mechanism in Java
+where the compiler resolves method calls at compile time rather than
+during runtime. In standard object-oriented programming, method calls
+are typically polymorphic and resolved dynamically based on the actual
+runtime object. However, Java enforces early binding for
+<code>private</code>, <code>final</code>, and <code>static</code>
+methods because none of these method types can be overridden by a
+subclass, making runtime polymorphism impossible and enabling
+performance optimizations.</p>
+<h3 id="understanding-early-binding-vs-dynamic-binding">Understanding
+Early Binding vs. Dynamic Binding</h3>
+<p>In Java, method resolution generally falls into two categories:</p>
+<ul>
+<li><strong>Dynamic Binding (Late Binding):</strong> The JVM determines
+which implementation of a method to execute at runtime based on the
+actual object instance. This is the default behavior for public and
+protected non-final instance methods, using the
+<code>invokevirtual</code> bytecode instruction.</li>
+<li><strong>Static Binding (Early Binding):</strong> The compiler binds
+the method call directly to a specific class implementation during
+compilation. The runtime target is predetermined, eliminating the
+overhead of dynamic dispatch via virtual method tables (vtables).</li>
+</ul>
+<h3 id="1-static-method-invocations">1. Static Method Invocations</h3>
+<p>Static methods belong to the class itself rather than to any specific
+instance.</p>
+<ul>
+<li><strong>Why Early Binding Applies:</strong> Because static methods
+are not tied to runtime instances, they cannot be overridden. If a
+subclass declares a static method with the exact same signature as a
+static method in its superclass, this is method hiding, not method
+overriding.</li>
+<li><strong>Bytecode Execution:</strong> The Java compiler uses the
+<code>invokestatic</code> instruction to invoke static methods. The
+method reference is resolved at compile time using the compile-time type
+of the reference variable, completely ignoring the underlying runtime
+object.</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>SuperClass obj <span class="op">=</span> <span class="kw">new</span> <span class="fu">SubClass</span><span class="op">();</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>obj<span class="op">.</span><span class="fu">staticMethod</span><span class="op">();</span> <span class="co">// Resolves to SuperClass.staticMethod() at compile time</span></span></code></pre></div>
+<h3 id="2-private-method-invocations">2. Private Method Invocations</h3>
+<p>Private methods are accessible only within the specific class in
+which they are defined.</p>
+<ul>
+<li><strong>Why Early Binding Applies:</strong> Since a subclass cannot
+access or inherit a private method of its parent class, it is
+fundamentally impossible to override it. Any identical private method in
+a subclass is considered an entirely distinct method.</li>
+<li><strong>Bytecode Execution:</strong> The compiler uses the
+<code>invokespecial</code> instruction to handle calls to private
+methods. Because there is no possibility of another implementation
+existing elsewhere in the hierarchy, the compiler statically resolves
+the invocation to the defining class.</li>
+</ul>
+<h3 id="3-final-method-invocations">3. Final Method Invocations</h3>
+<p>The <code>final</code> keyword explicitly prevents a method from
+being overridden in any subclass.</p>
+<ul>
+<li><strong>Why Early Binding Applies:</strong> Once a method is
+declared <code>final</code>, its implementation is locked. The compiler
+and the JVM know that no subclass can alter this method's behavior.</li>
+<li><strong>Bytecode and JIT Optimization:</strong> In bytecode, final
+methods are often called using <code>invokevirtual</code> to maintain a
+uniform call structure for instance methods. However, because the JVM
+knows the method cannot be overridden, the Just-In-Time (JIT) compiler
+aggressively optimizes these calls by bypassing vtable lookups. The
+invocation is resolved statically, and the method implementation is
+frequently inlined directly into the calling code to eliminate method
+call overhead.</li>
+</ul>
+<h3 id="performance-and-design-implications">Performance and Design
+Implications</h3>
+<p>Early binding provides distinct advantages in Java execution:</p>
+<ul>
+<li><strong>Elimination of Lookup Overhead:</strong> The JVM does not
+need to traverse an object’s class hierarchy or inspect a virtual method
+table at runtime to find the method address.</li>
+<li><strong>Inlining Candidates:</strong> Early-bound methods are prime
+candidates for JIT inlining, where the method body replaces the call
+site, drastically reducing CPU register manipulation and stack frame
+allocation.</li>
+<li><strong>Deterministic Execution:</strong> The behavior of the
+invocation is guaranteed at compile time, reducing unexpected side
+effects caused by runtime polymorphism.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

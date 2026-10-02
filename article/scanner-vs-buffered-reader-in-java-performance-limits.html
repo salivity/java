@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner vs BufferedReader in Java: Performance Limits - java</title>
+    <meta name="description" content="When reading input in Java, developers typically choose between Scanner and BufferedReader. While Scanner provides rich parsing utilities, it introduces severe performance bottlenecks when processing large datasets or high-throughput input streams. This">
+    <link rel="canonical" href="https://salivity.github.io/java/article/scanner-vs-buffered-reader-in-java-performance-limits">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Scanner vs BufferedReader in Java: Performance Limits - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/scanner-vs-buffered-reader-in-java-performance-limits" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When reading input in Java, developers typically choose between Scanner and BufferedReader. While Scanner provides rich parsing utilities, it introduces severe performance bottlenecks when processing large datasets or high-throughput input streams. This" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="scanner-vs-bufferedreader-in-java-performance-limits">Scanner vs
+BufferedReader in Java: Performance Limits</h1>
+<p>When reading input in Java, developers typically choose between
+<code>Scanner</code> and <code>BufferedReader</code>. While
+<code>Scanner</code> provides rich parsing utilities, it introduces
+severe performance bottlenecks when processing large datasets or
+high-throughput input streams. This article explores the core
+performance limitations of <code>Scanner</code> relative to
+<code>BufferedReader</code>, focusing on buffer management, regular
+expression overhead, type-parsing mechanics, and memory allocation.</p>
+<h3 id="1-default-buffer-capacity">1. Default Buffer Capacity</h3>
+<p>The most direct I/O limitation stems from the internal buffer sizing
+of each class:</p>
+<ul>
+<li><strong><code>Scanner</code></strong> uses a default buffer size of
+1,024 characters (1 KB). Because the buffer is small, reading large
+files triggers frequent low-level read operations from the underlying
+source, increasing disk or stream I/O latency.</li>
+<li><strong><code>BufferedReader</code></strong> uses a default buffer
+size of 8,192 characters (8 KB), and this capacity can be customized via
+its constructor. The larger buffer reads substantial chunks of data into
+memory at once, minimizing expensive native system read calls.</li>
+</ul>
+<h3 id="2-regular-expression-parsing-overhead">2. Regular Expression
+Parsing Overhead</h3>
+<p><code>Scanner</code> acts as a complete lexer rather than a simple
+stream reader. Behind the scenes, it tokenizes input using regular
+expressions:</p>
+<ul>
+<li>Every invocation of <code>next()</code>, <code>nextInt()</code>, or
+<code>hasNext()</code> matches the stream against delimiters and token
+patterns compiled via <code>java.util.regex.Pattern</code>.</li>
+<li>Regex engine evaluation involves state-machine transitions and
+dynamic backtracking, imposing significant CPU overhead on every token
+read.</li>
+<li>In contrast, <code>BufferedReader</code> only provides raw character
+or line retrieval (<code>read()</code> and <code>readLine()</code>). It
+performs no pattern matching, leaving CPU cycles free and avoiding
+complex matching routines.</li>
+</ul>
+<h3 id="3-integrated-type-parsing-and-exception-handling">3. Integrated
+Type Parsing and Exception Handling</h3>
+<p><code>Scanner</code> combines reading and type casting into a single
+process. Methods such as <code>nextInt()</code>,
+<code>nextLong()</code>, and <code>nextDouble()</code> parse strings
+into primitive types on the fly:</p>
+<ul>
+<li>This integrated parsing adds layers of validation checks, delimiter
+tracking, and locale-dependent formatting on every operation.</li>
+<li>If a token fails to match the expected type, <code>Scanner</code>
+instantiates and throws <code>InputMismatchException</code>, generating
+costly stack traces.</li>
+<li>With <code>BufferedReader</code>, reading and parsing are decoupled.
+Input is read purely as text, allowing developers to manually invoke
+direct, lightweight parsing methods like <code>Integer.parseInt()</code>
+or <code>Long.parseLong()</code>, or to employ specialized tokenizers
+like <code>StringTokenizer</code> which operate without regex
+logic.</li>
+</ul>
+<h3 id="4-memory-allocation-and-garbage-collection">4. Memory Allocation
+and Garbage Collection</h3>
+<p><code>Scanner</code> creates a significant number of intermediate
+objects during execution:</p>
+<ul>
+<li>Each tokenization operation involves regex match results, internal
+string allocations, and delimiter updates. This steady generation of
+short-lived objects increases memory fragmentation and triggers frequent
+Garbage Collection (GC) pauses.</li>
+<li><code>BufferedReader</code> operates primarily over a single
+reusable <code>char[]</code> buffer. Calling <code>readLine()</code>
+creates only one <code>String</code> object per line, substantially
+reducing heap churn and GC pressure during large-scale data
+ingestion.</li>
+</ul>
+<h3 id="5-benchmark-impact">5. Benchmark Impact</h3>
+<p>In scenarios such as competitive programming or ingesting files
+exceeding tens of megabytes, <code>BufferedReader</code> paired with
+manual string splitting routinely executes 4x to 10x faster than
+<code>Scanner</code>. For high-volume data streams,
+<code>Scanner</code>'s regex parsing and small buffer make it unsuitable
+for production environments where throughput and I/O efficiency are
+critical.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

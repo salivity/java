@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Biased Locking Optimizes Java Synchronized Blocks - java</title>
+    <meta name="description" content="Biased locking was an optimization introduced in Java 6 to virtually eliminate the performance penalty of uncontended synchronized blocks. In many legacy Java applications, synchronization was used heavily for thread-safe collections (like Vector or Stri">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-biased-locking-optimizes-java-synchronized-blocks">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Biased Locking Optimizes Java Synchronized Blocks - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-biased-locking-optimizes-java-synchronized-blocks" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Biased locking was an optimization introduced in Java 6 to virtually eliminate the performance penalty of uncontended synchronized blocks. In many legacy Java applications, synchronization was used heavily for thread-safe collections (like Vector or Stri" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-biased-locking-optimizes-java-synchronized-blocks">How
+Biased Locking Optimizes Java Synchronized Blocks</h1>
+<p>Biased locking was an optimization introduced in Java 6 to virtually
+eliminate the performance penalty of uncontended
+<code>synchronized</code> blocks. In many legacy Java applications,
+synchronization was used heavily for thread-safe collections (like
+<code>Vector</code> or <code>StringBuffer</code>) even when executed
+entirely by a single thread. This article explains how biased locking
+minimizes synchronization costs by avoiding atomic CPU instructions,
+details the mechanics of the object header, and outlines why modern Java
+runtimes eventually retired this technique.</p>
+<h2 id="the-cost-of-traditional-synchronization">The Cost of Traditional
+Synchronization</h2>
+<p>In standard Java synchronization, acquiring an uncontended lock
+relies on lightweight locking. Lightweight locking requires the JVM to
+execute atomic Compare-And-Swap (CAS) instructions to update the object
+header.</p>
+<p>While atomic operations are much faster than operating system mutexes
+(heavyweight locks), they still incur noticeable hardware overhead.
+Atomic instructions lock the CPU memory bus or invalidate cache lines
+across processor cores, causing pipeline stalls. When a single thread
+repeatedly enters and exits synchronized blocks on the same object,
+executing repeated CAS operations wastes CPU cycles.</p>
+<h2 id="how-biased-locking-works">How Biased Locking Works</h2>
+<p>Biased locking operates on the observation that most locks are only
+ever acquired by a single thread throughout their lifecycle. Instead of
+using atomic operations every time a monitor is entered and exited, the
+runtime "biases" the object toward the first thread that locks it.</p>
+<h3 id="1-initial-acquisition">1. Initial Acquisition</h3>
+<p>Every Java object possesses a memory header containing a "mark word."
+The mark word stores runtime metadata such as the object’s hash code,
+garbage collection age, and locking state bits.</p>
+<p>When an object is marked as biasable and a thread attempts to
+synchronize on it for the first time:</p>
+<ol type="1">
+<li>The thread checks the bias pattern bits in the object's mark
+word.</li>
+<li>It executes a single CAS operation to write its own Thread ID
+directly into the mark word.</li>
+<li>If successful, the object becomes biased toward that specific
+thread.</li>
+</ol>
+<h3 id="2-subsequent-acquisitions-by-the-biased-thread">2. Subsequent
+Acquisitions by the Biased Thread</h3>
+<p>Once the lock is biased, subsequent synchronized blocks entered by
+the same thread require almost zero overhead:</p>
+<ol type="1">
+<li>The thread reads the object's mark word.</li>
+<li>It verifies that the bias pattern is enabled and that the recorded
+Thread ID matches its own.</li>
+<li>If both conditions match, execution proceeds directly into the
+critical section.</li>
+</ol>
+<p>This validation requires only a few basic memory read and bitwise
+comparison instructions. It bypasses CAS operations, bus locking, and
+memory barriers entirely, making uncontended lock acquisition nearly as
+fast as non-synchronized code execution.</p>
+<h3 id="3-exiting-the-synchronized-block">3. Exiting the Synchronized
+Block</h3>
+<p>When the biased thread exits the synchronized block, it performs
+virtually no cleanup. It leaves its Thread ID in the mark word. The bias
+remains intact until another thread attempts to access the object or a
+non-compatible operation (such as calling identity
+<code>hashCode()</code>) forces revocation.</p>
+<h2 id="revocation-of-the-bias">Revocation of the Bias</h2>
+<p>The performance advantage of biased locking depends entirely on the
+absence of lock competition. When a second thread attempts to
+synchronize on a biased object, the runtime must revoke the bias before
+proceeding:</p>
+<ol type="1">
+<li><strong>Safepoint Pauses:</strong> In legacy runtimes, revoking a
+bias required bringing the JVM to a global safepoint (Stop-The-World
+pause) to safely inspect and alter the biased thread's stack.</li>
+<li><strong>Re-evaluation:</strong> At the safepoint, the JVM checks if
+the thread holding the bias is still executing the synchronized block:
+<ul>
+<li><strong>If inactive:</strong> The bias is cleared, and the object
+can either be rebound or converted to a normal unlocked state.</li>
+<li><strong>If active:</strong> The lock is upgraded to lightweight
+locking. The mark word is replaced with a pointer to a lock record on
+the thread's stack.</li>
+</ul></li>
+<li><strong>Escalation to Heavyweight Locking:</strong> If true
+concurrent contention occurs between multiple active threads, the lock
+further inflates into an OS-level monitor (mutex), suspending competing
+threads.</li>
+</ol>
+<h2 id="why-modern-java-deprecated-biased-locking">Why Modern Java
+Deprecated Biased Locking</h2>
+<p>While biased locking yielded significant throughput improvements on
+older hardware and legacy coding patterns, changes in application design
+and CPU architectures diminished its benefits:</p>
+<ul>
+<li><strong>Costly Revocations:</strong> As modern systems scaled to
+dozens of CPU cores, the Stop-The-World safepoint pauses required to
+revoke biases often introduced latency spikes that outweighed the
+performance gained from avoiding CAS operations.</li>
+<li><strong>Modern Concurrency Patterns:</strong> Contemporary Java
+frameworks rely on non-blocking concurrency libraries
+(<code>java.util.concurrent</code>) rather than synchronized legacy
+classes, making single-threaded lock reuse less prevalent.</li>
+<li><strong>Cheaper Atomic Instructions:</strong> Newer processors
+drastically reduced the cycle cost of atomic CAS operations.</li>
+</ul>
+<p>Because the complex synchronization logic was difficult to maintain
+inside the HotSpot JVM codebase, biased locking was disabled by default
+in Java 15 (JEP 374) and subsequently removed from modern Java
+runtimes.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

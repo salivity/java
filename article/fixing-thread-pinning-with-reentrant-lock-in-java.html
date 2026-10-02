@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixing Thread Pinning with ReentrantLock in Java - java</title>
+    <meta name="description" content="Migrating legacy Java applications to virtual threads often exposes severe scalability bottlenecks caused by thread pinning. Thread pinning occurs when a virtual thread cannot be unmounted from its underlying carrier thread during a blocking operation be">
+    <link rel="canonical" href="https://salivity.github.io/java/article/fixing-thread-pinning-with-reentrant-lock-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Fixing Thread Pinning with ReentrantLock in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/fixing-thread-pinning-with-reentrant-lock-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Migrating legacy Java applications to virtual threads often exposes severe scalability bottlenecks caused by thread pinning. Thread pinning occurs when a virtual thread cannot be unmounted from its underlying carrier thread during a blocking operation be" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="fixing-thread-pinning-with-reentrantlock-in-java">Fixing Thread
+Pinning with ReentrantLock in Java</h1>
+<p>Migrating legacy Java applications to virtual threads often exposes
+severe scalability bottlenecks caused by thread pinning. Thread pinning
+occurs when a virtual thread cannot be unmounted from its underlying
+carrier thread during a blocking operation because it is executing
+inside a <code>synchronized</code> block or method. Refactoring legacy
+synchronized code to use
+<code>java.util.concurrent.locks.ReentrantLock</code> eliminates this
+issue by utilizing virtual-thread-aware locking primitives, allowing
+carrier threads to remain free to execute other workloads.</p>
+<h3 id="understanding-thread-pinning">Understanding Thread Pinning</h3>
+<p>Project Loom introduced virtual threads to Java to provide
+high-throughput, lightweight concurrency. Under normal circumstances,
+when a virtual thread encounters a blocking operation—such as socket I/O
+or waiting on a concurrent primitive—it unmounts from its underlying
+platform thread (the carrier thread). The carrier thread then returns to
+the <code>ForkJoinPool</code> to execute other virtual threads.</p>
+<p>However, in Java’s current implementation, a virtual thread cannot
+unmount if it is executing inside a synchronized block or method. When a
+blocking call occurs inside <code>synchronized</code>, the virtual
+thread is "pinned" to its carrier thread. If many virtual threads become
+pinned simultaneously, the carrier pool quickly starves, degrading
+throughput down to—or worse than—traditional platform thread levels.</p>
+<h3 id="why-reentrantlock-avoids-pinning">Why ReentrantLock Avoids
+Pinning</h3>
+<p><code>ReentrantLock</code> is implemented in pure Java on top of
+<code>AbstractQueuedSynchronizer</code> (AQS) and relies on
+<code>LockSupport.park()</code> and <code>LockSupport.unpark()</code>
+for thread suspension.</p>
+<p>The Java runtime has updated <code>LockSupport</code> to be fully
+aware of virtual threads. When a virtual thread calls
+<code>LockSupport.park()</code>—which happens internally when waiting to
+acquire a contested <code>ReentrantLock</code> or waiting on a
+<code>Condition</code>—the runtime intercepts the call and unmounts the
+virtual thread.</p>
+<p>Similarly, if a virtual thread acquires a <code>ReentrantLock</code>
+and subsequently performs a blocking I/O operation inside the critical
+section, the lock metadata does not bind the execution context to the
+native carrier thread. Because the monitor is managed in Java user space
+rather than by the JVM's internal object monitor infrastructure, the JVM
+can safely unmount the virtual thread from its carrier thread and resume
+it later on any available carrier thread.</p>
+<h3 id="refactoring-synchronized-to-reentrantlock">Refactoring
+Synchronized to ReentrantLock</h3>
+<p>Refactoring legacy code requires replacing Java's intrinsic locks
+with explicit <code>ReentrantLock</code> instances while preserving
+identical reentrancy semantics.</p>
+<p>Consider a legacy synchronized block:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> LegacyAccountService <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">final</span> <span class="bu">Object</span> lock <span class="op">=</span> <span class="kw">new</span> <span class="bu">Object</span><span class="op">();</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">double</span> balance<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">debit</span><span class="op">(</span><span class="dt">double</span> amount<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="kw">synchronized</span> <span class="op">(</span>lock<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Blocking operation (e.g., database check, remote audit call)</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>            <span class="fu">executeBlockingAudit</span><span class="op">();</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>            balance <span class="op">-=</span> amount<span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In the synchronized example, if <code>executeBlockingAudit()</code>
+performs blocking network I/O, the virtual thread running
+<code>debit()</code> pins its carrier thread.</p>
+<p>Refactoring to <code>ReentrantLock</code> resolves the issue:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">concurrent</span><span class="op">.</span><span class="im">locks</span><span class="op">.</span><span class="im">ReentrantLock</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> ModernAccountService <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">final</span> <span class="bu">ReentrantLock</span> lock <span class="op">=</span> <span class="kw">new</span> <span class="bu">ReentrantLock</span><span class="op">();</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">double</span> balance<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">debit</span><span class="op">(</span><span class="dt">double</span> amount<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        lock<span class="op">.</span><span class="fu">lock</span><span class="op">();</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Blocking operation unmounts cleanly without pinning</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>            <span class="fu">executeBlockingAudit</span><span class="op">();</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>            balance <span class="op">-=</span> amount<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">finally</span> <span class="op">{</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>            lock<span class="op">.</span><span class="fu">unlock</span><span class="op">();</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="critical-refactoring-considerations">Critical Refactoring
+Considerations</h3>
+<ol type="1">
+<li><strong>Mandatory Try-Finally Blocks:</strong> Unlike
+<code>synchronized</code>, which automatically releases locks upon
+exiting the block or throwing an exception, <code>ReentrantLock</code>
+requires an explicit <code>unlock()</code> invocation. Always place
+<code>lock.unlock()</code> inside a <code>finally</code> block
+immediately following the acquisition to prevent lock leaks.</li>
+<li><strong>Reentrancy Preservation:</strong> <code>ReentrantLock</code>
+matches the reentrant behavior of <code>synchronized</code>. A thread
+holding the lock can re-acquire it without deadlocking, making it a safe
+direct replacement for recursive or nested locking patterns.</li>
+<li><strong>Condition Variables:</strong> If the legacy code relies on
+<code>Object.wait()</code>, <code>Object.notify()</code>, or
+<code>Object.notifyAll()</code>, these must be replaced with
+<code>java.util.concurrent.locks.Condition</code> methods
+(<code>await()</code>, <code>signal()</code>, and
+<code>signalAll()</code>), which also unmount virtual threads
+safely.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Thread vs Runnable: Key Differences - java</title>
+    <meta name="description" content="In Java, multithreading can be achieved primarily by either extending the Thread class or implementing the Runnable interface. While both approaches define code that executes on a separate execution path, they differ fundamentally in design, flexibility,">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-thread-vs-runnable-key-differences">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Thread vs Runnable: Key Differences - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-thread-vs-runnable-key-differences" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, multithreading can be achieved primarily by either extending the Thread class or implementing the Runnable interface. While both approaches define code that executes on a separate execution path, they differ fundamentally in design, flexibility," />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-thread-vs-runnable-key-differences">Java Thread vs
+Runnable: Key Differences</h1>
+<p>In Java, multithreading can be achieved primarily by either extending
+the <code>Thread</code> class or implementing the <code>Runnable</code>
+interface. While both approaches define code that executes on a separate
+execution path, they differ fundamentally in design, flexibility, and
+architectural principles. Implementing <code>Runnable</code> separates
+the task logic from the thread execution mechanism and avoids Java's
+single inheritance limitation, making it the preferred approach in
+modern software development. Extending the <code>Thread</code> class
+tightly couples the task to the execution thread itself.</p>
+<h3 id="core-concepts">Core Concepts</h3>
+<ul>
+<li><strong><code>Thread</code> Class:</strong> A class located in
+<code>java.lang</code> that implements the <code>Runnable</code>
+interface. It provides built-in methods to control and manage thread
+lifecycle behaviors, such as <code>start()</code>, <code>sleep()</code>,
+<code>join()</code>, and <code>interrupt()</code>.</li>
+<li><strong><code>Runnable</code> Interface:</strong> A functional
+interface with a single abstract method: <code>public void run()</code>.
+It represents an abstract unit of work intended to be executed by a
+thread.</li>
+</ul>
+<h3 id="key-differences">Key Differences</h3>
+<h4 id="1-object-oriented-design-and-inheritance">1. Object-Oriented
+Design and Inheritance</h4>
+<p>Java supports single inheritance; a class can extend only one parent
+class.</p>
+<ul>
+<li><strong>Extending <code>Thread</code>:</strong> Once a class extends
+<code>Thread</code>, it cannot inherit from any other class. This
+restricts your domain model design.</li>
+<li><strong>Implementing <code>Runnable</code>:</strong> A class
+implementing <code>Runnable</code> is free to extend another base class
+(for example,
+<code>public class WorkerTask extends BaseTask implements Runnable</code>),
+preserving object-oriented flexibility.</li>
+</ul>
+<h4 id="2-separation-of-concerns">2. Separation of Concerns</h4>
+<ul>
+<li><strong>Extending <code>Thread</code>:</strong> Tightly couples the
+task definition (what needs to be done) with the thread of execution
+(how it runs).</li>
+<li><strong>Implementing <code>Runnable</code>:</strong> Separates the
+task from the runner. The class implementing <code>Runnable</code>
+represents the task itself, while an instance of <code>Thread</code> or
+an <code>ExecutorService</code> acts as the execution engine.</li>
+</ul>
+<h4 id="3-resource-sharing-and-reusability">3. Resource Sharing and
+Reusability</h4>
+<ul>
+<li><strong>Extending <code>Thread</code>:</strong> Each instance of
+your class represents an entirely separate thread. Sharing state across
+multiple threads requires extra synchronization or static
+variables.</li>
+<li><strong>Implementing <code>Runnable</code>:</strong> A single
+<code>Runnable</code> instance can be passed to multiple
+<code>Thread</code> objects. This makes it simple to share common
+resources across multiple concurrently executing workers.</li>
+</ul>
+<h4 id="4-thread-pooling-and-concurrency-frameworks">4. Thread Pooling
+and Concurrency Frameworks</h4>
+<p>Modern Java development rarely creates threads directly using
+<code>new Thread()</code>. Instead, high-performance applications use
+the <code>java.util.concurrent</code> package (such as
+<code>ExecutorService</code>).</p>
+<ul>
+<li><strong>Extending <code>Thread</code>:</strong> Creating and
+discarding custom <code>Thread</code> objects wastes memory and CPU time
+because threads are expensive system resources. Thread pools cannot
+easily recycle <code>Thread</code> subclasses as plain tasks.</li>
+<li><strong>Implementing <code>Runnable</code>:</strong> Thread pools
+directly accept <code>Runnable</code> tasks, executing them using
+recycled worker threads.</li>
+</ul>
+<h3 id="implementation-examples">Implementation Examples</h3>
+<h4 id="extending-thread">Extending <code>Thread</code></h4>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MyThread <span class="kw">extends</span> <span class="bu">Thread</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">run</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Running inside: &quot;</span> <span class="op">+</span> <span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">getName</span><span class="op">());</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        MyThread thread <span class="op">=</span> <span class="kw">new</span> <span class="fu">MyThread</span><span class="op">();</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        thread<span class="op">.</span><span class="fu">start</span><span class="op">();</span> <span class="co">// Starts execution on a new thread</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="implementing-runnable">Implementing <code>Runnable</code></h4>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MyTask <span class="kw">implements</span> <span class="bu">Runnable</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">run</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Running inside: &quot;</span> <span class="op">+</span> <span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">getName</span><span class="op">());</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Thread</span> thread <span class="op">=</span> <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(</span><span class="kw">new</span> <span class="fu">MyTask</span><span class="op">());</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        thread<span class="op">.</span><span class="fu">start</span><span class="op">();</span> <span class="co">// Passes task to a thread wrapper and starts it</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Since <code>Runnable</code> is a functional interface, it can also be
+written concisely using lambda expressions:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Thread</span> thread <span class="op">=</span> <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Running inline task&quot;</span><span class="op">));</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>thread<span class="op">.</span><span class="fu">start</span><span class="op">();</span></span></code></pre></div>
+<h3 id="summary-of-when-to-use-which">Summary of When to Use Which</h3>
+<ul>
+<li><strong>Use <code>Runnable</code>:</strong> In almost all scenarios.
+It adheres to standard design patterns, supports lambda expressions,
+works seamlessly with thread pools, and preserves inheritance
+hierarchies.</li>
+<li><strong>Extend <code>Thread</code>:</strong> Only when you are
+developing a specialized thread management library or need to override
+core behaviors of the <code>Thread</code> class itself, such as
+specialized thread scheduling or custom lifecycle management.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

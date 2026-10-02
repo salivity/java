@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>String.format vs MessageFormat vs formatted in Java - java</title>
+    <meta name="description" content="Java provides multiple ways to format strings, with String.format(), String.formatted(), and java.text.MessageFormat being the most widely used. While String.format() and String.formatted() rely on standard printf-style syntax for general formatting, Mes">
+    <link rel="canonical" href="https://salivity.github.io/java/article/string-format-vs-message-format-vs-formatted-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="String.format vs MessageFormat vs formatted in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/string-format-vs-message-format-vs-formatted-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java provides multiple ways to format strings, with String.format(), String.formatted(), and java.text.MessageFormat being the most widely used. While String.format() and String.formatted() rely on standard printf-style syntax for general formatting, Mes" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="stringformat-vs-messageformat-vs-formatted-in-java">String.format vs
+MessageFormat vs formatted in Java</h1>
+<p>Java provides multiple ways to format strings, with
+<code>String.format()</code>, <code>String.formatted()</code>, and
+<code>java.text.MessageFormat</code> being the most widely used. While
+<code>String.format()</code> and <code>String.formatted()</code> rely on
+standard <code>printf</code>-style syntax for general formatting,
+<code>MessageFormat</code> uses indexed placeholder syntax designed
+specifically for internationalization and localization. Choosing the
+right method depends on readability requirements, Java version, and
+whether your application requires multi-language support.</p>
+<h3 id="stringformat">String.format()</h3>
+<p>Introduced in Java 5, <code>String.format()</code> is a static
+utility method that formats text using <code>printf</code>-style format
+specifiers such as <code>%s</code>, <code>%d</code>, and
+<code>%f</code>.</p>
+<ul>
+<li><strong>Syntax:</strong>
+<code>String.format(String format, Object... args)</code></li>
+<li><strong>Placeholder style:</strong>
+<code>%[argument_index$][flags][width][.precision]conversion</code></li>
+<li><strong>Locale support:</strong> Accepts an optional
+<code>Locale</code> parameter as the first argument. If omitted, it
+defaults to the system locale.</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> name <span class="op">=</span> <span class="st">&quot;Alice&quot;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> score <span class="op">=</span> <span class="dv">95</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> result <span class="op">=</span> <span class="bu">String</span><span class="op">.</span><span class="fu">format</span><span class="op">(</span><span class="st">&quot;User </span><span class="sc">%s</span><span class="st"> scored </span><span class="sc">%d</span><span class="st"> points.&quot;</span><span class="op">,</span> name<span class="op">,</span> score<span class="op">);</span></span></code></pre></div>
+<h3 id="stringformatted">String.formatted()</h3>
+<p>Introduced in Java 15, <code>formatted()</code> is an instance method
+on the <code>String</code> class. It serves as a modern, fluent
+alternative to <code>String.format()</code>.</p>
+<ul>
+<li><strong>Syntax:</strong>
+<code>formatString.formatted(Object... args)</code></li>
+<li><strong>Placeholder style:</strong> Identical to
+<code>String.format()</code> (<code>%s</code>, <code>%d</code>,
+etc.).</li>
+<li><strong>Relationship to <code>String.format()</code>:</strong> Under
+the hood, <code>"template %s".formatted(arg)</code> directly delegates
+to <code>String.format("template %s", arg)</code>.</li>
+<li><strong>Readability:</strong> Eliminates nested method calls, making
+it especially readable when combined with Java text blocks.</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> result <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="st">    User: %s</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="st">    Score: %d</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;&quot;&quot;</span><span class="op">.</span><span class="fu">formatted</span><span class="op">(</span><span class="st">&quot;Alice&quot;</span><span class="op">,</span> <span class="dv">95</span><span class="op">);</span></span></code></pre></div>
+<h3 id="javatextmessageformat">java.text.MessageFormat</h3>
+<p>Part of the <code>java.text</code> package since Java 1.1,
+<code>MessageFormat</code> is tailored for internationalization (i18n)
+and localization (l10n). It allows translators to rearrange placeholders
+without modifying application code.</p>
+<ul>
+<li><strong>Syntax:</strong>
+<code>MessageFormat.format(String pattern, Object... args)</code> or via
+pre-compiled <code>MessageFormat</code> instances.</li>
+<li><strong>Placeholder style:</strong> Indexed curly braces, such as
+<code>{0}</code>, <code>{1, number}</code>, or
+<code>{2, date, short}</code>.</li>
+<li><strong>Special capabilities:</strong> Supports nested choice
+formats for handling plurals (e.g., "0 files", "1 file", "2
+files").</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> template <span class="op">=</span> <span class="st">&quot;At {1, time} on {1, date}, user {0} logged in.&quot;</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> result <span class="op">=</span> <span class="bu">MessageFormat</span><span class="op">.</span><span class="fu">format</span><span class="op">(</span>template<span class="op">,</span> <span class="st">&quot;Alice&quot;</span><span class="op">,</span> <span class="kw">new</span> <span class="bu">Date</span><span class="op">());</span></span></code></pre></div>
+<h3 id="key-differences">Key Differences</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;"><code>String.format()</code></th>
+<th style="text-align: left;"><code>String.formatted()</code></th>
+<th style="text-align: left;"><code>MessageFormat</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Java Version</strong></td>
+<td style="text-align: left;">Java 5+</td>
+<td style="text-align: left;">Java 15+</td>
+<td style="text-align: left;">Java 1.1+</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Invocation</strong></td>
+<td style="text-align: left;">Static method</td>
+<td style="text-align: left;">Instance method</td>
+<td style="text-align: left;">Static or instance</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Syntax Style</strong></td>
+<td style="text-align: left;"><code>printf</code> (<code>%s</code>,
+<code>%d</code>)</td>
+<td style="text-align: left;"><code>printf</code> (<code>%s</code>,
+<code>%d</code>)</td>
+<td style="text-align: left;">Indexed braces (<code>{0}</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Use Case</strong></td>
+<td style="text-align: left;">General string building</td>
+<td style="text-align: left;">Fluent formatting, text blocks</td>
+<td style="text-align: left;">Localization and resource bundles</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Argument Reordering</strong></td>
+<td style="text-align: left;">Via <code>%1$s</code> indices</td>
+<td style="text-align: left;">Via <code>%1$s</code> indices</td>
+<td style="text-align: left;">Native via <code>{0}</code>,
+<code>{1}</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Type Formatting</strong></td>
+<td style="text-align: left;">Basic type flags</td>
+<td style="text-align: left;">Basic type flags</td>
+<td style="text-align: left;">Built-in date, time, number, and choice
+formats</td>
+</tr>
+</tbody>
+</table>
+<h3 id="when-to-use-which">When to Use Which</h3>
+<ul>
+<li>Use <strong><code>formatted()</code></strong> if you are using Java
+15 or later and writing standard application code, especially alongside
+multiline text blocks.</li>
+<li>Use <strong><code>String.format()</code></strong> if you are
+targeting Java 14 or earlier, or when you explicitly need to pass a
+specific <code>Locale</code> object directly into the call.</li>
+<li>Use <strong><code>MessageFormat</code></strong> whenever text must
+be extracted into resource bundles for internationalization, or when you
+need built-in handling for dates, times, and grammatical
+pluralization.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

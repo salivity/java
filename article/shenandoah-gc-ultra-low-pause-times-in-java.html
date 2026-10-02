@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shenandoah GC: Ultra-Low Pause Times in Java - java</title>
+    <meta name="description" content="The Shenandoah Garbage Collector (GC) achieves ultra-low, deterministic pause times in Java by executing the vast majority of its memory reclamation work concurrently with running application threads. Unlike traditional collectors that pause the applicat">
+    <link rel="canonical" href="https://salivity.github.io/java/article/shenandoah-gc-ultra-low-pause-times-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Shenandoah GC: Ultra-Low Pause Times in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/shenandoah-gc-ultra-low-pause-times-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Shenandoah Garbage Collector (GC) achieves ultra-low, deterministic pause times in Java by executing the vast majority of its memory reclamation work concurrently with running application threads. Unlike traditional collectors that pause the applicat" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="shenandoah-gc-ultra-low-pause-times-in-java">Shenandoah GC:
+Ultra-Low Pause Times in Java</h1>
+<p>The Shenandoah Garbage Collector (GC) achieves ultra-low,
+deterministic pause times in Java by executing the vast majority of its
+memory reclamation work concurrently with running application threads.
+Unlike traditional collectors that pause the application during object
+evacuation and compaction, Shenandoah moves objects and updates
+references simultaneously with user code. This architectural design
+ensures that stop-the-world (STW) pauses are typically measured in
+milliseconds or sub-milliseconds, remaining virtually independent of the
+total heap size.</p>
+<h2 id="the-core-challenge-concurrent-evacuation">The Core Challenge:
+Concurrent Evacuation</h2>
+<p>In standard JVM garbage collectors like Parallel GC or the original
+implementations of G1 GC, marking live objects can happen concurrently,
+but the evacuation phase—moving surviving objects to compact heap
+memory—requires pausing all mutator (application) threads. Because
+moving an object changes its memory address, stopping application
+threads prevents them from accessing stale or invalid memory
+locations.</p>
+<p>Shenandoah eliminates this limitation by performing object evacuation
+concurrently. It allows application threads to read and write to objects
+even while those exact objects are being relocated to new memory
+regions.</p>
+<h2 id="load-reference-barriers">Load-Reference Barriers</h2>
+<p>The primary mechanism enabling concurrent evacuation is the
+Load-Reference Barrier (LRB). Introduced to replace the older Brooks
+pointer model, the LRB intercepts heap reads to ensure mutator threads
+always access the most up-to-date version of an object.</p>
+<p>When an application thread attempts to access an object reference,
+the LRB performs a fast check:</p>
+<ol type="1">
+<li>If the target object is not in the collection set (regions being
+evacuated), execution continues with zero overhead.</li>
+<li>If the object is in the collection set and has already been
+evacuated, the barrier transparently redirects the pointer to the new
+memory address (the "to-space" copy).</li>
+<li>If the object has not yet been evacuated, the running thread assists
+the GC by copying the object itself using an atomic compare-and-swap
+(CAS) operation, updates the forwarding pointer, and then proceeds with
+the access.</li>
+</ol>
+<p>This self-healing and cooperative model guarantees thread safety and
+data consistency without halting the entire application.</p>
+<h2 id="the-shenandoah-gc-cycle">The Shenandoah GC Cycle</h2>
+<p>Shenandoah splits garbage collection into distinct phases, keeping
+pauses brief and deterministic:</p>
+<ol type="1">
+<li><strong>Init Mark (STW):</strong> A brief pause to scan the root set
+(thread stacks, global variables).</li>
+<li><strong>Concurrent Marking:</strong> Traverses the live object graph
+across the heap concurrently with mutator threads to determine reachable
+objects.</li>
+<li><strong>Final Mark (STW):</strong> A short pause to flush pending
+marking tasks and choose the regions with the most garbage (the
+collection set).</li>
+<li><strong>Concurrent Evacuation:</strong> Worker threads and mutators
+actively copy live objects out of the collection set into free
+regions.</li>
+<li><strong>Init Update Refs (STW):</strong> An extremely brief pause
+ensuring that all GC and mutator threads have finished relocating
+objects.</li>
+<li><strong>Concurrent Update References:</strong> Iterates over the
+entire heap concurrently, updating every stale pointer that still refers
+to the old memory addresses.</li>
+<li><strong>Final Update Refs (STW):</strong> A final, brief pause to
+update root references and reclaim the fully evacuated regions.</li>
+</ol>
+<h2 id="trade-offs-for-ultra-low-latency">Trade-offs for Ultra-Low
+Latency</h2>
+<p>Shenandoah trades raw application throughput and CPU overhead to
+eliminate latency spikes. The continuous execution of load-reference
+barriers and concurrent worker threads requires extra CPU cycles, which
+can slightly reduce peak computational throughput compared to
+throughput-oriented collectors like Parallel GC. However, for systems
+where responsiveness, predictable latency SLAs, and large heap sizes
+(from gigabytes to terabytes) are paramount, Shenandoah successfully
+delivers pause times that remain consistently low.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

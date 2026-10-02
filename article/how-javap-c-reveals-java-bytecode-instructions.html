@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How javap -c Reveals Java Bytecode Instructions - java</title>
+    <meta name="description" content="The javap command is the standard Java class file disassembler bundled with the Java Development Kit (JDK), and using it with the -c flag decomposes compiled .class files into readable Java Virtual Machine (JVM) bytecode instructions. This article explai">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-javap-c-reveals-java-bytecode-instructions">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How javap -c Reveals Java Bytecode Instructions - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-javap-c-reveals-java-bytecode-instructions" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The javap command is the standard Java class file disassembler bundled with the Java Development Kit (JDK), and using it with the -c flag decomposes compiled .class files into readable Java Virtual Machine (JVM) bytecode instructions. This article explai" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-javap--c-reveals-java-bytecode-instructions">How javap -c
+Reveals Java Bytecode Instructions</h1>
+<p>The <code>javap</code> command is the standard Java class file
+disassembler bundled with the Java Development Kit (JDK), and using it
+with the <code>-c</code> flag decomposes compiled <code>.class</code>
+files into readable Java Virtual Machine (JVM) bytecode instructions.
+This article explains how <code>javap -c</code> disassembles method
+bodies, outlines how to interpret the resulting mnemonic instructions,
+and demonstrates how this tool exposes the inner workings of the JVM,
+including stack manipulation, compiler optimizations, and synthetic code
+generated during compilation.</p>
+<h3 id="the-role-of-javap-and-the--c-flag">The Role of javap and the -c
+Flag</h3>
+<p>When Java source code (<code>.java</code>) is compiled using
+<code>javac</code>, it is converted into platform-independent binary
+instructions stored within <code>.class</code> files. Because these
+files are binary, they cannot be read directly with a standard text
+editor.</p>
+<p>The <code>javap</code> utility inspects these class files. While
+running <code>javap</code> alone prints only package, protected, and
+public fields and methods, appending the <code>-c</code> flag instructs
+the disassembler to unpack the actual bytecode instructions for every
+method declared in the class.</p>
+<h3 id="disassembling-a-class-file">Disassembling a Class File</h3>
+<p>Consider a simple Java class:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Calculator <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">int</span> <span class="fu">add</span><span class="op">(</span><span class="dt">int</span> a<span class="op">,</span> <span class="dt">int</span> b<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> a <span class="op">+</span> b<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>After compiling the file with <code>javac Calculator.java</code>, run
+the disassembler:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">javap</span> <span class="at">-c</span> Calculator</span></code></pre></div>
+<p>The output for the <code>add</code> method looks like this:</p>
+<pre class="bytecode"><code>public int add(int, int);
+  Code:
+     0: iload_1
+     1: iload_2
+     2: iadd
+     3: ireturn</code></pre>
+<h3 id="deconstructing-the-bytecode-output">Deconstructing the Bytecode
+Output</h3>
+<p>The disassembled output generated by <code>javap -c</code> breaks
+down each method into a sequence of execution instructions:</p>
+<ol type="1">
+<li><strong>Bytecode Offsets (<code>0:</code>, <code>1:</code>,
+<code>2:</code>, <code>3:</code>):</strong> These numbers indicate the
+byte index of each instruction within the method's code array.
+Variations in step sizes occur when instructions carry operands of
+varying byte lengths.</li>
+<li><strong>Opcode Mnemonics (<code>iload_1</code>, <code>iadd</code>,
+<code>ireturn</code>):</strong> The human-readable names corresponding
+to single-byte operation codes executed by the JVM:
+<ul>
+<li><code>iload_1</code>: Loads the integer value stored in local
+variable index 1 (parameter <code>a</code>) onto the operand stack.</li>
+<li><code>iload_2</code>: Loads the integer value stored in local
+variable index 2 (parameter <code>b</code>) onto the operand stack.</li>
+<li><code>iadd</code>: Pops the two top integers from the operand stack,
+adds them together, and pushes the result back onto the stack.</li>
+<li><code>ireturn</code>: Pops the resulting integer from the operand
+stack and returns it to the caller.</li>
+</ul></li>
+</ol>
+<p>Because the JVM is a stack-based execution engine,
+<code>javap -c</code> reveals how values move back and forth between
+local variables and the execution stack.</p>
+<h3 id="uncovering-hidden-compiler-mechanics">Uncovering Hidden Compiler
+Mechanics</h3>
+<p>Using <code>javap -c</code> allows developers to see behaviors that
+are abstracted away in source code:</p>
+<ul>
+<li><strong>Implicit Constructors:</strong> If no constructor is
+defined, <code>javap -c</code> displays the default constructor
+generated by <code>javac</code>, including the implicit call to
+<code>super()</code> via the <code>invokespecial</code> opcode.</li>
+<li><strong>String Concatenation:</strong> Concatenating strings using
+the <code>+</code> operator does not exist at the bytecode level.
+Disassembling reveals whether the compiler transformed the operation
+into <code>StringBuilder.append()</code> calls (Java 8 and earlier) or
+an <code>invokedynamic</code> call using
+<code>StringConcatFactory</code> (Java 9+).</li>
+<li><strong>Autoboxing and Unboxing:</strong> Assigning a primitive
+<code>int</code> to an <code>Integer</code> object hides a static method
+call. With <code>javap -c</code>, the insertion of
+<code>invokestatic java/lang/Integer.valueOf:(I)Ljava/lang/Integer;</code>
+becomes visible.</li>
+<li><strong>Synchronization:</strong> Methods using
+<code>synchronized</code> blocks reveal explicit
+<code>monitorenter</code> and <code>monitorexit</code> instructions, as
+well as the compiler-generated exception tables that guarantee locks are
+released even if an unhandled error occurs.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

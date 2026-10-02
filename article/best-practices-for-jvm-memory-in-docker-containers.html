@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Best Practices for JVM Memory in Docker Containers - java</title>
+    <meta name="description" content="Configuring Java Virtual Machine (JVM) memory inside Docker containers requires a careful balance between Java heap allocation and the Linux control group (cgroup) memory limits enforced by the container runtime. Misconfigurations frequently lead to the">
+    <link rel="canonical" href="https://salivity.github.io/java/article/best-practices-for-jvm-memory-in-docker-containers">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Best Practices for JVM Memory in Docker Containers - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/best-practices-for-jvm-memory-in-docker-containers" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Configuring Java Virtual Machine (JVM) memory inside Docker containers requires a careful balance between Java heap allocation and the Linux control group (cgroup) memory limits enforced by the container runtime. Misconfigurations frequently lead to the" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="best-practices-for-jvm-memory-in-docker-containers">Best
+Practices for JVM Memory in Docker Containers</h1>
+<p>Configuring Java Virtual Machine (JVM) memory inside Docker
+containers requires a careful balance between Java heap allocation and
+the Linux control group (cgroup) memory limits enforced by the container
+runtime. Misconfigurations frequently lead to the Linux kernel silently
+terminating processes with Out-of-Memory (OOM) exit code 137. This guide
+outlines the essential practices for configuring JVM memory limits
+inside Linux cgroup Docker containers, accounting for container
+awareness, percentage-based sizing, non-heap overhead, and operating
+system limits.</p>
+<h2 id="1-rely-on-container-aware-java-versions">1. Rely on
+Container-Aware Java Versions</h2>
+<p>Modern versions of Java automatically recognize container cgroup
+limits. Ensure your runtime uses Java 8u191 or later, or modern LTS
+versions such as Java 11, 17, or 21. In these versions, the flag
+<code>-XX:+UseContainerSupport</code> is enabled by default. This allows
+the JVM to read the container's memory constraints from
+<code>/sys/fs/cgroup/</code> rather than the host machine's total
+physical RAM. If you are running legacy Java 8 builds prior to update
+191, upgrade immediately, as the JVM will read the host's total RAM,
+inevitably leading to an immediate OOM kill by the Linux kernel.</p>
+<h2 id="2-use-dynamic-percentage-flags-instead-of-fixed-heap-values">2.
+Use Dynamic Percentage Flags Instead of Fixed Heap Values</h2>
+<p>Avoid hardcoding heap boundaries using <code>-Xms</code> and
+<code>-Xmx</code>. Hardcoded values make container images brittle and
+difficult to resize via container orchestrators like Kubernetes.
+Instead, use percentage-based sizing flags:</p>
+<ul>
+<li><code>-XX:MaxRAMPercentage</code>: The maximum percentage of the
+container's cgroup memory limit allocated to the Java heap.</li>
+<li><code>-XX:InitialRAMPercentage</code>: The initial heap size as a
+percentage of the limit.</li>
+<li><code>-XX:MinRAMPercentage</code>: The percentage used when total
+container memory is small (typically under 250MB).</li>
+</ul>
+<p>A safe default for most microservices is setting
+<code>-XX:MaxRAMPercentage=75.0</code>. This gives the JVM heap 75% of
+the container limit while reserving the remaining 25% for native memory
+and system overhead.</p>
+<h2 id="3-account-for-non-heap-memory-overhead">3. Account for Non-Heap
+Memory Overhead</h2>
+<p>The total memory consumed by a Java application is significantly
+higher than its heap size. The Linux cgroup limit applies to the
+<em>entire</em> process, which includes:</p>
+<ul>
+<li><strong>Metaspace</strong>: Class metadata storage
+(<code>-XX:MaxMetaspaceSize</code>).</li>
+<li><strong>Thread Stacks</strong>: Memory allocated per thread
+(<code>-Xss</code>), typically 1MB per thread.</li>
+<li><strong>Native Memory and Direct Byte Buffers</strong>: Utilized
+heavily by frameworks like Netty and NIO for I/O operations.</li>
+<li><strong>Garbage Collection and JIT Compilation</strong>: Internal
+JVM memory for compiler optimizations and GC structures.</li>
+</ul>
+<p>If your container limit is 1GB and you allocate 850MB to the heap,
+native memory usage will likely push the process past 1GB, prompting the
+kernel's OOM killer to terminate the container. Always maintain a 20% to
+30% margin between the maximum heap size and the container memory
+limit.</p>
+<h2 id="4-align-container-memory-and-swap-limits">4. Align Container
+Memory and Swap Limits</h2>
+<p>When setting memory limits in Docker, explicitly configure the swap
+boundary. By default, Docker may allocate equal parts RAM and swap. In
+latency-sensitive Java applications, swapping causes severe garbage
+collection pauses and unpredictable latency spikes.</p>
+<p>Disable or strictly limit swap by matching memory and swap parameters
+in your deployment:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--memory</span><span class="op">=</span>1g <span class="at">--memory-swap</span><span class="op">=</span>1g my-java-app:latest</span></code></pre></div>
+<p>Matching <code>--memory</code> and <code>--memory-swap</code>
+prevents the container from swapping, ensuring the JVM operates strictly
+in physical RAM.</p>
+<h2 id="5-account-for-cgroup-v1-vs-cgroup-v2">5. Account for Cgroup v1
+vs. Cgroup v2</h2>
+<p>Linux distributions have largely transitioned from cgroups v1 to
+cgroups v2. Older JVM releases (including early builds of Java 11) do
+not correctly parse memory limits under cgroups v2, defaulting back to
+host-level metrics. Ensure your base image uses a recent patch release
+of the JDK/JRE that supports cgroups v2 unified hierarchies to prevent
+unexpected memory allocation errors.</p>
+<h2 id="6-configure-fast-failure-on-internal-oom">6. Configure Fast
+Failure on Internal OOM</h2>
+<p>When the JVM encounters an internal
+<code>java.lang.OutOfMemoryError</code>, it may enter an unstable state
+without crashing, leaving health checks hanging while failing to serve
+traffic. Configure the JVM to exit immediately when an internal OOM
+occurs:</p>
+<pre class="text"><code>-XX:+ExitOnOutOfMemoryError</code></pre>
+<p>Alternatively, use <code>-XX:+CrashOnOutOfMemoryError</code> if you
+require a core dump for diagnostic analysis. This forces the container
+to terminate immediately, allowing Kubernetes or Docker to restart the
+pod and restore service.</p>
+<h2 id="7-profile-memory-using-native-memory-tracking-nmt">7. Profile
+Memory Using Native Memory Tracking (NMT)</h2>
+<p>If a container continues to be terminated with exit code 137 despite
+safe heap settings, non-heap native memory is the cause. Diagnose this
+by enabling Native Memory Tracking:</p>
+<pre class="text"><code>-XX:NativeMemoryTracking=summary</code></pre>
+<p>Attach to the running container and run
+<code>jcmd &lt;pid&gt; VM.native_memory baseline</code> and
+<code>jcmd &lt;pid&gt; VM.native_memory detail.diff</code> to identify
+leaks in thread stacks, native libraries, or Metaspace. Disable NMT in
+production once diagnosis is complete, as it introduces a minor CPU
+overhead.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

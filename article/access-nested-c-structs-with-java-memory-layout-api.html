@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Nested C Structs with Java Memory Layout API - java</title>
+    <meta name="description" content="The layout path mechanism in Java's Foreign Function and Memory (FFM) API provides a declarative, type-safe way to navigate complex and nested C-style memory structures. By using layout paths, developers can drill down into nested structs, unions, and ar">
+    <link rel="canonical" href="https://salivity.github.io/java/article/access-nested-c-structs-with-java-memory-layout-api">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Access Nested C Structs with Java Memory Layout API - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/access-nested-c-structs-with-java-memory-layout-api" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The layout path mechanism in Java's Foreign Function and Memory (FFM) API provides a declarative, type-safe way to navigate complex and nested C-style memory structures. By using layout paths, developers can drill down into nested structs, unions, and ar" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="access-nested-c-structs-with-java-memory-layout-api">Access
+Nested C Structs with Java Memory Layout API</h1>
+<p>The layout path mechanism in Java's Foreign Function and Memory (FFM)
+API provides a declarative, type-safe way to navigate complex and nested
+C-style memory structures. By using layout paths, developers can drill
+down into nested structs, unions, and arrays without manually
+calculating memory offsets. This article explains how layout paths
+function, how to construct them using the <code>MemoryLayout</code> API,
+and how to use them to derive var handles and byte offsets for reading
+and writing nested native data.</p>
+<h2 id="understanding-layout-paths">Understanding Layout Paths</h2>
+<p>In C, accessing a nested struct member typically looks like
+<code>player.location.x</code>. In Java's FFM API
+(<code>java.lang.foreign</code>), native memory is modeled via
+<code>MemoryLayout</code> instances, such as <code>GroupLayout</code>
+(for structs and unions) and <code>SequenceLayout</code> (for
+arrays).</p>
+<p>A <strong>layout path</strong> is a sequence of one or more
+<code>MemoryLayout.PathElement</code> steps that traverse the
+hierarchical structure of a layout. Instead of computing byte offsets
+manually, the layout path mechanism navigates the structure's blueprint
+and automatically takes data alignment, padding, and platform
+architecture into account.</p>
+<h2 id="defining-nested-structs">Defining Nested Structs</h2>
+<p>Consider a C scenario with a nested struct:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> Point <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> x<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> y<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> Player <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> id<span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">struct</span> Point location<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<p>In Java, this is represented using nested <code>GroupLayout</code>
+instances created via <code>MemoryLayout.structLayout()</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">foreign</span><span class="op">.*;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="kw">static</span><span class="im"> java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">foreign</span><span class="op">.</span><span class="im">ValueLayout</span><span class="op">.*;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="bu">GroupLayout</span> POINT_LAYOUT <span class="op">=</span> MemoryLayout<span class="op">.</span><span class="fu">structLayout</span><span class="op">(</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    JAVA_INT<span class="op">.</span><span class="fu">withName</span><span class="op">(</span><span class="st">&quot;x&quot;</span><span class="op">),</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    JAVA_INT<span class="op">.</span><span class="fu">withName</span><span class="op">(</span><span class="st">&quot;y&quot;</span><span class="op">)</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="bu">GroupLayout</span> PLAYER_LAYOUT <span class="op">=</span> MemoryLayout<span class="op">.</span><span class="fu">structLayout</span><span class="op">(</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    JAVA_INT<span class="op">.</span><span class="fu">withName</span><span class="op">(</span><span class="st">&quot;id&quot;</span><span class="op">),</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    POINT_LAYOUT<span class="op">.</span><span class="fu">withName</span><span class="op">(</span><span class="st">&quot;location&quot;</span><span class="op">)</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span></code></pre></div>
+<h2 id="traversing-with-path-elements">Traversing with Path
+Elements</h2>
+<p>To address the nested fields (<code>x</code> or <code>y</code>), you
+build a path using
+<code>MemoryLayout.PathElement.groupElement(String name)</code>. Each
+element specifies the name of a member within the current layout
+layer.</p>
+<p>For example, to point to <code>location.x</code>, the path elements
+are:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>MemoryLayout<span class="op">.</span><span class="fu">PathElement</span> locStep <span class="op">=</span> MemoryLayout<span class="op">.</span><span class="fu">PathElement</span><span class="op">.</span><span class="fu">groupElement</span><span class="op">(</span><span class="st">&quot;location&quot;</span><span class="op">);</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>MemoryLayout<span class="op">.</span><span class="fu">PathElement</span> xStep <span class="op">=</span> MemoryLayout<span class="op">.</span><span class="fu">PathElement</span><span class="op">.</span><span class="fu">groupElement</span><span class="op">(</span><span class="st">&quot;x&quot;</span><span class="op">);</span></span></code></pre></div>
+<h2 id="accessing-nested-data">Accessing Nested Data</h2>
+<p>The layout path is primarily used to generate a
+<code>VarHandle</code> for reading/writing values, or to calculate the
+exact offset of a field.</p>
+<h3 id="1-creating-a-varhandle">1. Creating a VarHandle</h3>
+<p>To read or write directly to a nested field within a
+<code>MemorySegment</code>, invoke
+<code>varHandle(PathElement...)</code> on the root layout:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>VarHandle xHandle <span class="op">=</span> PLAYER_LAYOUT<span class="op">.</span><span class="fu">varHandle</span><span class="op">(</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    MemoryLayout<span class="op">.</span><span class="fu">PathElement</span><span class="op">.</span><span class="fu">groupElement</span><span class="op">(</span><span class="st">&quot;location&quot;</span><span class="op">),</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    MemoryLayout<span class="op">.</span><span class="fu">PathElement</span><span class="op">.</span><span class="fu">groupElement</span><span class="op">(</span><span class="st">&quot;x&quot;</span><span class="op">)</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Writing and reading using a MemorySegment</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> <span class="op">(</span>Arena arena <span class="op">=</span> Arena<span class="op">.</span><span class="fu">ofConfined</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    MemorySegment playerSegment <span class="op">=</span> arena<span class="op">.</span><span class="fu">allocate</span><span class="op">(</span>PLAYER_LAYOUT<span class="op">);</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Set player.location.x = 42</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    xHandle<span class="op">.</span><span class="fu">set</span><span class="op">(</span>playerSegment<span class="op">,</span> <span class="dv">0L</span> <span class="co">/* base offset */</span><span class="op">,</span> <span class="dv">42</span><span class="op">);</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Read player.location.x</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> currentX <span class="op">=</span> <span class="op">(</span><span class="dt">int</span><span class="op">)</span> xHandle<span class="op">.</span><span class="fu">get</span><span class="op">(</span>playerSegment<span class="op">,</span> <span class="dv">0L</span><span class="op">);</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="2-computing-byte-offsets">2. Computing Byte Offsets</h3>
+<p>If you only need the offset of the nested member relative to the
+start of the outer struct, use
+<code>byteOffset(PathElement...)</code>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="dt">long</span> xOffset <span class="op">=</span> PLAYER_LAYOUT<span class="op">.</span><span class="fu">byteOffset</span><span class="op">(</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    MemoryLayout<span class="op">.</span><span class="fu">PathElement</span><span class="op">.</span><span class="fu">groupElement</span><span class="op">(</span><span class="st">&quot;location&quot;</span><span class="op">),</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    MemoryLayout<span class="op">.</span><span class="fu">PathElement</span><span class="op">.</span><span class="fu">groupElement</span><span class="op">(</span><span class="st">&quot;x&quot;</span><span class="op">)</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span></code></pre></div>
+<h3 id="3-selecting-sub-layouts">3. Selecting Sub-layouts</h3>
+<p>You can extract the layout of the nested component itself using
+<code>select(PathElement...)</code>:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>MemoryLayout locationLayout <span class="op">=</span> PLAYER_LAYOUT<span class="op">.</span><span class="fu">select</span><span class="op">(</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    MemoryLayout<span class="op">.</span><span class="fu">PathElement</span><span class="op">.</span><span class="fu">groupElement</span><span class="op">(</span><span class="st">&quot;location&quot;</span><span class="op">)</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span></code></pre></div>
+<h2 id="handling-nested-arrays">Handling Nested Arrays</h2>
+<p>If the nested struct contains or is wrapped in an array, the path
+mechanism provides <code>PathElement.sequenceElement()</code>:</p>
+<ul>
+<li><strong><code>sequenceElement(long index)</code></strong>: Targets a
+specific, constant index inside a nested sequence.</li>
+<li><strong><code>sequenceElement()</code></strong>: Creates an open
+path element that adds an additional <code>long</code> index coordinate
+to the generated <code>VarHandle</code>, allowing dynamic indexing at
+runtime.</li>
+</ul>
+<p>By abstracting memory layout offsets behind path elements, the Java
+Memory Layout API eliminates manual pointer arithmetic errors and
+ensures high-performance, JIT-optimized access to complex native
+structures.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

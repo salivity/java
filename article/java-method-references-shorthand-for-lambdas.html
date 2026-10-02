@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Method References: Shorthand for Lambdas - java</title>
+    <meta name="description" content="Java method references, introduced in Java 8, provide a compact, highly readable shorthand syntax for lambda expressions that do nothing more than call an existing method. This article explains how method references streamline your code, outlines the fou">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-method-references-shorthand-for-lambdas">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Method References: Shorthand for Lambdas - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-method-references-shorthand-for-lambdas" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java method references, introduced in Java 8, provide a compact, highly readable shorthand syntax for lambda expressions that do nothing more than call an existing method. This article explains how method references streamline your code, outlines the fou" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-method-references-shorthand-for-lambdas">Java Method
+References: Shorthand for Lambdas</h1>
+<p>Java method references, introduced in Java 8, provide a compact,
+highly readable shorthand syntax for lambda expressions that do nothing
+more than call an existing method. This article explains how method
+references streamline your code, outlines the four distinct types of
+method references, and demonstrates how the compiler maps them directly
+to functional interfaces to eliminate boilerplate argument passing.</p>
+<h3 id="the-mechanism-replacing-boilerplate-lambdas">The Mechanism:
+Replacing Boilerplate Lambdas</h3>
+<p>A lambda expression often acts purely as a middleman, receiving
+arguments and immediately passing them to an already defined method
+without any additional transformation:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Standard lambda expression</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>Consumer<span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> printer <span class="op">=</span> s <span class="op">-&gt;</span> <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>s<span class="op">);</span></span></code></pre></div>
+<p>In this scenario, repeating the parameter <code>s</code> on both
+sides of the arrow (<code>-&gt;</code>) is redundant. Method references
+resolve this redundancy by using the double-colon (<code>::</code>)
+operator to separate the class or instance name from the method name.
+The compiler automatically infers the parameters and return type based
+on the target functional interface:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Method reference equivalent</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>Consumer<span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> printer <span class="op">=</span> <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">::</span>println<span class="op">;</span></span></code></pre></div>
+<h3 id="the-four-types-of-method-references">The Four Types of Method
+References</h3>
+<p>Method references fall into four specific categories depending on
+whether the method is static, instance-bound, invoked on an arbitrary
+instance, or a constructor.</p>
+<h4 id="1-reference-to-a-static-method">1. Reference to a Static
+Method</h4>
+<p>When a lambda invokes a static method on a class, you replace the
+argument declarations and call with
+<code>ContainingClass::staticMethodName</code>.</p>
+<ul>
+<li><strong>Lambda:</strong>
+<code>(a, b) -&gt; Math.max(a, b)</code></li>
+<li><strong>Method Reference:</strong> <code>Math::max</code></li>
+<li><strong>Target Interface:</strong>
+<code>BinaryOperator&lt;Integer&gt;</code></li>
+</ul>
+<h4 id="2-reference-to-an-instance-method-of-a-specific-object">2.
+Reference to an Instance Method of a Specific Object</h4>
+<p>When calling a method on an existing, predefined object instance, use
+<code>containingObject::instanceMethodName</code>.</p>
+<ul>
+<li><strong>Lambda:</strong>
+<code>str -&gt; myValidator.isValid(str)</code></li>
+<li><strong>Method Reference:</strong>
+<code>myValidator::isValid</code></li>
+<li><strong>Target Interface:</strong>
+<code>Predicate&lt;String&gt;</code></li>
+</ul>
+<h4
+id="3-reference-to-an-instance-method-of-an-arbitrary-object-of-a-specific-type">3.
+Reference to an Instance Method of an Arbitrary Object of a Specific
+Type</h4>
+<p>When the first argument of the lambda serves as the target (the
+invoking object) of the instance method call, and any subsequent
+parameters serve as the method's arguments, use
+<code>ContainingType::methodName</code>.</p>
+<ul>
+<li><strong>Lambda:</strong>
+<code>(str) -&gt; str.toLowerCase()</code></li>
+<li><strong>Method Reference:</strong>
+<code>String::toLowerCase</code></li>
+<li><strong>Target Interface:</strong>
+<code>Function&lt;String, String&gt;</code></li>
+</ul>
+<p>In this pattern, the compiler understands that the incoming
+<code>String</code> instance will execute the
+<code>.toLowerCase()</code> call.</p>
+<h4 id="4-reference-to-a-constructor">4. Reference to a Constructor</h4>
+<p>Constructors can be referenced in the same manner as static methods
+by using the <code>new</code> keyword: <code>ClassName::new</code>.</p>
+<ul>
+<li><strong>Lambda:</strong>
+<code>() -&gt; new ArrayList&lt;String&gt;()</code></li>
+<li><strong>Method Reference:</strong> <code>ArrayList::new</code></li>
+<li><strong>Target Interface:</strong>
+<code>Supplier&lt;List&lt;String&gt;&gt;</code></li>
+</ul>
+<h3 id="how-the-compiler-resolves-method-references">How the Compiler
+Resolves Method References</h3>
+<p>Method references do not introduce a new runtime type. At compile
+time, the Java compiler evaluates the method reference against the
+functional interface's single abstract method (SAM). It verifies that
+the method's parameter types and return type match the signature
+expected by the interface. Under the hood, the bytecode generated via
+the <code>invokedynamic</code> instruction is virtually identical to
+that of a standard lambda expression, ensuring zero runtime performance
+penalty while drastically improving code clarity and conciseness.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

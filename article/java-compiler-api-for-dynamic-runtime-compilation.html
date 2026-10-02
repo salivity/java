@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Compiler API for Dynamic Runtime Compilation - java</title>
+    <meta name="description" content="The Java Compiler API provides a standardized, programmatic interface that allows developers to invoke the Java compiler directly from within a running application. This article explores the purpose of the Java Compiler API, examining how it enables dyna">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-compiler-api-for-dynamic-runtime-compilation">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Compiler API for Dynamic Runtime Compilation - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-compiler-api-for-dynamic-runtime-compilation" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Compiler API provides a standardized, programmatic interface that allows developers to invoke the Java compiler directly from within a running application. This article explores the purpose of the Java Compiler API, examining how it enables dyna" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-compiler-api-for-dynamic-runtime-compilation">Java Compiler
+API for Dynamic Runtime Compilation</h1>
+<p>The Java Compiler API provides a standardized, programmatic interface
+that allows developers to invoke the Java compiler directly from within
+a running application. This article explores the purpose of the Java
+Compiler API, examining how it enables dynamic source code compilation
+at runtime, eliminates the need for external process execution, supports
+in-memory compilation, and powers modern use cases such as runtime code
+generation, plugin systems, and domain-specific language evaluation.</p>
+<h2 id="what-is-the-java-compiler-api">What Is the Java Compiler
+API?</h2>
+<p>Introduced in Java 6 as part of JSR 199 and located in the
+<code>javax.tools</code> package, the Java Compiler API exposes the
+internal <code>javac</code> engine to running applications. Prior to
+this API, developers who needed to compile Java source code dynamically
+had to rely on cumbersome workarounds, such as invoking the command-line
+compiler via <code>Runtime.getRuntime().exec("javac ...")</code> or
+bundling third-party compilation libraries.</p>
+<p>The Java Compiler API standardizes this process, providing a
+type-safe, robust, and in-process solution to compile Java source files
+or in-memory code strings into executable bytecode without spawning
+external operating system processes.</p>
+<h2 id="primary-purposes-of-the-java-compiler-api">Primary Purposes of
+the Java Compiler API</h2>
+<h3 id="1-in-memory-source-code-compilation">1. In-Memory Source Code
+Compilation</h3>
+<p>One of the most significant advantages of the API is the ability to
+compile code without writing <code>.java</code> source files to disk or
+saving resulting <code>.class</code> files to the local file system. By
+implementing custom abstractions of <code>JavaFileManager</code> and
+<code>SimpleJavaFileObject</code>, applications can:</p>
+<ul>
+<li>Pass Java code directly as raw <code>String</code> objects or memory
+streams.</li>
+<li>Receive compiled bytecode directly as byte arrays.</li>
+<li>Load the resulting bytecode immediately using a custom
+<code>ClassLoader</code>.</li>
+</ul>
+<p>This capability drastically reduces I/O overhead and avoids
+filesystem permission or path-handling issues in restricted
+environments, such as cloud containers.</p>
+<h3 id="2-runtime-code-generation-and-dynamic-specialization">2. Runtime
+Code Generation and Dynamic Specialization</h3>
+<p>Applications frequently encounter dynamic requirements that change
+based on user input, database schemas, or runtime configuration. The
+Java Compiler API allows applications to generate highly optimized Java
+source code tailored to specific execution profiles, compile it on the
+fly, and execute it at native bytecode speed. This eliminates the
+performance overhead associated with generic reflection or dynamic
+proxying.</p>
+<h3 id="3-creating-extensible-plugin-and-scripting-architectures">3.
+Creating Extensible Plugin and Scripting Architectures</h3>
+<p>For systems requiring custom user logic, such as rule engines,
+workflow systems, or domain-specific language (DSL) processors, the API
+serves as an effective execution engine. Instead of interpreting a
+custom script slowly, the host system can translate the script into Java
+source code, compile it using the Java Compiler API, and execute it with
+full JIT (Just-In-Time) optimization.</p>
+<h3 id="4-dynamic-template-engine-processing">4. Dynamic Template Engine
+Processing</h3>
+<p>Modern enterprise frameworks often compile view templates, expression
+languages, or dynamic queries into Java classes. Web containers
+historically used background compilation to turn JSP files into
+servlets. The Java Compiler API allows modern frameworks to achieve
+similar goals cleanly within the running JVM process, delivering fast
+runtime execution for complex templates.</p>
+<h2 id="core-components-of-the-api">Core Components of the API</h2>
+<p>To achieve runtime compilation, the API relies on four central
+components:</p>
+<ul>
+<li><strong><code>ToolProvider</code></strong>: Locates and provides an
+instance of the system Java compiler using
+<code>ToolProvider.getSystemJavaCompiler()</code>.</li>
+<li><strong><code>JavaCompiler</code></strong>: The main interface
+representing the compiler instance, used to configure options and create
+compilation tasks.</li>
+<li><strong><code>JavaFileManager</code></strong>: Manages the
+locations, reading, and writing of source and class files, allowing
+customization of input and output destinations.</li>
+<li><strong><code>JavaCompiler.CompilationTask</code></strong>:
+Encapsulates the compilation job, which can be executed synchronously or
+monitored using diagnostic listeners to capture compilation errors,
+warnings, and line numbers.</li>
+</ul>
+<h2 id="conclusion">Conclusion</h2>
+<p>The Java Compiler API transforms the Java platform from a purely
+static, ahead-of-time compiled language into a flexible runtime system
+capable of dynamic self-extension. By providing in-process, in-memory
+compilation mechanisms, it enables high-performance code generation,
+custom scripting, and adaptive software design while maintaining the
+type safety and execution performance of standard Java bytecode.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

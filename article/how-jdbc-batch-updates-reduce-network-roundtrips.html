@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How JDBC Batch Updates Reduce Network Roundtrips - java</title>
+    <meta name="description" content="In data-intensive Java applications, executing individual database write operations introduces massive latency due to continuous back-and-forth communication over the network. The Java Database Connectivity (JDBC) batch update feature addresses this perf">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-jdbc-batch-updates-reduce-network-roundtrips">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How JDBC Batch Updates Reduce Network Roundtrips - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-jdbc-batch-updates-reduce-network-roundtrips" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In data-intensive Java applications, executing individual database write operations introduces massive latency due to continuous back-and-forth communication over the network. The Java Database Connectivity (JDBC) batch update feature addresses this perf" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-jdbc-batch-updates-reduce-network-roundtrips">How JDBC Batch
+Updates Reduce Network Roundtrips</h1>
+<p>In data-intensive Java applications, executing individual database
+write operations introduces massive latency due to continuous
+back-and-forth communication over the network. The Java Database
+Connectivity (JDBC) batch update feature addresses this performance
+bottleneck by grouping multiple SQL statements into a single
+transmission payload. Instead of sending each query sequentially and
+waiting for individual confirmations, batching enables applications to
+send bulk commands to the database engine in one operation, dramatically
+slashing network overhead, system resource consumption, and transaction
+duration.</p>
+<h3 id="the-problem-with-single-statement-execution">The Problem with
+Single-Statement Execution</h3>
+<p>Standard JDBC interactions rely on a chatty request-response pattern.
+When inserting or updating thousands of records using standard
+<code>PreparedStatement.executeUpdate()</code> calls, the application
+performs a complete network roundtrip for each record:</p>
+<ol type="1">
+<li>The Java application constructs and sends the SQL command and
+parameters over TCP.</li>
+<li>The database receives the packet, parses the query, checks
+permissions, executes the statement, and commits or locks
+resources.</li>
+<li>The database sends a response packet back containing the update
+count.</li>
+<li>The Java application blocks and waits until this response arrives
+before sending the next record.</li>
+</ol>
+<p>In environments where latency between the application server and the
+database is even just a few milliseconds, performing 10,000 individual
+operations can extend processing times from seconds into minutes,
+primarily due to network wait times rather than actual database
+workload.</p>
+<h3 id="how-jdbc-batching-modifies-network-transmission">How JDBC
+Batching Modifies Network Transmission</h3>
+<p>JDBC batching fundamentally changes this process via the
+<code>addBatch()</code> and <code>executeBatch()</code> methods. Instead
+of transmitting data immediately, the JDBC driver buffers the SQL
+commands and their corresponding parameter sets in local application
+memory.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>connection<span class="op">.</span><span class="fu">setAutoCommit</span><span class="op">(</span><span class="kw">false</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> sql <span class="op">=</span> <span class="st">&quot;INSERT INTO orders (id, customer_id, amount) VALUES (?, ?, ?)&quot;</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> <span class="op">(</span><span class="bu">PreparedStatement</span> pstmt <span class="op">=</span> connection<span class="op">.</span><span class="fu">prepareStatement</span><span class="op">(</span>sql<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> <span class="op">(</span>Order order <span class="op">:</span> orders<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        pstmt<span class="op">.</span><span class="fu">setLong</span><span class="op">(</span><span class="dv">1</span><span class="op">,</span> order<span class="op">.</span><span class="fu">getId</span><span class="op">());</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        pstmt<span class="op">.</span><span class="fu">setLong</span><span class="op">(</span><span class="dv">2</span><span class="op">,</span> order<span class="op">.</span><span class="fu">getCustomerId</span><span class="op">());</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        pstmt<span class="op">.</span><span class="fu">setBigDecimal</span><span class="op">(</span><span class="dv">3</span><span class="op">,</span> order<span class="op">.</span><span class="fu">getAmount</span><span class="op">());</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        pstmt<span class="op">.</span><span class="fu">addBatch</span><span class="op">();</span> <span class="co">// Buffered locally in client memory</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span><span class="op">[]</span> updateCounts <span class="op">=</span> pstmt<span class="op">.</span><span class="fu">executeBatch</span><span class="op">();</span> <span class="co">// Transmitted in bulk</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    connection<span class="op">.</span><span class="fu">commit</span><span class="op">();</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>When <code>executeBatch()</code> is invoked, the JDBC driver
+consolidates the buffered commands into as few TCP packets as the
+network payload limit permits and transmits them across the wire
+together. The database processes the set in bulk and responds with a
+single consolidated acknowledgment array (<code>int[]</code>),
+collapsing thousands of individual roundtrips into a single
+roundtrip.</p>
+<h3 id="driver-level-statement-rewriting">Driver-Level Statement
+Rewriting</h3>
+<p>The extent of network reduction often depends on how the underlying
+JDBC driver handles batch execution. Advanced drivers offer
+statement-rewriting capabilities that compress network payloads even
+further.</p>
+<p>For example, when using MySQL Connector/J with the property
+<code>rewriteBatchedStatements=true</code>, the driver transforms
+multiple distinct prepared statement batches:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">INSERT</span> <span class="kw">INTO</span> orders (<span class="kw">id</span>, customer_id, amount) <span class="kw">VALUES</span> (<span class="dv">1</span>, <span class="dv">101</span>, <span class="fl">50.0</span>);</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">INSERT</span> <span class="kw">INTO</span> orders (<span class="kw">id</span>, customer_id, amount) <span class="kw">VALUES</span> (<span class="dv">2</span>, <span class="dv">102</span>, <span class="fl">75.0</span>);</span></code></pre></div>
+<p>Into a single, multi-row insert query:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">INSERT</span> <span class="kw">INTO</span> orders (<span class="kw">id</span>, customer_id, amount) <span class="kw">VALUES</span> (<span class="dv">1</span>, <span class="dv">101</span>, <span class="fl">50.0</span>), (<span class="dv">2</span>, <span class="dv">102</span>, <span class="fl">75.0</span>);</span></code></pre></div>
+<p>This rewriting eliminates repeated SQL syntax across the network
+wire, shrinking packet sizes and allowing the database server to parse
+the structure once rather than repeatedly for each set of values.</p>
+<h3 id="server-side-efficiency-and-overhead-reduction">Server-Side
+Efficiency and Overhead Reduction</h3>
+<p>Reducing network roundtrips via batching directly optimizes database
+engine performance:</p>
+<ul>
+<li><strong>Lower Context Switching:</strong> The database network
+listener processes fewer incoming connection interrupts and context
+switches between the network stack and the execution engine.</li>
+<li><strong>Optimized Transaction Logging:</strong> Executing batches
+within an explicit transaction (<code>setAutoCommit(false)</code>)
+allows the database to write changes to its write-ahead log (WAL or redo
+log) sequentially in larger, contiguous disk writes rather than multiple
+small flushes.</li>
+<li><strong>Lock Minimization:</strong> Grouped statements minimize the
+total time locks are held on target tables, reducing thread contention
+across concurrent database connections.</li>
+</ul>
+<h3 id="choosing-the-optimal-batch-size">Choosing the Optimal Batch
+Size</h3>
+<p>While batching reduces network roundtrips, grouping too many
+statements in a single batch can introduce client-side memory pressure
+and risk transaction timeouts. If a batch contains millions of records,
+the Java application risks throwing an <code>OutOfMemoryError</code>,
+and the database may struggle to allocate temporary undo/redo buffer
+space.</p>
+<p>In enterprise Java applications, optimal batch sizes typically range
+between 500 and 5,000 statements, depending on the number of columns and
+payload size per row. Implementing a threshold check that calls
+<code>executeBatch()</code> periodically within large processing loops
+maintains high network throughput while keeping application memory usage
+predictable.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

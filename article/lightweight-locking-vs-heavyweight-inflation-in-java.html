@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lightweight Locking vs Heavyweight Inflation in Java - java</title>
+    <meta name="description" content="In the Java Virtual Machine (JVM), synchronization performance is optimized using a tiered locking mechanism designed to minimize runtime overhead. This article provides a clear overview of lightweight locking, explains the conditions that trigger heavyw">
+    <link rel="canonical" href="https://salivity.github.io/java/article/lightweight-locking-vs-heavyweight-inflation-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Lightweight Locking vs Heavyweight Inflation in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/lightweight-locking-vs-heavyweight-inflation-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In the Java Virtual Machine (JVM), synchronization performance is optimized using a tiered locking mechanism designed to minimize runtime overhead. This article provides a clear overview of lightweight locking, explains the conditions that trigger heavyw" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="lightweight-locking-vs-heavyweight-inflation-in-java">Lightweight
+Locking vs Heavyweight Inflation in Java</h1>
+<p>In the Java Virtual Machine (JVM), synchronization performance is
+optimized using a tiered locking mechanism designed to minimize runtime
+overhead. This article provides a clear overview of lightweight locking,
+explains the conditions that trigger heavyweight lock inflation, and
+compares the architectural and performance differences between these two
+synchronization states.</p>
+<h2 id="understanding-lightweight-locking">Understanding Lightweight
+Locking</h2>
+<p>Lightweight locking is a synchronization mechanism used by the JVM
+when an object's monitor is accessed by multiple threads sequentially,
+without overlapping contention. Instead of relying on expensive
+operating system primitives, lightweight locking uses low-overhead CPU
+operations.</p>
+<p>When a thread enters a <code>synchronized</code> block on an
+object:</p>
+<ol type="1">
+<li><strong>Stack Allocation:</strong> The thread allocates a "Lock
+Record" on its execution stack.</li>
+<li><strong>Displaced Mark Word:</strong> The original contents of the
+object's Mark Word (part of the object header storing identity hash
+codes and GC metadata) are copied into this Lock Record.</li>
+<li><strong>Atomic Execution (CAS):</strong> The JVM executes a
+Compare-And-Swap (CAS) instruction to update the object's Mark Word to
+point directly to the thread’s Lock Record.</li>
+</ol>
+<p>If the CAS operation succeeds, the thread has acquired the
+lightweight lock. Because the entire operation takes place in user-space
+memory without invoking the host operating system's kernel, lightweight
+locking executes with negligible performance overhead.</p>
+<h2 id="what-is-heavyweight-inflation">What is Heavyweight
+Inflation?</h2>
+<p>Heavyweight inflation is the process where the JVM escalates a
+lightweight lock into a heavyweight lock. This occurs when true thread
+contention is detected—specifically, when a thread attempts to acquire a
+lock that is actively held by another thread.</p>
+<p>When contention occurs:</p>
+<ol type="1">
+<li>The competing thread attempts to acquire the lock, often spinning
+briefly (adaptive spinning) in user space to see if the holder releases
+it quickly.</li>
+<li>If the lock is not released, the JVM triggers inflation.</li>
+<li>The JVM allocates a native synchronization structure known as an
+<code>ObjectMonitor</code>.</li>
+<li>The object’s Mark Word is updated via CAS to point to this
+<code>ObjectMonitor</code>, and its lock status bits are changed to mark
+it as heavyweight.</li>
+<li>The waiting thread is suspended (parked) using operating
+system-level primitives (such as POSIX mutexes and condition
+variables).</li>
+</ol>
+<h2 id="lightweight-locking-vs-heavyweight-inflation">Lightweight
+Locking vs. Heavyweight Inflation</h2>
+<p>The two locking states represent distinct trade-offs between CPU
+cycle consumption and operating system scheduling:</p>
+<ul>
+<li><strong>Underlying Mechanism:</strong> Lightweight locking relies
+purely on user-space atomic CPU instructions (CAS) and thread stack
+manipulation. Heavyweight locking relies on operating system kernel
+primitives (<code>mutex</code> or <code>futex</code>) managed by an
+<code>ObjectMonitor</code>.</li>
+<li><strong>Resource Overhead:</strong> Lightweight locks consume almost
+no system resources beyond a few CPU cycles and a stack frame entry.
+Heavyweight locks consume system memory for native data structures and
+involve kernel transitions.</li>
+<li><strong>Thread State on Failure:</strong> When a thread fails to
+acquire a lightweight lock, it spins temporarily before triggering
+inflation. In a heavyweight state, contending threads are blocked and
+parked, meaning the OS deschedules them entirely.</li>
+<li><strong>Context Switching:</strong> Lightweight locking incurs zero
+OS context switches. Heavyweight locking involves significant
+context-switch penalties, requiring the operating system to save and
+restore CPU registers and state as threads are suspended and
+resumed.</li>
+<li><strong>Best-Fit Scenario:</strong> Lightweight locking is ideal for
+applications with low contention, where synchronization protects data
+accessed across different threads at different times. Heavyweight
+locking is necessary when multiple threads compete for the same critical
+section simultaneously and need to be queued without consuming 100% of
+the CPU through continuous busy-waiting.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

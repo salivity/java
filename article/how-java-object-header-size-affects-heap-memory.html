@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Object Header Size Affects Heap Memory - java</title>
+    <meta name="description" content="In Java applications, every object allocated on the heap carries metadata known as an object header, which can consume a disproportionate amount of memory relative to actual application data. This article explores the internal structure of Java object he">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-object-header-size-affects-heap-memory">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Object Header Size Affects Heap Memory - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-object-header-size-affects-heap-memory" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java applications, every object allocated on the heap carries metadata known as an object header, which can consume a disproportionate amount of memory relative to actual application data. This article explores the internal structure of Java object he" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-object-header-size-affects-heap-memory">How Java Object
+Header Size Affects Heap Memory</h1>
+<p>In Java applications, every object allocated on the heap carries
+metadata known as an object header, which can consume a disproportionate
+amount of memory relative to actual application data. This article
+explores the internal structure of Java object headers, examines how
+configuration settings like Compressed Ordinary Object Pointers
+(Compressed OOPs) alter their size, and details the direct impact of
+header overhead on overall heap memory consumption and garbage
+collection efficiency.</p>
+<h3 id="structure-of-the-java-object-header">Structure of the Java
+Object Header</h3>
+<p>The Java Virtual Machine (JVM) attaches a header to every object
+instance created in the heap. This header consists of two primary
+components:</p>
+<ol type="1">
+<li><strong>Mark Word:</strong> Stores runtime metadata, including the
+object's identity hash code, garbage collection (GC) aging bits, lock
+states, bias locking flags, and synchronization markers.</li>
+<li><strong>Klass Word:</strong> Stores a direct or indirect pointer to
+the class metadata residing in the Metaspace, allowing the JVM to
+determine the object's runtime type.</li>
+</ol>
+<p>For array objects, the header includes a third component: a 4-byte
+integer representing the array length.</p>
+<h3 id="header-size-variations">Header Size Variations</h3>
+<p>The physical footprint of an object header varies depending on JVM
+architecture and runtime flags:</p>
+<ul>
+<li><strong>32-bit Architecture:</strong> The Mark Word and Klass Word
+each occupy 4 bytes, resulting in an 8-byte header for standard objects
+and 12 bytes for arrays.</li>
+<li><strong>64-bit Architecture (Without Compressed OOPs):</strong> Both
+words occupy 8 bytes each, resulting in a 16-byte header for standard
+objects and 24 bytes for arrays (16 bytes plus 4 bytes for length,
+padded to an 8-byte boundary).</li>
+<li><strong>64-bit Architecture (With Compressed OOPs):</strong> Enabled
+by default on heaps under roughly 32 GB
+(<code>-XX:+UseCompressedOops</code>), this feature compresses the Klass
+Word pointer to 4 bytes. The header then consumes 12 bytes for standard
+objects (8-byte Mark Word + 4-byte Klass Word) and 16 bytes for arrays
+(12 bytes + 4 bytes for array length).</li>
+</ul>
+<h3 id="the-role-of-memory-alignment-and-padding">The Role of Memory
+Alignment and Padding</h3>
+<p>The HotSpot JVM allocates memory in multiples of 8 bytes (known as
+8-byte alignment). If an object's combined header and field size does
+not align to an 8-byte boundary, the JVM adds padding bytes.</p>
+<p>For instance, an empty object on a 64-bit JVM with compressed OOPs
+has a 12-byte header. Because of 8-byte alignment, the JVM adds 4 bytes
+of padding, bringing the minimum allocation size to 16 bytes, even
+though the object holds no state.</p>
+<h3 id="impact-on-heap-memory-consumption">Impact on Heap Memory
+Consumption</h3>
+<p>The relative impact of the object header depends heavily on the ratio
+of metadata to payload data.</p>
+<h4 id="1-excessive-overhead-in-small-objects">1. Excessive Overhead in
+Small Objects</h4>
+<p>When applications instantiate millions of fine-grained objects,
+headers quickly outgrow the payload. Consider an instance of
+<code>java.lang.Integer</code>:</p>
+<ul>
+<li>The primitive <code>int</code> payload requires 4 bytes.</li>
+<li>With compressed OOPs, the header requires 12 bytes.</li>
+<li>Total size: 16 bytes.</li>
+</ul>
+<p>In this scenario, 75% of the memory used by the <code>Integer</code>
+object is consumed by the header. If an application holds 10 million
+<code>Integer</code> instances, they consume 160 MB of heap, of which
+120 MB is purely header metadata.</p>
+<h4 id="2-array-of-objects-vs-primitive-arrays">2. Array of Objects vs.
+Primitive Arrays</h4>
+<p>Object references in Java reference standalone heap allocations. An
+array of boxed types—such as <code>Integer[]</code> containing 1,000
+elements—requires:</p>
+<ul>
+<li>The array header (16 bytes).</li>
+<li>1,000 references (4,000 bytes with compressed OOPs).</li>
+<li>1,000 separate <code>Integer</code> instances (16,000 bytes).</li>
+<li><strong>Total:</strong> ~20,016 bytes.</li>
+</ul>
+<p>In contrast, a primitive <code>int[]</code> array holding 1,000
+values requires only the 16-byte array header plus 4,000 bytes for the
+primitive data, totaling 4,016 bytes—an 80% reduction in memory
+consumption.</p>
+<h4 id="3-increased-garbage-collection-pressure">3. Increased Garbage
+Collection Pressure</h4>
+<p>Larger heap footprints directly impact garbage collector behavior.
+Higher memory consumption forces the JVM to trigger GC cycles more
+frequently. Traversing millions of individual object headers also
+increases marking and scanning phases, leading to longer GC pause times
+and decreased overall application throughput.</p>
+<h3 id="strategies-to-reduce-header-overhead">Strategies to Reduce
+Header Overhead</h3>
+<ul>
+<li><strong>Favor Primitives:</strong> Use primitive types
+(<code>int</code>, <code>long</code>, <code>double</code>) instead of
+wrapper types (<code>Integer</code>, <code>Long</code>,
+<code>Double</code>) wherever possible.</li>
+<li><strong>Flatten Data Structures:</strong> Replace collections of
+small objects with primitive arrays or specialized primitive collections
+(e.g., Eclipse Collections or fastutil) to avoid individual object
+headers.</li>
+<li><strong>Keep Heaps Under 32 GB:</strong> Ensure heap sizes remain
+below the threshold where Compressed OOPs are disabled, preventing Klass
+pointers from doubling from 4 bytes to 8 bytes.</li>
+<li><strong>Leverage Modern Features:</strong> Adopt compact data
+patterns like records, and monitor advancements in Project Valhalla,
+which aims to introduce value types that eliminate object identity and
+their associated headers entirely.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handling Split Packages When Moving to Java Modules - java</title>
+    <meta name="description" content="This article provides an overview of how Java handles split packages during the transition from the legacy classpath to the Java Platform Module System (JPMS). It explains why split packages worked transparently on the classpath, why the module system fu">
+    <link rel="canonical" href="https://salivity.github.io/java/article/handling-split-packages-when-moving-to-java-modules">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Handling Split Packages When Moving to Java Modules - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/handling-split-packages-when-moving-to-java-modules" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an overview of how Java handles split packages during the transition from the legacy classpath to the Java Platform Module System (JPMS). It explains why split packages worked transparently on the classpath, why the module system fu" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="handling-split-packages-when-moving-to-java-modules">Handling
+Split Packages When Moving to Java Modules</h1>
+<p>This article provides an overview of how Java handles split packages
+during the transition from the legacy classpath to the Java Platform
+Module System (JPMS). It explains why split packages worked
+transparently on the classpath, why the module system fundamentally
+prohibits them, how the runtime behaves when code resides across both
+the classpath and module path, and the practical strategies developers
+can use to resolve split package conflicts during migration.</p>
+<hr />
+<h3 id="what-is-a-split-package">What is a Split Package?</h3>
+<p>A split package occurs when two or more distinct JAR files contain
+classes within the exact same package hierarchy (for example,
+<code>com.example.util.StringUtils</code> in <code>core.jar</code> and
+<code>com.example.util.DateUtils</code> in <code>extra.jar</code>).</p>
+<h3 id="the-classpath-approach-permissive-by-design">The Classpath
+Approach: Permissive by Design</h3>
+<p>The traditional Java classpath treats all dependencies as a flat,
+unindexed collection of classes:</p>
+<ul>
+<li><strong>First-Come, First-Served Resolution:</strong> When the JVM
+looks for a class, it iterates through the classpath sequentially and
+loads the first matching class file it finds.</li>
+<li><strong>No Integrity Checks:</strong> The classpath does not verify
+whether a package is fragmented across multiple JARs. It merges all
+classes sharing a package name into a single runtime view.</li>
+<li><strong>Unintended Consequences:</strong> This model can easily lead
+to classpath hell, where shadow classes, conflicting versions, or
+missing components cause non-deterministic runtime bugs.</li>
+</ul>
+<h3 id="the-module-path-approach-strict-encapsulation">The Module Path
+Approach: Strict Encapsulation</h3>
+<p>Introduced in Java 9, the Java Module System prioritizes strong
+encapsulation and reliable configuration:</p>
+<ul>
+<li><strong>Package Uniqueness:</strong> Every package must belong to
+exactly one named module.</li>
+<li><strong>Hard Failures:</strong> If the module system detects two
+named modules containing or exporting the same package, it fails fast at
+compile-time or JVM startup with an error such as
+<code>java.lang.module.ResolutionException</code> or
+<code>LayerInstantiationException</code>.</li>
+</ul>
+<h3
+id="how-the-jvm-handles-split-packages-across-classpath-and-modules">How
+the JVM Handles Split Packages Across Classpath and Modules</h3>
+<p>During migration, applications rarely move to the module system all
+at once. When a project uses both the classpath and the module path
+simultaneously, the JVM applies specific boundary rules:</p>
+<ol type="1">
+<li><p><strong>Both JARs on the Classpath:</strong><br />
+If both JARs remain on the classpath, they are assigned to the
+<strong>unnamed module</strong>. The legacy behavior continues
+uninterrupted, and the split package is permitted.</p></li>
+<li><p><strong>One JAR on the Module Path, One on the
+Classpath:</strong><br />
+If a package exists in a named module on the module path and also exists
+in a JAR on the classpath:</p>
+<ul>
+<li>The named module takes strict precedence.</li>
+<li>The package portion inside the unnamed module (classpath) becomes
+hidden and inaccessible to the named module.</li>
+<li>If code on the classpath attempts to access the classpath-version of
+the split package, runtime errors such as
+<code>NoClassDefFoundError</code> or <code>ClassNotFoundException</code>
+often occur because the module system resolves the package boundary
+strictly through the named module.</li>
+</ul></li>
+<li><p><strong>Both JARs on the Module Path:</strong><br />
+The JVM immediately halts resolution. Two named modules—whether
+explicitly defined via <code>module-info.java</code> or automatically
+derived as <strong>automatic modules</strong>—cannot contain the same
+package.</p></li>
+</ol>
+<h3 id="strategies-to-resolve-split-packages">Strategies to Resolve
+Split Packages</h3>
+<p>When migrating an application to Java modules, developers must
+resolve split packages using one of several approaches:</p>
+<h4 id="1-package-refactoring">1. Package Refactoring</h4>
+<p>The most robust solution is to rename packages so that each module
+has a globally unique package structure (e.g., renaming
+<code>com.example.util</code> to <code>com.example.core.util</code> and
+<code>com.example.extra.util</code>).</p>
+<h4 id="2-merging-artifacts">2. Merging Artifacts</h4>
+<p>If two JARs are tightly coupled and split a package, combine them
+into a single JAR file and assign a single <code>module-info.java</code>
+descriptor.</p>
+<h4 id="3-using-the---patch-module-flag">3. Using the
+<code>--patch-module</code> Flag</h4>
+<p>For legacy or third-party dependencies that cannot be modified, the
+JVM provides the <code>--patch-module</code> command-line option. This
+flag merges classes from a directory or JAR into an existing target
+module at startup or compilation:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">--module-path</span> mods <span class="at">--patch-module</span> target.module=legacy-split.jar <span class="at">-m</span> target.module/com.example.Main</span></code></pre></div>
+<p><code>--patch-module</code> is intended primarily as a migration
+bridge or test utility and should not be relied upon as a permanent
+architectural design.</p>
+<h4 id="4-leaving-split-libraries-on-the-classpath">4. Leaving Split
+Libraries on the Classpath</h4>
+<p>If a third-party library relies heavily on split packages and cannot
+be patched easily, keep that dependency on the traditional classpath.
+Classes in the unnamed module can read all named modules, allowing
+legacy components to function while the rest of the application
+modernizes.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

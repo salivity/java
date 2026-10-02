@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Assert Works and When It Is Enabled - java</title>
+    <meta name="description" content="The Java assert statement is a debugging tool designed to test programmer assumptions directly within the source code. This article explains how the assertion syntax functions internally, what happens when an assertion fails, and the command-line switche">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-assert-works-and-when-it-is-enabled">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Assert Works and When It Is Enabled - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-assert-works-and-when-it-is-enabled" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java assert statement is a debugging tool designed to test programmer assumptions directly within the source code. This article explains how the assertion syntax functions internally, what happens when an assertion fails, and the command-line switche" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-assert-works-and-when-it-is-enabled">How Java Assert
+Works and When It Is Enabled</h1>
+<p>The Java <code>assert</code> statement is a debugging tool designed
+to test programmer assumptions directly within the source code. This
+article explains how the assertion syntax functions internally, what
+happens when an assertion fails, and the command-line switches required
+to activate assertions at runtime, as they remain completely disabled by
+default in standard Java Virtual Machine (JVM) executions.</p>
+<h3 id="how-the-assert-statement-functions">How the Assert Statement
+Functions</h3>
+<p>The <code>assert</code> keyword evaluates a boolean condition that
+the developer assumes to always be true at that specific execution
+point. If the condition evaluates to <code>true</code>, the program
+continues normally without interruption. If the condition evaluates to
+<code>false</code>, the JVM throws an <code>AssertionError</code>,
+indicating an unexpected internal bug.</p>
+<p>Java provides two forms of the <code>assert</code> statement:</p>
+<ol type="1">
+<li><p><strong>Simple form:</strong></p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> condition<span class="op">;</span></span></code></pre></div>
+<p><em>Example:</em></p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> connection <span class="op">!=</span> <span class="kw">null</span><span class="op">;</span></span></code></pre></div>
+<p>If <code>connection</code> is <code>null</code>, an
+<code>AssertionError</code> is thrown with no additional detail
+message.</p></li>
+<li><p><strong>Detailed form:</strong></p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> condition <span class="op">:</span> expression<span class="op">;</span></span></code></pre></div>
+<p><em>Example:</em></p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> x <span class="op">&gt;</span> <span class="dv">0</span> <span class="op">:</span> <span class="st">&quot;Expected x to be positive, but got: &quot;</span> <span class="op">+</span> x<span class="op">;</span></span></code></pre></div>
+<p>In this form, the expression after the colon is converted to a string
+and passed to the <code>AssertionError</code> constructor, providing
+meaningful context in the stack trace.</p></li>
+</ol>
+<p>Because <code>AssertionError</code> extends <code>Error</code> rather
+than <code>Exception</code>, it is not intended to be caught or
+recovered from using standard <code>try-catch</code> blocks. It signals
+an unrecoverable logic flaw that must be fixed in the code.</p>
+<h3 id="when-assertions-are-enabled-at-runtime">When Assertions Are
+Enabled at Runtime</h3>
+<p>By default, the JVM disables all assertion checks at runtime to
+maximize performance. When disabled, the bytecode corresponding to the
+assert statement is skipped entirely, meaning the condition is never
+evaluated and incurs virtually zero runtime overhead.</p>
+<p>To execute assertion logic, you must explicitly enable assertions
+when launching your application using JVM flags:</p>
+<ul>
+<li><p><strong>Enable globally:</strong><br />
+Use <code>-enableassertions</code> or the shorthand
+<code>-ea</code>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-ea</span> com.example.Application</span></code></pre></div></li>
+<li><p><strong>Disable globally:</strong><br />
+Assertions are disabled by default, but you can explicitly enforce this
+using <code>-disableassertions</code> or <code>-da</code>:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-da</span> com.example.Application</span></code></pre></div></li>
+<li><p><strong>Enable for specific packages or classes:</strong><br />
+You can control assertions granularly to target specific parts of a
+system:</p>
+<ul>
+<li>Enable for a specific class:
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-ea:com.example.OrderProcessor</span> com.example.Application</span></code></pre></div></li>
+<li>Enable for a package and all subpackages (indicated by
+<code>...</code>):
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-ea:com.example.service...</span> com.example.Application</span></code></pre></div></li>
+<li>Enable globally but disable for a specific package:
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-ea</span> <span class="at">-da:com.example.external...</span> com.example.Application</span></code></pre></div></li>
+</ul></li>
+<li><p><strong>System assertions:</strong><br />
+Built-in Java system classes ignore <code>-ea</code>. To enable
+assertions in system classes, use <code>-enablesystemassertions</code>
+or <code>-esa</code>.</p></li>
+</ul>
+<h3 id="rules-for-using-assertions">Rules for Using Assertions</h3>
+<ul>
+<li><strong>Do not use assertions for argument validation in public
+methods:</strong> Use standard exceptions like
+<code>IllegalArgumentException</code> or
+<code>NullPointerException</code> instead, as public API contracts must
+be enforced regardless of JVM launch flags.</li>
+<li><strong>Avoid side effects in assertion conditions:</strong> The
+state of your application should remain identical whether assertions are
+enabled or disabled. For example, writing
+<code>assert list.remove(item);</code> is an anti-pattern because the
+item will only be removed if <code>-ea</code> is active.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

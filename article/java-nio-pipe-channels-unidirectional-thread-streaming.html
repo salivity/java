@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java NIO Pipe Channels: Unidirectional Thread Streaming - java</title>
+    <meta name="description" content="This article explores Java NIO Pipe channels, explaining how they facilitate efficient, unidirectional data streaming between two threads within the same Java Virtual Machine (JVM). You will learn the core architecture of the java.nio.channels.Pipe class">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-nio-pipe-channels-unidirectional-thread-streaming">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java NIO Pipe Channels: Unidirectional Thread Streaming - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-nio-pipe-channels-unidirectional-thread-streaming" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores Java NIO Pipe channels, explaining how they facilitate efficient, unidirectional data streaming between two threads within the same Java Virtual Machine (JVM). You will learn the core architecture of the java.nio.channels.Pipe class" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-nio-pipe-channels-unidirectional-thread-streaming">Java NIO
+Pipe Channels: Unidirectional Thread Streaming</h1>
+<p>This article explores Java NIO Pipe channels, explaining how they
+facilitate efficient, unidirectional data streaming between two threads
+within the same Java Virtual Machine (JVM). You will learn the core
+architecture of the <code>java.nio.channels.Pipe</code> class,
+understand how its paired sink and source channels function, and see a
+concrete implementation demonstrating inter-thread communication using
+byte buffers.</p>
+<hr />
+<h3 id="what-is-a-java-nio-pipe">What Is a Java NIO Pipe?</h3>
+<p>A <code>Pipe</code> in Java NIO (<code>java.nio.channels.Pipe</code>)
+is an abstraction that creates a one-way data conduit between two
+concurrently executing threads. Unlike standard Java IO pipes
+(<code>PipedInputStream</code> and <code>PipedOutputStream</code>), NIO
+pipes operate on byte buffers and channel abstractions, allowing them to
+integrate cleanly with non-blocking architectures and selectors.</p>
+<p>A <code>Pipe</code> instance consists of exactly two channel
+components:</p>
+<ol type="1">
+<li><strong><code>Pipe.SinkChannel</code></strong>: The write-end of the
+pipe. Data is written to this channel by the sending thread.</li>
+<li><strong><code>Pipe.SourceChannel</code></strong>: The read-end of
+the pipe. Data is consumed from this channel by the receiving
+thread.</li>
+</ol>
+<p>Because data flows in strictly one direction—from sink to source—the
+pipe is inherently unidirectional.</p>
+<hr />
+<h3 id="how-unidirectional-streaming-works">How Unidirectional Streaming
+Works</h3>
+<p>When transmitting data through an NIO pipe:</p>
+<ol type="1">
+<li><strong>Initialization</strong>: A single <code>Pipe</code> instance
+is created via <code>Pipe.open()</code>.</li>
+<li><strong>Channel Distribution</strong>: The producer thread acquires
+the <code>Pipe.SinkChannel</code>, while the consumer thread acquires
+the <code>Pipe.SourceChannel</code>.</li>
+<li><strong>Writing (Producer)</strong>: The producer thread loads
+binary data into a <code>ByteBuffer</code> and writes it to the
+<code>SinkChannel</code> using the
+<code>sinkChannel.write(buffer)</code> method.</li>
+<li><strong>Internal Buffering</strong>: The underlying operating system
+or JVM runtime buffers the bytes sent to the sink.</li>
+<li><strong>Reading (Consumer)</strong>: The consumer thread reads the
+queued bytes from the <code>SourceChannel</code> into its own
+<code>ByteBuffer</code> using
+<code>sourceChannel.read(buffer)</code>.</li>
+</ol>
+<pre><code>[ Producer Thread ] 
+        │
+   (ByteBuffer)
+        ▼
+[ Pipe.SinkChannel ] ──────(Unidirectional Stream)──────► [ Pipe.SourceChannel ]
+                                                                   │
+                                                              (ByteBuffer)
+                                                                   ▼
+                                                          [ Consumer Thread ]</code></pre>
+<hr />
+<h3 id="step-by-step-implementation">Step-by-Step Implementation</h3>
+<p>To implement an NIO pipe stream, follow these steps:</p>
+<h4 id="1-open-the-pipe">1. Open the Pipe</h4>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Pipe</span> pipe <span class="op">=</span> <span class="bu">Pipe</span><span class="op">.</span><span class="fu">open</span><span class="op">();</span></span></code></pre></div>
+<h4 id="2-write-to-the-sink-channel">2. Write to the Sink Channel</h4>
+<p>The sending thread accesses the sink channel, prepares data within a
+<code>ByteBuffer</code>, flips the buffer to read-mode, and writes to
+the channel.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Pipe</span><span class="op">.</span><span class="fu">SinkChannel</span> sinkChannel <span class="op">=</span> pipe<span class="op">.</span><span class="fu">sink</span><span class="op">();</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">ByteBuffer</span> buffer <span class="op">=</span> <span class="bu">ByteBuffer</span><span class="op">.</span><span class="fu">allocate</span><span class="op">(</span><span class="dv">64</span><span class="op">);</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">clear</span><span class="op">();</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">put</span><span class="op">(</span><span class="st">&quot;Streaming payload via Java NIO Pipe&quot;</span><span class="op">.</span><span class="fu">getBytes</span><span class="op">(</span>StandardCharsets<span class="op">.</span><span class="fu">UTF_8</span><span class="op">));</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">flip</span><span class="op">();</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> <span class="op">(</span>buffer<span class="op">.</span><span class="fu">hasRemaining</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    sinkChannel<span class="op">.</span><span class="fu">write</span><span class="op">(</span>buffer<span class="op">);</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="3-read-from-the-source-channel">3. Read from the Source
+Channel</h4>
+<p>The receiving thread accesses the source channel, allocates an empty
+buffer, and reads incoming bytes.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Pipe</span><span class="op">.</span><span class="fu">SourceChannel</span> sourceChannel <span class="op">=</span> pipe<span class="op">.</span><span class="fu">source</span><span class="op">();</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">ByteBuffer</span> buffer <span class="op">=</span> <span class="bu">ByteBuffer</span><span class="op">.</span><span class="fu">allocate</span><span class="op">(</span><span class="dv">64</span><span class="op">);</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> bytesRead <span class="op">=</span> sourceChannel<span class="op">.</span><span class="fu">read</span><span class="op">(</span>buffer<span class="op">);</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">flip</span><span class="op">();</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="dt">byte</span><span class="op">[]</span> receivedData <span class="op">=</span> <span class="kw">new</span> <span class="dt">byte</span><span class="op">[</span>bytesRead<span class="op">];</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>buffer<span class="op">.</span><span class="fu">get</span><span class="op">(</span>receivedData<span class="op">);</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> message <span class="op">=</span> <span class="kw">new</span> <span class="bu">String</span><span class="op">(</span>receivedData<span class="op">,</span> StandardCharsets<span class="op">.</span><span class="fu">UTF_8</span><span class="op">);</span></span></code></pre></div>
+<hr />
+<h3 id="complete-code-example">Complete Code Example</h3>
+<p>Below is a complete, runnable example demonstrating two threads
+communicating across an NIO pipe:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">io</span><span class="op">.</span><span class="im">IOException</span><span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">ByteBuffer</span><span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">channels</span><span class="op">.</span><span class="im">Pipe</span><span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">charset</span><span class="op">.</span><span class="im">StandardCharsets</span><span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> NioPipeExample <span class="op">{</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="kw">throws</span> <span class="bu">IOException</span><span class="op">,</span> <span class="bu">InterruptedException</span> <span class="op">{</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Create the pipe</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Pipe</span> pipe <span class="op">=</span> <span class="bu">Pipe</span><span class="op">.</span><span class="fu">open</span><span class="op">();</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Producer Thread (Sink)</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Thread</span> producer <span class="op">=</span> <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>            <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>                <span class="bu">Pipe</span><span class="op">.</span><span class="fu">SinkChannel</span> sinkChannel <span class="op">=</span> pipe<span class="op">.</span><span class="fu">sink</span><span class="op">();</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>                <span class="bu">String</span> data <span class="op">=</span> <span class="st">&quot;Hello from the producer thread!&quot;</span><span class="op">;</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>                </span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>                <span class="bu">ByteBuffer</span> buffer <span class="op">=</span> <span class="bu">ByteBuffer</span><span class="op">.</span><span class="fu">allocate</span><span class="op">(</span><span class="dv">128</span><span class="op">);</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>                buffer<span class="op">.</span><span class="fu">clear</span><span class="op">();</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>                buffer<span class="op">.</span><span class="fu">put</span><span class="op">(</span>data<span class="op">.</span><span class="fu">getBytes</span><span class="op">(</span>StandardCharsets<span class="op">.</span><span class="fu">UTF_8</span><span class="op">));</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>                buffer<span class="op">.</span><span class="fu">flip</span><span class="op">();</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>                <span class="cf">while</span> <span class="op">(</span>buffer<span class="op">.</span><span class="fu">hasRemaining</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>                    sinkChannel<span class="op">.</span><span class="fu">write</span><span class="op">(</span>buffer<span class="op">);</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>                sinkChannel<span class="op">.</span><span class="fu">close</span><span class="op">();</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">IOException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>                e<span class="op">.</span><span class="fu">printStackTrace</span><span class="op">();</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>        <span class="op">});</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Consumer Thread (Source)</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Thread</span> consumer <span class="op">=</span> <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>            <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>                <span class="bu">Pipe</span><span class="op">.</span><span class="fu">SourceChannel</span> sourceChannel <span class="op">=</span> pipe<span class="op">.</span><span class="fu">source</span><span class="op">();</span></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>                <span class="bu">ByteBuffer</span> buffer <span class="op">=</span> <span class="bu">ByteBuffer</span><span class="op">.</span><span class="fu">allocate</span><span class="op">(</span><span class="dv">128</span><span class="op">);</span></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>                <span class="dt">int</span> bytesRead <span class="op">=</span> sourceChannel<span class="op">.</span><span class="fu">read</span><span class="op">(</span>buffer<span class="op">);</span></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>bytesRead <span class="op">&gt;</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>                    buffer<span class="op">.</span><span class="fu">flip</span><span class="op">();</span></span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>                    <span class="dt">byte</span><span class="op">[]</span> bytes <span class="op">=</span> <span class="kw">new</span> <span class="dt">byte</span><span class="op">[</span>buffer<span class="op">.</span><span class="fu">remaining</span><span class="op">()];</span></span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>                    buffer<span class="op">.</span><span class="fu">get</span><span class="op">(</span>bytes<span class="op">);</span></span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Consumer received: &quot;</span> <span class="op">+</span> <span class="kw">new</span> <span class="bu">String</span><span class="op">(</span>bytes<span class="op">,</span> StandardCharsets<span class="op">.</span><span class="fu">UTF_8</span><span class="op">));</span></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>                sourceChannel<span class="op">.</span><span class="fu">close</span><span class="op">();</span></span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">IOException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>                e<span class="op">.</span><span class="fu">printStackTrace</span><span class="op">();</span></span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>        <span class="op">});</span></span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>        producer<span class="op">.</span><span class="fu">start</span><span class="op">();</span></span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>        consumer<span class="op">.</span><span class="fu">start</span><span class="op">();</span></span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a>        producer<span class="op">.</span><span class="fu">join</span><span class="op">();</span></span>
+<span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a>        consumer<span class="op">.</span><span class="fu">join</span><span class="op">();</span></span>
+<span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<hr />
+<h3 id="key-advantages-of-nio-pipes">Key Advantages of NIO Pipes</h3>
+<ul>
+<li><strong>Zero Serialization Overhead</strong>: Data transfers as raw
+bytes via direct or heap buffers without requiring object
+serialization.</li>
+<li><strong>Selectable Channels</strong>: Both
+<code>Pipe.SinkChannel</code> and <code>Pipe.SourceChannel</code> extend
+<code>SelectableChannel</code>, meaning they can be configured in
+non-blocking mode and registered with a
+<code>java.nio.channels.Selector</code> to monitor readiness alongside
+socket channels.</li>
+<li><strong>Thread Isolation</strong>: The producer and consumer remain
+completely decoupled, relying only on standard channel contracts rather
+than explicit wait/notify synchronization.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

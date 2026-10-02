@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Core Dumps Capture JVM Native Crash Memory - java</title>
+    <meta name="description" content="When a Java Virtual Machine (JVM) crashes due to a fatal native error—such as an invalid pointer dereference in Java Native Interface (JNI) code or a segmentation fault within the HotSpot runtime itself—the underlying operating system halts the proce">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-core-dumps-capture-jvm-native-crash-memory">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Core Dumps Capture JVM Native Crash Memory - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-core-dumps-capture-jvm-native-crash-memory" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When a Java Virtual Machine (JVM) crashes due to a fatal native error—such as an invalid pointer dereference in Java Native Interface (JNI) code or a segmentation fault within the HotSpot runtime itself—the underlying operating system halts the proce" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-core-dumps-capture-jvm-native-crash-memory">How Core Dumps
+Capture JVM Native Crash Memory</h1>
+<p>When a Java Virtual Machine (JVM) crashes due to a fatal native
+error—such as an invalid pointer dereference in Java Native Interface
+(JNI) code or a segmentation fault within the HotSpot runtime itself—the
+underlying operating system halts the process and extracts its entire
+active state into a core dump. This article explains the technical
+mechanics behind this process, from the initial hardware fault and JVM
+signal handling to the kernel-level serialization of virtual memory
+mappings, CPU registers, and thread stacks into an Executable and
+Linkable Format (ELF) file for post-mortem debugging.</p>
+<h3 id="the-trigger-native-faults-and-signals">The Trigger: Native
+Faults and Signals</h3>
+<p>A native crash begins when executing native instructions violate CPU
+architecture or memory access rules. Common triggers include
+dereferencing a <code>NULL</code> pointer, accessing an unmapped memory
+page, writing to read-only memory, or running an illegal
+instruction.</p>
+<p>At the hardware level, the CPU Memory Management Unit (MMU) detects
+the illegal access and raises a hardware interrupt. The operating system
+kernel translates this interrupt into a POSIX signal sent directly to
+the offending thread. Common fatal signals include:</p>
+<ul>
+<li><strong>SIGSEGV (Signal 11):</strong> Segmentation violation
+(invalid memory access).</li>
+<li><strong>SIGBUS (Signal 7):</strong> Bus error (alignment error or
+unmapped memory page).</li>
+<li><strong>SIGILL (Signal 4):</strong> Illegal instruction.</li>
+<li><strong>SIGFPE (Signal 8):</strong> Erroneous arithmetic operation
+(e.g., divide by zero).</li>
+</ul>
+<h3 id="the-jvm-signal-interception-mechanism">The JVM Signal
+Interception Mechanism</h3>
+<p>The HotSpot JVM registers custom signal handlers during
+initialization using <code>sigaction</code>. Not all fatal signals
+indicate an unrecoverable crash; for instance, HotSpot routinely uses
+implicit <code>SIGSEGV</code> signals to handle implicit null checks in
+bytecode or to implement safepoint polling safely and efficiently.</p>
+<p>When a fatal signal is intercepted, the JVM's signal handler checks
+whether the faulting instruction belongs to known runtime
+optimizations:</p>
+<ol type="1">
+<li><strong>Handled Faults:</strong> If the fault was an expected
+optimization, the JVM updates the program counter to redirect execution
+to a pre-generated fallback routine, resuming normal execution without
+crashing.</li>
+<li><strong>Unrecoverable Faults:</strong> If the fault occurs within
+unmanaged C/C++ code (JNI libraries) or unhandled JVM internal code, the
+signal handler recognizes it as an actual crash.</li>
+</ol>
+<p>Upon confirming a fatal crash, the JVM first attempts to generate its
+diagnostic error log (<code>hs_err_pid&lt;pid&gt;.log</code>). To
+produce the operating system core dump, the JVM restores the default
+signal handler (<code>SIG_DFL</code>) for the fatal signal and re-raises
+it, deliberately delegating process termination and dump generation back
+to the operating system kernel.</p>
+<h3 id="kernel-level-core-dump-generation">Kernel-Level Core Dump
+Generation</h3>
+<p>Once the OS kernel receives the re-raised fatal signal under the
+default action, it freezes the process and initiates the core dump
+routine. The generation process proceeds through several coordinated
+phases:</p>
+<h4 id="1-halting-threads-and-capturing-registers">1. Halting Threads
+and Capturing Registers</h4>
+<p>The kernel issues a stop request to all threads belonging to the JVM
+process. For every thread, the kernel records the current execution
+context directly from the CPU registers into the process memory
+descriptor. This snapshot includes:</p>
+<ul>
+<li><strong>Instruction Pointer
+(<code>RIP</code>/<code>PC</code>):</strong> The exact instruction
+executing at the time of the fault.</li>
+<li><strong>Stack Pointer (<code>RSP</code>/<code>SP</code>):</strong>
+The current boundary of the native execution stack.</li>
+<li><strong>General-Purpose Registers:</strong> Current pointer values,
+function arguments, and calculation registers.</li>
+<li><strong>Signal Context:</strong> The memory address that triggered
+the fault (<code>si_addr</code>).</li>
+</ul>
+<h4 id="2-scanning-virtual-memory-areas-vmas">2. Scanning Virtual Memory
+Areas (VMAs)</h4>
+<p>The kernel traverses the process's <code>mm_struct</code>, which
+manages all mapped Virtual Memory Areas (VMAs). The JVM's memory map is
+typically vast and includes:</p>
+<ul>
+<li>The Java Heap (committed pages).</li>
+<li>Metaspace and CodeCache (JIT-compiled native code).</li>
+<li>Thread stacks (both Java frames and native C/C++ frames).</li>
+<li>The native C-heap allocated via <code>malloc</code>.</li>
+<li>Loaded dynamic libraries (<code>.so</code> or <code>.dll</code>
+files) and mapped native files.</li>
+</ul>
+<p>The kernel inspects the process core dump mask (configured via
+<code>/proc/&lt;pid&gt;/coredump_filter</code> on Linux) to determine
+which memory segments to serialize. By default, this usually includes
+anonymous private mappings, shared memory, and file-backed private
+mappings, while skipping clean, read-only file-backed mappings to save
+space.</p>
+<h4 id="3-serializing-to-disk">3. Serializing to Disk</h4>
+<p>The kernel opens the destination file determined by system parameters
+(such as <code>/proc/sys/kernel/core_pattern</code> on Linux or
+<code>systemd-coredump</code>) provided that resource limits
+(<code>ulimit -c</code>) allow it.</p>
+<p>The memory state is serialized as a standard format (ELF on Linux,
+Mach-O on macOS, or Minidump on Windows). In an ELF core dump, the
+kernel writes:</p>
+<ul>
+<li><strong>ELF Header:</strong> Identifies architecture, byte ordering,
+and file layout.</li>
+<li><strong><code>PT_NOTE</code> Segments:</strong> Contains process
+metadata, the list of loaded shared libraries, and an array of
+<code>NT_PRSTATUS</code> structures storing the saved CPU register
+states and signal metadata for every thread.</li>
+<li><strong><code>PT_LOAD</code> Segments:</strong> Raw byte copies of
+the designated Virtual Memory Areas, preserving virtual addresses so
+debuggers can reconstruct exact pointers.</li>
+</ul>
+<h3 id="distinction-between-core-dumps-and-java-heap-dumps">Distinction
+Between Core Dumps and Java Heap Dumps</h3>
+<p>A core dump captures the entire address space of the operating system
+process at the byte level. It includes native code, thread states, JVM
+internals, unmanaged memory, and the Java heap.</p>
+<p>In contrast, a standard Java heap dump (such as an HPROF file
+generated via <code>-XX:+HeapDumpOnOutOfMemoryError</code>) is captured
+via JVM software routines, containing only Java objects, classes, and
+references, entirely omitting CPU registers, native execution frames,
+and JNI allocations. The core dump serves as the lowest-level diagnostic
+artifact available for diagnosing total JVM failure.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

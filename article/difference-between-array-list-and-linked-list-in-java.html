@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Difference Between ArrayList and LinkedList in Java - java</title>
+    <meta name="description" content="In the Java Collections Framework, both ArrayList and LinkedList implement the List interface, yet they are engineered for fundamentally different computational needs. This article provides a direct comparison between the two, detailing their underlying">
+    <link rel="canonical" href="https://salivity.github.io/java/article/difference-between-array-list-and-linked-list-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Difference Between ArrayList and LinkedList in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/difference-between-array-list-and-linked-list-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In the Java Collections Framework, both ArrayList and LinkedList implement the List interface, yet they are engineered for fundamentally different computational needs. This article provides a direct comparison between the two, detailing their underlying" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="difference-between-arraylist-and-linkedlist-in-java">Difference
+Between ArrayList and LinkedList in Java</h1>
+<p>In the Java Collections Framework, both <code>ArrayList</code> and
+<code>LinkedList</code> implement the <code>List</code> interface, yet
+they are engineered for fundamentally different computational needs.
+This article provides a direct comparison between the two, detailing
+their underlying data structures, time complexities for common
+operations, memory footprints, and practical use cases to help you
+select the most efficient collection for your application.</p>
+<h2 id="underlying-data-structure">Underlying Data Structure</h2>
+<ul>
+<li><strong>ArrayList</strong> is backed by a dynamically resizing
+array. When elements are added beyond its current capacity, a new,
+larger array is allocated, and the existing elements are copied
+over.</li>
+<li><strong>LinkedList</strong> is backed by a doubly linked list. Each
+element is wrapped inside an independent <code>Node</code> object that
+maintains references (pointers) to both its previous and next elements
+in the sequence.</li>
+</ul>
+<h2 id="access-and-search-performance">Access and Search
+Performance</h2>
+<ul>
+<li><strong>ArrayList</strong> provides fast, constant-time
+performance—<span class="math inline">\(O(1)\)</span>—for positional
+access using methods like <code>get(int index)</code>. Because elements
+reside in contiguous memory, the JVM can directly compute the memory
+address of any index.</li>
+<li><strong>LinkedList</strong> requires linear time—<span
+class="math inline">\(O(n)\)</span>—for positional access. To access an
+arbitrary index, the list must traverse nodes sequentially from the
+beginning or the end (whichever is closer) until it reaches the target
+position.</li>
+</ul>
+<h2 id="insertion-and-deletion-performance">Insertion and Deletion
+Performance</h2>
+<ul>
+<li><strong>ArrayList</strong>:
+<ul>
+<li>Appending an element to the end runs in amortized <span
+class="math inline">\(O(1)\)</span> time, occasionally requiring <span
+class="math inline">\(O(n)\)</span> when the array needs resizing.</li>
+<li>Inserting or deleting an element at an arbitrary position takes
+<span class="math inline">\(O(n)\)</span> time because all subsequent
+elements must be shifted in memory.</li>
+</ul></li>
+<li><strong>LinkedList</strong>:
+<ul>
+<li>Adding or removing elements at the beginning or end runs in constant
+time—<span class="math inline">\(O(1)\)</span>—making operations like
+<code>addFirst()</code>, <code>addLast()</code>,
+<code>removeFirst()</code>, and <code>removeLast()</code> extremely
+efficient.</li>
+<li>Inserting or deleting at an arbitrary index requires <span
+class="math inline">\(O(n)\)</span> time to traverse to the designated
+node, though the pointer updates themselves take <span
+class="math inline">\(O(1)\)</span> once the position is located.</li>
+</ul></li>
+</ul>
+<h2 id="memory-overhead">Memory Overhead</h2>
+<ul>
+<li><strong>ArrayList</strong> has minimal memory overhead. Memory is
+consumed primarily by the stored object references, along with a small
+amount of unused capacity reserved for future additions.</li>
+<li><strong>LinkedList</strong> has a significantly higher memory
+overhead per element. In addition to the stored data, every entry
+requires a separate <code>Node</code> object containing references to
+the next node and the previous node, which increases garbage collection
+pressure.</li>
+</ul>
+<h2 id="supported-interfaces">Supported Interfaces</h2>
+<ul>
+<li><strong>ArrayList</strong> implements <code>List</code>,
+<code>RandomAccess</code>, <code>Cloneable</code>, and
+<code>Serializable</code>. The <code>RandomAccess</code> marker
+interface signifies that it supports fast constant-time element
+lookup.</li>
+<li><strong>LinkedList</strong> implements <code>List</code>,
+<code>Deque</code>, <code>Queue</code>, <code>Cloneable</code>, and
+<code>Serializable</code>. Because it implements <code>Deque</code>, it
+natively functions as a double-ended queue, FIFO queue, or LIFO stack
+without requiring additional wrappers.</li>
+</ul>
+<h2 id="summary-when-to-use-which">Summary: When to Use Which</h2>
+<ul>
+<li><strong>Use ArrayList</strong> when your application primarily
+performs read and search operations, frequently accesses elements by
+index, or appends data predominantly to the end of the collection. It is
+the standard, general-purpose list implementation in Java.</li>
+<li><strong>Use LinkedList</strong> when your application requires
+frequent insertions and deletions at the head or tail, functions
+primarily as a Queue or Deque, or does not rely on random access by
+index.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent and Child Constructor Order in Java - java</title>
+    <meta name="description" content="When instantiating a child class in Java, the runtime environment follows a strict top-down initialization process where the parent (superclass) constructor always executes before the child (subclass) constructor. This article explains the precise execut">
+    <link rel="canonical" href="https://salivity.github.io/java/article/parent-and-child-constructor-order-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Parent and Child Constructor Order in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/parent-and-child-constructor-order-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When instantiating a child class in Java, the runtime environment follows a strict top-down initialization process where the parent (superclass) constructor always executes before the child (subclass) constructor. This article explains the precise execut" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="parent-and-child-constructor-order-in-java">Parent and Child
+Constructor Order in Java</h1>
+<p>When instantiating a child class in Java, the runtime environment
+follows a strict top-down initialization process where the parent
+(superclass) constructor always executes before the child (subclass)
+constructor. This article explains the precise execution sequence during
+Java object creation, the mechanics of implicit and explicit
+<code>super()</code> calls, and the full step-by-step lifecycle
+including instance variable initialization and static blocks.</p>
+<h2 id="the-core-rule-parent-first-child-second">The Core Rule: Parent
+First, Child Second</h2>
+<p>In Java inheritance, an object of a derived class contains all the
+fields and behaviors inherited from its base class. To ensure that the
+inherited state is properly configured before the subclass attempts to
+access or modify it, the parent class constructor must execute
+first.</p>
+<p>Even if you instantiate only the child class directly:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Child obj <span class="op">=</span> <span class="kw">new</span> <span class="fu">Child</span><span class="op">();</span></span></code></pre></div>
+<p>The runtime will navigate up the inheritance hierarchy to the topmost
+class (eventually <code>java.lang.Object</code>) and execute
+constructors going downward toward the instantiated class.</p>
+<h2 id="the-role-of-super">The Role of <code>super()</code></h2>
+<p>The delegation from child to parent occurs via the
+<code>super()</code> statement:</p>
+<ul>
+<li><strong>Implicit <code>super()</code>:</strong> If you do not
+explicitly invoke a parent constructor in the first line of the child
+constructor, the Java compiler automatically inserts a call to
+<code>super()</code> (the parameterless constructor of the
+superclass).</li>
+<li><strong>Explicit <code>super()</code>:</strong> If the parent class
+does not have a default, no-argument constructor, you must explicitly
+invoke an available parent constructor using
+<code>super(arguments)</code> as the very first statement in the child
+constructor. Failing to do so causes a compilation error.</li>
+<li><strong><code>this()</code> Chaining:</strong> If a constructor
+calls another overloaded constructor in the same class using
+<code>this()</code>, the call to <code>super()</code> is deferred until
+the final target constructor in the chain is reached.</li>
+</ul>
+<h2 id="the-complete-step-by-step-instantiation-order">The Complete
+Step-by-Step Instantiation Order</h2>
+<p>When a child class is loaded and instantiated for the first time, the
+complete execution sequence occurs in the following order:</p>
+<ol type="1">
+<li><p><strong>Static Initializers and Static Fields:</strong></p>
+<ul>
+<li>Executed once per class loader session.</li>
+<li>Parent static members and <code>static { ... }</code> blocks run
+first.</li>
+<li>Child static members and <code>static { ... }</code> blocks run
+second.</li>
+</ul></li>
+<li><p><strong>Parent Instance Members and Blocks:</strong></p>
+<ul>
+<li>Parent instance variable declarations and instance initializer
+blocks <code>{ ... }</code> run in the order they appear in the source
+code.</li>
+</ul></li>
+<li><p><strong>Parent Constructor:</strong></p>
+<ul>
+<li>The body of the parent constructor executes to completion.</li>
+</ul></li>
+<li><p><strong>Child Instance Members and Blocks:</strong></p>
+<ul>
+<li>Child instance variable declarations and instance initializer blocks
+<code>{ ... }</code> run in the order they appear.</li>
+</ul></li>
+<li><p><strong>Child Constructor:</strong></p>
+<ul>
+<li>The body of the child constructor executes to completion.</li>
+</ul></li>
+</ol>
+<h2 id="code-demonstration">Code Demonstration</h2>
+<p>Consider the following example:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Parent <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 1. Parent instance variable/block</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> parentValue <span class="op">=</span> <span class="dv">10</span><span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Parent instance block&quot;</span><span class="op">);</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 2. Parent constructor</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Parent</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Parent constructor executed. Value: &quot;</span> <span class="op">+</span> parentValue<span class="op">);</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Child <span class="kw">extends</span> Parent <span class="op">{</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 3. Child instance variable/block</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> childValue <span class="op">=</span> <span class="dv">20</span><span class="op">;</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Child instance block&quot;</span><span class="op">);</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 4. Child constructor</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Child</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Implicit super() is called here before anything below</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Child constructor executed. Value: &quot;</span> <span class="op">+</span> childValue<span class="op">);</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Main <span class="op">{</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>        <span class="kw">new</span> <span class="fu">Child</span><span class="op">();</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="output">Output:</h3>
+<pre class="text"><code>Parent instance block
+Parent constructor executed. Value: 10
+Child instance block
+Child constructor executed. Value: 20</code></pre>
+<h2 id="why-this-order-is-crucial">Why This Order Is Crucial</h2>
+<p>This execution model enforces object safety. If the child constructor
+were permitted to run first, any subclass logic that accessed inherited
+fields or invoked inherited methods would encounter an uninitialized
+parent state, leading to inconsistent object behavior and unpredictable
+runtime errors.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

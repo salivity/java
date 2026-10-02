@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Survivor Spaces and Tenuring Threshold Explained - java</title>
+    <meta name="description" content="This article explores the mechanics of Java Virtual Machine (JVM) memory management, specifically focusing on the Young Generation. It explains the architectural role of Survivor spaces in preventing memory fragmentation and outlines how the tenuring thr">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-survivor-spaces-and-tenuring-threshold-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Survivor Spaces and Tenuring Threshold Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-survivor-spaces-and-tenuring-threshold-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the mechanics of Java Virtual Machine (JVM) memory management, specifically focusing on the Young Generation. It explains the architectural role of Survivor spaces in preventing memory fragmentation and outlines how the tenuring thr" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-survivor-spaces-and-tenuring-threshold-explained">Java
+Survivor Spaces and Tenuring Threshold Explained</h1>
+<p>This article explores the mechanics of Java Virtual Machine (JVM)
+memory management, specifically focusing on the Young Generation. It
+explains the architectural role of Survivor spaces in preventing memory
+fragmentation and outlines how the tenuring threshold—both static and
+dynamic—governs the promotion of long-lived objects from the Young
+Generation to the Old Generation.</p>
+<h3 id="the-generational-hypothesis-and-the-young-generation">The
+Generational Hypothesis and the Young Generation</h3>
+<p>The JVM memory model relies on the Weak Generational Hypothesis,
+which observes that the vast majority of allocated objects have
+extremely short lifespans. To optimize garbage collection, the JVM
+divides the heap into generations: the Young Generation and the Old
+(Tenured) Generation.</p>
+<p>The Young Generation is further subdivided into three distinct
+regions:</p>
+<ul>
+<li><strong>Eden Space:</strong> The initial landing zone where newly
+instantiated objects are allocated.</li>
+<li><strong>Survivor Space 0 (From / S0):</strong> Holds surviving
+objects from previous Minor Garbage Collection (Minor GC) cycles.</li>
+<li><strong>Survivor Space 1 (To / S1):</strong> Acts as the target
+destination for live objects during the current Minor GC cycle.</li>
+</ul>
+<h3 id="the-purpose-of-survivor-spaces">The Purpose of Survivor
+Spaces</h3>
+<p>The primary purpose of Survivor spaces is to act as a staging ground
+that filters out short-to-medium-lived objects before they can enter the
+Old Generation.</p>
+<p>Without Survivor spaces, every object surviving a Minor GC in Eden
+would immediately be promoted to the Old Generation. This premature
+promotion would cause the Old Generation to fill up rapidly with objects
+that might die shortly afterward, triggering frequent Major GCs or Full
+GCs. Major GCs are significantly more expensive than Minor GCs,
+resulting in longer "Stop-the-World" (STW) pauses and degraded
+application performance.</p>
+<p>Survivor spaces employ a ping-pong copying mechanism:</p>
+<ol type="1">
+<li>During a Minor GC, the collector scans Eden and the active Survivor
+space (e.g., S0).</li>
+<li>Live objects are copied into the inactive Survivor space (e.g., S1).
+Dead objects are left behind and cleared.</li>
+<li>The roles of S0 and S1 reverse. One Survivor space always remains
+completely empty until the next cycle.</li>
+</ol>
+<p>This compacts live data continuously, eliminating memory
+fragmentation in the Young Generation without requiring expensive
+compaction algorithms.</p>
+<h3 id="how-the-tenuring-threshold-operates">How the Tenuring Threshold
+Operates</h3>
+<p>Each time an object survives a Minor GC and is copied from one
+Survivor space to another, the JVM increments an internal counter stored
+in the object's header known as its <strong>age</strong>.</p>
+<p>The <strong>tenuring threshold</strong> is the age an object must
+reach before the JVM promotes it from a Survivor space to the Old
+Generation.</p>
+<h4 id="1-maximum-tenuring-threshold">1. Maximum Tenuring Threshold</h4>
+<p>The upper limit for this age is defined by the JVM flag:
+<code>-XX:MaxTenuringThreshold=&lt;n&gt;</code></p>
+<p>In HotSpot JVMs, the maximum possible value is typically
+<code>15</code> because the object age is stored in a 4-bit field within
+the object header mark word. If an object survives enough Minor GCs to
+reach this specified limit, it is moved to the Old Generation during the
+subsequent GC cycle.</p>
+<h4 id="2-dynamic-tenuring-threshold">2. Dynamic Tenuring Threshold</h4>
+<p>The JVM does not always wait for objects to reach
+<code>MaxTenuringThreshold</code>. To prevent Survivor spaces from
+running out of memory, the garbage collector calculates a
+<strong>dynamic tenuring threshold</strong> after each collection using
+the <code>TargetSurvivorRatio</code> parameter (default is typically
+50%).</p>
+<p>The calculation proceeds as follows:</p>
+<ul>
+<li>The JVM sums the memory consumed by objects of age 1, then age 2,
+continuing incrementally up to age <span
+class="math inline">\(N\)</span>.</li>
+<li>If the cumulative size of objects from age 1 to age <span
+class="math inline">\(N\)</span> exceeds the
+<code>TargetSurvivorRatio</code> percentage of the Survivor space
+capacity, the dynamic tenuring threshold is automatically set to <span
+class="math inline">\(N\)</span>.</li>
+<li>Any object older than <span class="math inline">\(N\)</span> is
+promoted to the Old Generation immediately, even if its age is lower
+than <code>MaxTenuringThreshold</code>.</li>
+</ul>
+<p>This adaptive mechanism ensures that Survivor spaces do not overflow,
+which would otherwise trigger an emergency premature promotion of all
+remaining objects directly into the Old Generation.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

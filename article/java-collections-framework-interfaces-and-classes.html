@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Collections Framework: Interfaces and Classes - java</title>
+    <meta name="description" content="The Java Collections Framework (JCF) provides a unified architecture for storing, manipulating, and accessing groups of data. This article explores how the framework decouples operational contracts from underlying data structures by separating core inter">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-collections-framework-interfaces-and-classes">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Collections Framework: Interfaces and Classes - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-collections-framework-interfaces-and-classes" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Collections Framework (JCF) provides a unified architecture for storing, manipulating, and accessing groups of data. This article explores how the framework decouples operational contracts from underlying data structures by separating core inter" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-collections-framework-interfaces-and-classes">Java
+Collections Framework: Interfaces and Classes</h1>
+<p>The Java Collections Framework (JCF) provides a unified architecture
+for storing, manipulating, and accessing groups of data. This article
+explores how the framework decouples operational contracts from
+underlying data structures by separating core interfaces, skeletal
+abstract classes, and concrete implementations. It details the primary
+interface hierarchies—centered around <code>Collection</code> and
+<code>Map</code>—and highlights the specific concrete classes commonly
+used to optimize performance based on memory and access
+requirements.</p>
+<h2 id="the-core-interface-hierarchy">The Core Interface Hierarchy</h2>
+<p>The architecture is divided into two distinct branch hierarchies:
+objects that store single elements and objects that store key-value
+pairs.</p>
+<h3 id="1-the-collection-hierarchy">1. The Collection Hierarchy</h3>
+<p>The <code>java.util.Collection</code> interface serves as the root of
+the standard single-element hierarchy, extending
+<code>java.lang.Iterable</code> so that all collections can be traversed
+using an enhanced for-loop.</p>
+<ul>
+<li><strong><code>List</code></strong>: Represents an ordered collection
+(sequence). Elements can be inserted or accessed by their precise
+integer index. Allows duplicates.</li>
+<li><strong><code>Set</code></strong>: An unordered collection that
+disallows duplicate elements. It models the mathematical set
+abstraction.
+<ul>
+<li><strong><code>SortedSet</code> and
+<code>NavigableSet</code></strong>: Extensions of <code>Set</code> that
+handle elements in total ascending order and provide navigation methods
+like <code>lower()</code>, <code>floor()</code>, <code>ceiling()</code>,
+and <code>higher()</code>.</li>
+</ul></li>
+<li><strong><code>Queue</code></strong>: Designed for holding elements
+prior to processing. Typically orders elements in FIFO
+(First-In-First-Out) manner.
+<ul>
+<li><strong><code>Deque</code></strong>: A double-ended queue supporting
+element insertion and removal at both endpoints. It functions both as a
+FIFO queue and a LIFO (Last-In-First-Out) stack.</li>
+</ul></li>
+</ul>
+<h3 id="2-the-map-hierarchy">2. The Map Hierarchy</h3>
+<p>The <code>java.util.Map</code> interface does not extend
+<code>Collection</code> because it models key-value associations rather
+than individual objects.</p>
+<ul>
+<li><strong><code>Map</code></strong>: Maps unique keys to values. It
+cannot contain duplicate keys, and each key can map to at most one
+value.</li>
+<li><strong><code>SortedMap</code> and
+<code>NavigableMap</code></strong>: Sub-interfaces that maintain keys in
+sorted order and provide querying mechanisms relative to specific key
+targets.</li>
+</ul>
+<h2 id="skeletal-abstract-classes">Skeletal Abstract Classes</h2>
+<p>Between interfaces and concrete implementations, the framework
+provides skeletal implementation classes:</p>
+<ul>
+<li><code>AbstractCollection</code></li>
+<li><code>AbstractList</code> and
+<code>AbstractSequentialList</code></li>
+<li><code>AbstractSet</code></li>
+<li><code>AbstractQueue</code></li>
+<li><code>AbstractMap</code></li>
+</ul>
+<p>These abstract classes implement the non-structural methods of their
+respective interfaces (such as <code>toString()</code>,
+<code>contains()</code>, <code>equals()</code>, and
+<code>hashCode()</code>), reducing the effort required to write custom
+implementations and providing a solid foundation for standard library
+implementations.</p>
+<h2 id="concrete-implementations">Concrete Implementations</h2>
+<p>Concrete classes implement the interfaces using specific underlying
+data structures. Choosing an implementation depends on the required time
+complexity for operations like search, insertion, and deletion.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Interface</th>
+<th style="text-align: left;">Concrete Class</th>
+<th style="text-align: left;">Underlying Structure</th>
+<th style="text-align: left;">Primary Characteristics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>List</code></strong></td>
+<td style="text-align: left;"><code>ArrayList</code></td>
+<td style="text-align: left;">Resizable Array</td>
+<td style="text-align: left;">Fast random access (<span
+class="math inline">\(O(1)\)</span>), slow insertions/deletions in the
+middle (<span class="math inline">\(O(n)\)</span>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>LinkedList</code></td>
+<td style="text-align: left;">Doubly Linked List</td>
+<td style="text-align: left;">Efficient insertions/deletions (<span
+class="math inline">\(O(1)\)</span> once positioned), slow indexed
+access (<span class="math inline">\(O(n)\)</span>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>Set</code></strong></td>
+<td style="text-align: left;"><code>HashSet</code></td>
+<td style="text-align: left;">Hash Table (via <code>HashMap</code>)</td>
+<td style="text-align: left;">Best general performance; constant time
+(<span class="math inline">\(O(1)\)</span>) operations; unordered.</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>LinkedHashSet</code></td>
+<td style="text-align: left;">Hash Table + Linked List</td>
+<td style="text-align: left;">Maintains insertion-order iteration;
+slightly higher memory overhead.</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>TreeSet</code></td>
+<td style="text-align: left;">Red-Black Tree</td>
+<td style="text-align: left;">Keeps elements sorted; logarithmic time
+(<span class="math inline">\(O(\log n)\)</span>) for basic
+operations.</td>
+</tr>
+<tr>
+<td
+style="text-align: left;"><strong><code>Queue</code>/<code>Deque</code></strong></td>
+<td style="text-align: left;"><code>ArrayDeque</code></td>
+<td style="text-align: left;">Resizable Cyclic Array</td>
+<td style="text-align: left;">Fast, memory-efficient stack and queue;
+preferred over <code>Stack</code> and <code>LinkedList</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>PriorityQueue</code></td>
+<td style="text-align: left;">Binary Heap</td>
+<td style="text-align: left;">Orders elements according to natural
+sorting or a custom <code>Comparator</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>Map</code></strong></td>
+<td style="text-align: left;"><code>HashMap</code></td>
+<td style="text-align: left;">Hash Table with Buckets</td>
+<td style="text-align: left;">Default key-value store; offers <span
+class="math inline">\(O(1)\)</span> retrieval and insertion;
+unordered.</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>LinkedHashMap</code></td>
+<td style="text-align: left;">Hash Table + Linked List</td>
+<td style="text-align: left;">Preserves key insertion order (or access
+order) during iteration.</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>TreeMap</code></td>
+<td style="text-align: left;">Red-Black Tree</td>
+<td style="text-align: left;">Keys are sorted; offers guaranteed <span
+class="math inline">\(O(\log n)\)</span> performance for key-based
+lookups.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="supporting-infrastructure">Supporting Infrastructure</h2>
+<p>The framework relies on several helper components to unify operations
+across different data representations:</p>
+<ul>
+<li><strong>Iterators (<code>Iterator</code> and
+<code>ListIterator</code>)</strong>: Enable safe sequential traversal
+and modification of elements without exposing the internal storage
+mechanism.</li>
+<li><strong>Algorithms (<code>Collections</code> utility
+class)</strong>: Provides polymorphic static methods for sorting,
+searching, reversing, and synchronizing collections, completely
+independent of their underlying implementation.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

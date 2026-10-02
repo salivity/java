@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What is Java Management Extensions (JMX) and MBeans? - java</title>
+    <meta name="description" content="Java Management Extensions (JMX) is a standard Java technology that provides a lightweight, component-based framework for monitoring, configuring, and managing applications, system objects, devices, and service-oriented networks at runtime. At the core o">
+    <link rel="canonical" href="https://salivity.github.io/java/article/what-is-java-management-extensions-jmx-and-m-beans">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What is Java Management Extensions (JMX) and MBeans? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/what-is-java-management-extensions-jmx-and-m-beans" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java Management Extensions (JMX) is a standard Java technology that provides a lightweight, component-based framework for monitoring, configuring, and managing applications, system objects, devices, and service-oriented networks at runtime. At the core o" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="what-is-java-management-extensions-jmx-and-mbeans">What is Java
+Management Extensions (JMX) and MBeans?</h1>
+<p>Java Management Extensions (JMX) is a standard Java technology that
+provides a lightweight, component-based framework for monitoring,
+configuring, and managing applications, system objects, devices, and
+service-oriented networks at runtime. At the core of JMX are Managed
+Beans (MBeans), which are Java objects that represent resources to be
+managed. This article explains the fundamentals of the JMX architecture
+and demonstrates the step-by-step process of implementing and
+registering MBeans in an MBean Server to expose application metrics for
+real-time monitoring.</p>
+<h3 id="what-is-java-management-extensions-jmx">What is Java Management
+Extensions (JMX)?</h3>
+<p>JMX defines a three-tiered architecture to decouple the managed
+resources from the management applications:</p>
+<ol type="1">
+<li><strong>Instrumentation Level:</strong> Consists of MBeans that
+represent identifiable application resources such as thread pools,
+memory caches, or connection configurations.</li>
+<li><strong>Agent Level:</strong> Centered around the
+<code>MBeanServer</code>, which acts as a core registry and messaging
+broker where MBeans are registered and controlled.</li>
+<li><strong>Manager/Distributed Level:</strong> Consists of connectors
+and protocol adapters (such as JMXMP, RMI, or HTTP) that allow remote
+management applications (like JConsole, VisualVM, or Prometheus JMX
+Exporter) to interact with the <code>MBeanServer</code>.</li>
+</ol>
+<h3 id="types-of-mbeans">Types of MBeans</h3>
+<p>To instrument a resource, you must define an MBean. The most common
+types are:</p>
+<ul>
+<li><strong>Standard MBeans:</strong> Defined by writing a Java
+interface ending in <code>MBean</code> (e.g.,
+<code>AppConfigMBean</code>) and a class implementing that interface
+(e.g., <code>AppConfig</code>). They expose attributes via
+getters/setters and operations via public methods.</li>
+<li><strong>MXBeans:</strong> A specialized standard MBean that maps
+complex data types to predefined open types, ensuring compatibility with
+remote management clients without requiring client-side domain
+classes.</li>
+<li><strong>Dynamic MBeans:</strong> Define their management interface
+dynamically at runtime using metadata, ideal for systems whose
+attributes change dynamically.</li>
+</ul>
+<h3 id="how-to-register-mbeans-to-monitor-applications">How to Register
+MBeans to Monitor Applications</h3>
+<p>Registering an MBean requires defining the management interface,
+implementing it, and registering the resulting object with the platform
+MBean server.</p>
+<h4 id="step-1-define-the-mbean-interface">Step 1: Define the MBean
+Interface</h4>
+<p>Create an interface containing the attributes to monitor and
+operations to execute.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">package</span><span class="im"> com</span><span class="op">.</span><span class="im">example</span><span class="op">.</span><span class="im">monitoring</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> SystemMonitorMBean <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Attribute (Getter)</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="fu">getActiveUserCount</span><span class="op">();</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Attribute (Setter)</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">setCacheSize</span><span class="op">(</span><span class="dt">int</span> size<span class="op">);</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="fu">getCacheSize</span><span class="op">();</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Operation</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">resetStatistics</span><span class="op">();</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="step-2-implement-the-interface">Step 2: Implement the
+Interface</h4>
+<p>Implement the interface in a class whose name matches the interface
+prefix.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">package</span><span class="im"> com</span><span class="op">.</span><span class="im">example</span><span class="op">.</span><span class="im">monitoring</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">concurrent</span><span class="op">.</span><span class="im">atomic</span><span class="op">.</span><span class="im">AtomicInteger</span><span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> SystemMonitor <span class="kw">implements</span> SystemMonitorMBean <span class="op">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">final</span> <span class="bu">AtomicInteger</span> activeUsers <span class="op">=</span> <span class="kw">new</span> <span class="bu">AtomicInteger</span><span class="op">(</span><span class="dv">10</span><span class="op">);</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">int</span> cacheSize <span class="op">=</span> <span class="dv">1024</span><span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">int</span> <span class="fu">getActiveUserCount</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> activeUsers<span class="op">.</span><span class="fu">get</span><span class="op">();</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">setCacheSize</span><span class="op">(</span><span class="dt">int</span> size<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="fu">cacheSize</span> <span class="op">=</span> size<span class="op">;</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">int</span> <span class="fu">getCacheSize</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">this</span><span class="op">.</span><span class="fu">cacheSize</span><span class="op">;</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">resetStatistics</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>        activeUsers<span class="op">.</span><span class="fu">set</span><span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Statistics reset successfully.&quot;</span><span class="op">);</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="step-3-register-the-mbean-with-the-mbeanserver">Step 3: Register
+the MBean with the MBeanServer</h4>
+<p>To make the MBean accessible to monitoring tools, acquire an instance
+of <code>MBeanServer</code>, generate a unique <code>ObjectName</code>,
+and invoke the <code>registerMBean</code> method.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">package</span><span class="im"> com</span><span class="op">.</span><span class="im">example</span><span class="op">.</span><span class="im">monitoring</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">lang</span><span class="op">.</span><span class="im">management</span><span class="op">.</span><span class="im">ManagementFactory</span><span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">javax</span><span class="op">.</span><span class="im">management</span><span class="op">.</span><span class="im">MBeanServer</span><span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">javax</span><span class="op">.</span><span class="im">management</span><span class="op">.</span><span class="im">ObjectName</span><span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Application <span class="op">{</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="kw">throws</span> <span class="bu">Exception</span> <span class="op">{</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 1. Get the Platform MBeanServer</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="bu">MBeanServer</span> mbs <span class="op">=</span> <span class="bu">ManagementFactory</span><span class="op">.</span><span class="fu">getPlatformMBeanServer</span><span class="op">();</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 2. Define a unique ObjectName (domain:type=value)</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        <span class="bu">ObjectName</span> name <span class="op">=</span> <span class="kw">new</span> <span class="bu">ObjectName</span><span class="op">(</span><span class="st">&quot;com.example.monitoring:type=SystemMonitor&quot;</span><span class="op">);</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 3. Create the MBean instance</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>        SystemMonitor mbean <span class="op">=</span> <span class="kw">new</span> <span class="fu">SystemMonitor</span><span class="op">();</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 4. Register the MBean</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>        mbs<span class="op">.</span><span class="fu">registerMBean</span><span class="op">(</span>mbean<span class="op">,</span> name<span class="op">);</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;SystemMonitor MBean registered. Running application...&quot;</span><span class="op">);</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Keep the application running for monitoring access</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Thread</span><span class="op">.</span><span class="fu">sleep</span><span class="op">(</span><span class="bu">Long</span><span class="op">.</span><span class="fu">MAX_VALUE</span><span class="op">);</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="accessing-the-registered-mbean">Accessing the Registered
+MBean</h3>
+<p>Once registered, the MBean can be inspected without modifying the
+application code:</p>
+<ol type="1">
+<li>Launch a JMX client such as <strong>JConsole</strong>
+(<code>jconsole</code> from the JDK command line) or
+<strong>VisualVM</strong>.</li>
+<li>Connect to the running Java process.</li>
+<li>Navigate to the <strong>MBeans</strong> tab.</li>
+<li>Locate the domain (<code>com.example.monitoring</code>) and object
+type (<code>SystemMonitor</code>) to inspect attributes like
+<code>ActiveUserCount</code> in real time, adjust
+<code>CacheSize</code>, or trigger the <code>resetStatistics()</code>
+operation directly.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

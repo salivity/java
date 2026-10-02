@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Widening vs Narrowing Primitive Conversions - java</title>
+    <meta name="description" content="Java relies on primitive type conversions to allow different numeric types to interact, primarily categorized into widening and narrowing conversions. Widening conversions transition smaller data types to larger ones automatically without losing magnitud">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-widening-vs-narrowing-primitive-conversions">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Widening vs Narrowing Primitive Conversions - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-widening-vs-narrowing-primitive-conversions" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java relies on primitive type conversions to allow different numeric types to interact, primarily categorized into widening and narrowing conversions. Widening conversions transition smaller data types to larger ones automatically without losing magnitud" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-widening-vs-narrowing-primitive-conversions">Java Widening
+vs Narrowing Primitive Conversions</h1>
+<p>Java relies on primitive type conversions to allow different numeric
+types to interact, primarily categorized into widening and narrowing
+conversions. Widening conversions transition smaller data types to
+larger ones automatically without losing magnitude, whereas narrowing
+conversions convert larger types into smaller ones and require explicit
+casting due to the risk of data loss. Understanding the distinction
+between these two mechanisms is essential for writing bug-free
+arithmetic logic, managing memory, and preventing unexpected overflow or
+truncation errors in Java applications.</p>
+<h2 id="what-is-widening-primitive-conversion">What Is Widening
+Primitive Conversion?</h2>
+<p>Widening primitive conversion occurs when a value of a smaller data
+type is converted to a larger data type. Because the destination type
+has a larger memory footprint than the source type, Java performs this
+conversion automatically. This process is also known as implicit
+casting.</p>
+<p>The general order of widening conversion in Java is:
+<code>byte</code> -&gt; <code>short</code> -&gt; <code>int</code> -&gt;
+<code>long</code> -&gt; <code>float</code> -&gt;
+<code>double</code><br />
+<em>(Note: <code>char</code> also widens to <code>int</code>,
+<code>long</code>, <code>float</code>, and <code>double</code>)</em></p>
+<p>Key characteristics of widening conversion include:</p>
+<ul>
+<li><strong>Automatic Execution:</strong> No special syntax or cast
+operator <code>()</code> is required.</li>
+<li><strong>Preservation of Value:</strong> The magnitude of the numeric
+value is fully preserved. However, converting an <code>int</code> or
+<code>long</code> to a <code>float</code>, or a <code>long</code> to a
+<code>double</code>, may cause a loss of precision in the least
+significant bits, even though it will not trigger a runtime error.</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> myInt <span class="op">=</span> <span class="dv">100</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">long</span> myLong <span class="op">=</span> myInt<span class="op">;</span>     <span class="co">// Automatically widened from int to long</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dt">double</span> myDouble <span class="op">=</span> myLong<span class="op">;</span> <span class="co">// Automatically widened from long to double</span></span></code></pre></div>
+<h2 id="what-is-narrowing-primitive-conversion">What Is Narrowing
+Primitive Conversion?</h2>
+<p>Narrowing primitive conversion occurs when a value of a larger data
+type is converted to a smaller data type. Because the destination type
+cannot inherently guarantee enough space to hold all possible values of
+the source type, Java requires explicit authorization from the
+developer. This process is known as explicit casting.</p>
+<p>The general order of narrowing conversion in Java is:
+<code>double</code> -&gt; <code>float</code> -&gt; <code>long</code>
+-&gt; <code>int</code> -&gt; <code>short</code> -&gt;
+<code>byte</code><br />
+<em>(Note: <code>short</code> or <code>char</code> conversions between
+each other are also narrowing)</em></p>
+<p>Key characteristics of narrowing conversion include:</p>
+<ul>
+<li><strong>Explicit Syntax Required:</strong> You must use the cast
+operator with the target type in parentheses, such as <code>(int)</code>
+or <code>(byte)</code>.</li>
+<li><strong>Risk of Data Loss:</strong> If the value of the larger type
+exceeds the range of the smaller type, overflow or underflow occurs,
+leading to truncated bits and drastically altered values.</li>
+<li><strong>Loss of Precision:</strong> Converting floating-point
+numbers (<code>float</code>, <code>double</code>) to integer types
+(<code>int</code>, <code>long</code>) discards the fractional portion
+entirely through truncation toward zero.</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">double</span> myDouble <span class="op">=</span> <span class="fl">100.75</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> myInt <span class="op">=</span> <span class="op">(</span><span class="dt">int</span><span class="op">)</span> myDouble<span class="op">;</span> <span class="co">// Explicitly cast; fractional part is discarded, resulting in 100</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> largeInt <span class="op">=</span> <span class="dv">130</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="dt">byte</span> myByte <span class="op">=</span> <span class="op">(</span><span class="dt">byte</span><span class="op">)</span> largeInt<span class="op">;</span> <span class="co">// Overflows the byte range (-128 to 127), resulting in -126</span></span></code></pre></div>
+<h2 id="key-differences">Key Differences</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Widening Conversion</th>
+<th style="text-align: left;">Narrowing Conversion</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Direction</strong></td>
+<td style="text-align: left;">Smaller type to larger type</td>
+<td style="text-align: left;">Larger type to smaller type</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Syntax</strong></td>
+<td style="text-align: left;">Implicit (automatic by the compiler)</td>
+<td style="text-align: left;">Explicit (requires <code>(type)</code>
+cast operator)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Data Integrity</strong></td>
+<td style="text-align: left;">Safe; overall magnitude is preserved</td>
+<td style="text-align: left;">Unsafe; risks truncation and bit
+overflow</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Fractional Handling</strong></td>
+<td style="text-align: left;">Preserved or converted to decimal</td>
+<td style="text-align: left;">Discarded entirely when moving to integer
+types</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Compiler
+Intervention</strong></td>
+<td style="text-align: left;">Permitted without warnings</td>
+<td style="text-align: left;">Enforced; will not compile without an
+explicit cast</td>
+</tr>
+</tbody>
+</table></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

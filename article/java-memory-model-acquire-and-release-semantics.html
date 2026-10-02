@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Memory Model: Acquire and Release Semantics - java</title>
+    <meta name="description" content="Acquire and release semantics provide a middle ground in modern Java between weak, plain memory access and expensive, sequentially consistent synchronization. Introduced primarily through the VarHandle API in Java 9, these access modes allow concurrent a">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-memory-model-acquire-and-release-semantics">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Memory Model: Acquire and Release Semantics - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-memory-model-acquire-and-release-semantics" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Acquire and release semantics provide a middle ground in modern Java between weak, plain memory access and expensive, sequentially consistent synchronization. Introduced primarily through the VarHandle API in Java 9, these access modes allow concurrent a" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-memory-model-acquire-and-release-semantics">Java Memory
+Model: Acquire and Release Semantics</h1>
+<p>Acquire and release semantics provide a middle ground in modern Java
+between weak, plain memory access and expensive, sequentially consistent
+synchronization. Introduced primarily through the <code>VarHandle</code>
+API in Java 9, these access modes allow concurrent algorithms to enforce
+critical memory visibility and ordering constraints without incurring
+the full performance overhead of traditional <code>volatile</code> reads
+and writes.</p>
+<h3 id="the-foundation-classical-jmm-and-volatile">The Foundation:
+Classical JMM and Volatile</h3>
+<p>In the original Java Memory Model (JMM) standardized in Java 5
+(JSR-133), synchronization relied heavily on the <code>volatile</code>
+modifier. A <code>volatile</code> write established a
+<em>happens-before</em> relationship with any subsequent
+<code>volatile</code> read of the same variable.</p>
+<p>To achieve this, the JMM enforced sequential consistency for volatile
+operations:</p>
+<ol type="1">
+<li>Every write to a volatile variable is made visible to all threads
+immediately.</li>
+<li>A total global order exists across all volatile operations.</li>
+<li>Hardware-level memory barriers (such as <code>StoreLoad</code>
+fences) are inserted to prevent any reordering between volatile
+operations and surrounding reads or writes.</li>
+</ol>
+<p>While correct and safe, maintaining a total global order imposes
+severe performance costs on modern out-of-order processors, specifically
+because preventing <code>StoreLoad</code> reordering often stalls CPU
+execution pipelines.</p>
+<h3 id="acquire-and-release-defined">Acquire and Release Defined</h3>
+<p>Acquire and release semantics relax the strict total ordering
+requirement while preserving targeted <em>happens-before</em> guarantees
+across thread boundaries.</p>
+<ul>
+<li><strong>Acquire Semantics (Read operation):</strong> An acquire read
+guarantees that no subsequent memory reads or writes (in program order)
+can be reordered <em>before</em> the acquire operation. It acts as a
+one-way barrier pushing memory operations downward. If an acquire read
+observes the value written by a release write, all actions performed by
+the releasing thread before that write become visible to the acquiring
+thread.</li>
+<li><strong>Release Semantics (Write operation):</strong> A release
+write guarantees that no prior memory reads or writes (in program order)
+can be reordered <em>after</em> the release operation. It acts as a
+one-way barrier pushing memory operations upward, ensuring all preceding
+modifications are committed and visible before the write itself is
+published.</li>
+</ul>
+<h3 id="modern-implementation-via-varhandle">Modern Implementation via
+VarHandle</h3>
+<p>Java 9 formalized access modes beyond plain and <code>volatile</code>
+through <code>java.lang.invoke.VarHandle</code>. Developers can now
+apply acquire and release access directly to plain fields:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Thread 1: Producer</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> <span class="dv">42</span><span class="op">;</span>                             <span class="co">// Plain write</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>handle<span class="op">.</span><span class="fu">setRelease</span><span class="op">(</span><span class="kw">this</span><span class="op">,</span> <span class="kw">true</span><span class="op">);</span>          <span class="co">// Release write</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Thread 2: Consumer</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span><span class="dt">boolean</span><span class="op">)</span> handle<span class="op">.</span><span class="fu">getAcquire</span><span class="op">(</span><span class="kw">this</span><span class="op">))</span> <span class="op">{</span> <span class="co">// Acquire read</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> result <span class="op">=</span> data<span class="op">;</span>                 <span class="co">// Guaranteed to see 42</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this pattern, the write to <code>data</code> cannot be reordered
+past <code>setRelease</code>. When <code>getAcquire</code> evaluates to
+<code>true</code>, the subsequent read of <code>data</code> cannot be
+reordered above <code>getAcquire</code>, guaranteeing safe
+publication.</p>
+<h3 id="the-performance-advantage-over-volatile">The Performance
+Advantage Over Volatile</h3>
+<p>The key architectural difference between standard
+<code>volatile</code> and acquire/release semantics lies in the omission
+of the <code>StoreLoad</code> barrier.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operation</th>
+<th style="text-align: left;">Volatile (Sequential Consistency)</th>
+<th style="text-align: left;">Acquire / Release</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Read</strong></td>
+<td style="text-align: left;"><code>LoadLoad</code> +
+<code>LoadStore</code></td>
+<td style="text-align: left;"><code>LoadLoad</code> +
+<code>LoadStore</code> (Acquire)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Write</strong></td>
+<td style="text-align: left;"><code>StoreStore</code> +
+<code>LoadStore</code> + <code>StoreLoad</code></td>
+<td style="text-align: left;"><code>StoreStore</code> +
+<code>LoadStore</code> (Release)</td>
+</tr>
+</tbody>
+</table>
+<p>Because acquire and release operations do not require a
+<code>StoreLoad</code> barrier:</p>
+<ul>
+<li><strong>On x86 (TSO) architecture:</strong> The hardware inherently
+enforces acquire and release semantics on normal loads and stores. As a
+result, <code>getAcquire()</code> and <code>setRelease()</code> compile
+down to plain assembly <code>MOV</code> instructions, avoiding costly
+<code>LOCK CMPXCHG</code> or <code>MFENCE</code> instructions required
+by volatile writes.</li>
+<li><strong>On weakly-ordered architectures (such as ARM64):</strong>
+Processors provide native instructions (<code>LDAR</code> for
+Load-Acquire and <code>STLR</code> for Store-Release) designed
+specifically for these semantics, executing significantly faster than
+full memory fences (<code>DMB ISH</code>).</li>
+</ul>
+<p>Modern Java’s integration of acquire and release semantics allows
+developers to construct high-throughput concurrent data structures—such
+as queues, ring buffers, and lazily initialized references—that achieve
+safe cross-thread publication with minimal hardware friction.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

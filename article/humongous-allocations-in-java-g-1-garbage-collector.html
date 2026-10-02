@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Humongous Allocations in Java G1 Garbage Collector - java</title>
+    <meta name="description" content="In Java's Garbage-First (G1) collector, humongous allocations occur when an application allocates an object that exceeds 50% of the standard G1 heap region size. This article explains what humongous allocations are, how the G1 garbage collector handles t">
+    <link rel="canonical" href="https://salivity.github.io/java/article/humongous-allocations-in-java-g-1-garbage-collector">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Humongous Allocations in Java G1 Garbage Collector - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/humongous-allocations-in-java-g-1-garbage-collector" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java's Garbage-First (G1) collector, humongous allocations occur when an application allocates an object that exceeds 50% of the standard G1 heap region size. This article explains what humongous allocations are, how the G1 garbage collector handles t" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="humongous-allocations-in-java-g1-garbage-collector">Humongous
+Allocations in Java G1 Garbage Collector</h1>
+<p>In Java's Garbage-First (G1) collector, humongous allocations occur
+when an application allocates an object that exceeds 50% of the standard
+G1 heap region size. This article explains what humongous allocations
+are, how the G1 garbage collector handles them, the performance
+penalties they introduce—such as memory fragmentation, premature
+collection cycles, and Full GC pauses—and the actionable techniques
+developers can use to detect and mitigate their impact.</p>
+<h2 id="what-are-humongous-allocations">What Are Humongous
+Allocations?</h2>
+<p>The G1 garbage collector divides the Java Virtual Machine (JVM) heap
+into contiguous, equal-sized blocks called <strong>regions</strong>.
+Depending on the overall heap size, a region typically ranges from 1 MB
+to 32 MB in powers of two (1 MB, 2 MB, 4 MB, etc.).</p>
+<p>A <strong>humongous object</strong> is any object whose size exceeds
+50% of a single G1 region's capacity. For example, if the G1 region size
+is configured to 4 MB, any object larger than 2 MB is classified as
+humongous.</p>
+<p>When a humongous allocation occurs:</p>
+<ul>
+<li>The object bypasses the Young Generation (Eden and Survivor spaces)
+entirely.</li>
+<li>It is allocated directly into a special sequence of one or more
+contiguous regions within the Old Generation.</li>
+<li>These regions are designated as <strong>Humongous Regions</strong>,
+which cannot contain any other objects, even if there is remaining
+unallocated space within the region.</li>
+</ul>
+<h2 id="how-humongous-allocations-impact-g1-gc">How Humongous
+Allocations Impact G1 GC</h2>
+<p>While G1 provides mechanisms to manage these massive objects,
+frequent humongous allocations severely degrade application performance
+and throughput in several ways.</p>
+<h3 id="1-memory-fragmentation">1. Memory Fragmentation</h3>
+<p>Humongous objects require physically contiguous free regions in
+memory. As an application runs and regions are dynamically allocated and
+reclaimed, free space across the heap becomes fragmented. Even if total
+free memory is abundant, G1 may fail to find enough consecutive empty
+regions to satisfy a humongous allocation request.</p>
+<h3 id="2-internal-memory-waste">2. Internal Memory Waste</h3>
+<p>Because a humongous region cannot host any other object, any leftover
+space in that region is wasted. For instance, if an object requires 4.2
+MB in a heap with 4 MB regions, it will consume two full regions (8 MB
+total), wasting 3.8 MB of space until the object is reclaimed.</p>
+<h3 id="3-premature-gc-cycles-and-allocation-stalls">3. Premature GC
+Cycles and Allocation Stalls</h3>
+<p>Humongous regions are categorized as part of the Old Generation.
+Allocating large objects directly into the Old Generation rapidly raises
+overall heap occupancy. This causes the heap to cross the Initiating
+Heap Occupancy Percent (IHOP) threshold prematurely, triggering
+aggressive concurrent marking cycles and increasing CPU overhead. If
+memory cannot be cleared fast enough to fulfill an incoming allocation,
+the JVM thread may stall.</p>
+<h3 id="4-risk-of-stop-the-world-full-gc">4. Risk of Stop-the-World Full
+GC</h3>
+<p>If G1 cannot find enough contiguous regions to fit a humongous object
+due to severe fragmentation or exhausted space, it triggers a fallback:
+a single-threaded, stop-the-world Full Garbage Collection. Full GCs in
+large heaps cause extended pause times, often leading to request
+timeouts and system unresponsiveness.</p>
+<h3 id="5-reclaim-overhead">5. Reclaim Overhead</h3>
+<p>Historically, humongous objects could only be collected during Full
+GC or concurrent marking phases. Modern JDK releases (JDK 8u40 and
+later) allow G1 to eagerly reclaim humongous objects during minor
+(Young) GC cycles if they do not contain references to other objects and
+are no longer strongly referenced. However, evaluating these candidate
+objects still introduces additional scanning overhead during GC
+pauses.</p>
+<h2 id="detecting-and-mitigating-humongous-allocations">Detecting and
+Mitigating Humongous Allocations</h2>
+<h3 id="identify-humongous-allocations">Identify Humongous
+Allocations</h3>
+<p>To detect if your application suffers from frequent humongous
+allocations, enable unified JVM GC logging:</p>
+<p><code>-Xlog:gc*,gc+alloc=debug:file=gc.log:time,uptime,pid:filecount=5,filesize=100M</code></p>
+<p>Look for log entries explicitly mentioning
+<code>Humongous Allocation</code> or GC pauses initiated with reasons
+such as <code>G1 Humongous Allocation</code>. Java Flight Recorder (JFR)
+can also be used to profile <code>jdk.OldObjectSample</code> and
+allocation events to pinpoint which code paths create large objects.</p>
+<h3 id="increase-region-size">Increase Region Size</h3>
+<p>The most direct operational fix is to increase the G1 region size via
+the JVM flag:</p>
+<p><code>-XX:G1HeapRegionSize=&lt;size&gt;</code> (e.g.,
+<code>-XX:G1HeapRegionSize=16m</code> or <code>32m</code>)</p>
+<p>Increasing the region size raises the 50% threshold. An object that
+is humongous with a 2 MB region size becomes a normal Young Generation
+allocation if the region size is adjusted to 16 MB or 32 MB, allowing it
+to be handled by normal generational collection cycles.</p>
+<h3 id="refactor-application-code">Refactor Application Code</h3>
+<p>JVM tuning only masks the problem if the application continuously
+allocates oversized objects. Long-term solutions involve code
+refactoring:</p>
+<ul>
+<li><strong>Chunk Large Buffers:</strong> Instead of creating massive
+byte arrays or collections in memory (such as reading an entire large
+file or database payload at once), stream data using smaller, reusable
+chunks.</li>
+<li><strong>Object Pooling:</strong> If large arrays or buffers must be
+used repeatedly, consider reusing or pooling them (e.g., Netty's
+<code>ByteBufPool</code>) to prevent high allocation churn.</li>
+<li><strong>Off-Heap Storage:</strong> For high-throughput caching of
+large payloads, move data off-heap using mechanisms such as
+<code>ByteBuffer.allocateDirect()</code> to bypass G1 heap management
+altogether.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

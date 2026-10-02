@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CompletableFuture: thenApply vs thenAccept vs thenRun - java</title>
+    <meta name="description" content="In Java's asynchronous programming model, CompletableFuture provides several methods to chain dependent tasks once an asynchronous computation completes. The fundamental difference between thenApply, thenAccept, and thenRun lies in their input parameters">
+    <link rel="canonical" href="https://salivity.github.io/java/article/completable-future-then-apply-vs-then-accept-vs-then-run">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="CompletableFuture: thenApply vs thenAccept vs thenRun - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/completable-future-then-apply-vs-then-accept-vs-then-run" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java's asynchronous programming model, CompletableFuture provides several methods to chain dependent tasks once an asynchronous computation completes. The fundamental difference between thenApply, thenAccept, and thenRun lies in their input parameters" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="completablefuture-thenapply-vs-thenaccept-vs-thenrun">CompletableFuture:
+thenApply vs thenAccept vs thenRun</h1>
+<p>In Java's asynchronous programming model,
+<code>CompletableFuture</code> provides several methods to chain
+dependent tasks once an asynchronous computation completes. The
+fundamental difference between <code>thenApply</code>,
+<code>thenAccept</code>, and <code>thenRun</code> lies in their input
+parameters and return values: <code>thenApply</code> takes the previous
+result and returns a new result, <code>thenAccept</code> takes the
+previous result but returns nothing (<code>Void</code>), and
+<code>thenRun</code> neither takes the previous result nor returns a
+value. Choosing the correct method depends entirely on whether your
+subsequent stage needs to read the incoming data, produce new data, or
+simply execute a side effect.</p>
+<h3 id="thenapply-transform-and-return">thenApply: Transform and
+Return</h3>
+<p><code>thenApply</code> is used when you want to transform the result
+of the previous stage into a new value. It accepts a
+<code>Function&lt;T, R&gt;</code> as a parameter. It receives the result
+of the preceding <code>CompletableFuture</code>, applies a
+transformation, and returns a new
+<code>CompletableFuture&lt;R&gt;</code> containing the transformed
+value.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>CompletableFuture<span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> future <span class="op">=</span> CompletableFuture<span class="op">.</span><span class="fu">supplyAsync</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="st">&quot;42&quot;</span><span class="op">)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">thenApply</span><span class="op">(</span>s <span class="op">-&gt;</span> <span class="st">&quot;The answer is &quot;</span> <span class="op">+</span> s<span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Result: CompletableFuture&lt;String&gt; containing &quot;The answer is 42&quot;</span></span></code></pre></div>
+<p>Use <code>thenApply</code> when:</p>
+<ul>
+<li>You need to process or map the output of the preceding stage.</li>
+<li>The downstream stages require the transformed result for further
+processing.</li>
+</ul>
+<h3 id="thenaccept-consume-without-returning">thenAccept: Consume
+Without Returning</h3>
+<p><code>thenAccept</code> is used when you need to consume the result
+of the previous stage to perform an action (such as logging, updating a
+database, or rendering to a UI) without producing a new value. It
+accepts a <code>Consumer&lt;T&gt;</code> as a parameter and returns a
+<code>CompletableFuture&lt;Void&gt;</code>.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>CompletableFuture<span class="op">&lt;</span><span class="bu">Void</span><span class="op">&gt;</span> future <span class="op">=</span> CompletableFuture<span class="op">.</span><span class="fu">supplyAsync</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="st">&quot;Order #1001&quot;</span><span class="op">)</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">thenAccept</span><span class="op">(</span>order <span class="op">-&gt;</span> <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Processing: &quot;</span> <span class="op">+</span> order<span class="op">));</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Result: CompletableFuture&lt;Void&gt;</span></span></code></pre></div>
+<p>Use <code>thenAccept</code> when:</p>
+<ul>
+<li>You need the result of the previous computation to perform a side
+effect.</li>
+<li>The pipeline does not need to pass data to subsequent stages.</li>
+</ul>
+<h3 id="thenrun-execute-an-action-independently">thenRun: Execute an
+Action Independently</h3>
+<p><code>thenRun</code> is used when you simply want to execute a task
+after the previous stage completes, but you do not care about the result
+of that stage. It accepts a <code>Runnable</code> as a parameter. It
+takes no inputs and returns a
+<code>CompletableFuture&lt;Void&gt;</code>.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>CompletableFuture<span class="op">&lt;</span><span class="bu">Void</span><span class="op">&gt;</span> future <span class="op">=</span> CompletableFuture<span class="op">.</span><span class="fu">supplyAsync</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="st">&quot;Data Saved&quot;</span><span class="op">)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">thenRun</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Operation finished successfully.&quot;</span><span class="op">));</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Result: CompletableFuture&lt;Void&gt;</span></span></code></pre></div>
+<p>Use <code>thenRun</code> when:</p>
+<ul>
+<li>The execution of the next step depends solely on the
+<em>completion</em> of the previous step.</li>
+<li>You do not need access to the data computed by the previous
+stage.</li>
+</ul>
+<hr />
+<h3 id="comparison-summary">Comparison Summary</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Functional Interface</th>
+<th style="text-align: left;">Accepts Argument?</th>
+<th style="text-align: left;">Returns a Value?</th>
+<th style="text-align: left;">Resulting Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td
+style="text-align: left;"><strong><code>thenApply</code></strong></td>
+<td style="text-align: left;"><code>Function&lt;T, R&gt;</code></td>
+<td style="text-align: left;">Yes (from previous stage)</td>
+<td style="text-align: left;">Yes</td>
+<td
+style="text-align: left;"><code>CompletableFuture&lt;R&gt;</code></td>
+</tr>
+<tr>
+<td
+style="text-align: left;"><strong><code>thenAccept</code></strong></td>
+<td style="text-align: left;"><code>Consumer&lt;T&gt;</code></td>
+<td style="text-align: left;">Yes (from previous stage)</td>
+<td style="text-align: left;">No (<code>void</code>)</td>
+<td
+style="text-align: left;"><code>CompletableFuture&lt;Void&gt;</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>thenRun</code></strong></td>
+<td style="text-align: left;"><code>Runnable</code></td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No (<code>void</code>)</td>
+<td
+style="text-align: left;"><code>CompletableFuture&lt;Void&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="async-variants">Async Variants</h3>
+<p>Each of these methods also has asynchronous counterparts:
+<code>thenApplyAsync</code>, <code>thenAcceptAsync</code>, and
+<code>thenRunAsync</code>. While the standard methods execute in the
+same thread that completed the previous stage (or the calling thread if
+already complete), the <code>*Async</code> variants offload the
+execution to the <code>ForkJoinPool.commonPool()</code> or a
+custom-provided <code>Executor</code>. The input/output contract
+regarding parameters and return types remains identical.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Foreign Linker API Calls Native Code - java</title>
+    <meta name="description" content="The Foreign Linker API, delivered as part of Project Panama’s Foreign Function & Memory (FFM) API in modern Java, eliminates the need for C glue code by modeling the native Application Binary Interface (ABI) directly inside the Java Virtual Machine. Tr">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-foreign-linker-api-calls-native-code">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Foreign Linker API Calls Native Code - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-foreign-linker-api-calls-native-code" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Foreign Linker API, delivered as part of Project Panama’s Foreign Function & Memory (FFM) API in modern Java, eliminates the need for C glue code by modeling the native Application Binary Interface (ABI) directly inside the Java Virtual Machine. Tr" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-foreign-linker-api-calls-native-code">How Java Foreign
+Linker API Calls Native Code</h1>
+<p>The Foreign Linker API, delivered as part of Project Panama’s Foreign
+Function &amp; Memory (FFM) API in modern Java, eliminates the need for
+C glue code by modeling the native Application Binary Interface (ABI)
+directly inside the Java Virtual Machine. Traditionally, the Java Native
+Interface (JNI) required developers to write, compile, and maintain
+native C/C++ wrapper code and header files to bridge Java types and
+native types. The Foreign Linker API bypasses this intermediate
+compilation step by dynamically synthesizing machine-level calling
+sequences at runtime, allowing pure Java code to locate symbols, map
+memory layouts, and invoke native functions via standard
+<code>MethodHandle</code> instances.</p>
+<h2 id="the-limitation-of-traditional-jni">The Limitation of Traditional
+JNI</h2>
+<p>Under JNI, calling a C function directly is impossible because Java
+and native operating systems use completely different calling
+conventions. An operating system's ABI defines how arguments are placed
+into CPU registers or onto the call stack, how return values are
+received, and how the stack frame is cleaned up.</p>
+<p>To bridge this, JNI relies on developer-written C/C++ "glue code."
+This glue code exports an intermediate C function matching JNI naming
+conventions, extracts data from Java types using the <code>JNIEnv</code>
+pointer, converts them to native C types, calls the target function, and
+wraps the return value back into Java.</p>
+<h2 id="how-the-foreign-linker-replaces-glue-code">How the Foreign
+Linker Replaces Glue Code</h2>
+<p>The Foreign Linker API (<code>java.lang.foreign.Linker</code>) moves
+the responsibility of understanding platform-specific ABIs from static C
+code directly into the JVM. It achieves direct calls through three
+fundamental components:</p>
+<h3 id="1-symbol-resolution">1. Symbol Resolution</h3>
+<p>Instead of relying on the JNI dynamic linker naming conventions, the
+API uses <code>SymbolLookup</code> to resolve the memory address of an
+exported native function directly from the operating system's shared
+libraries (<code>.so</code>, <code>.dll</code>, or
+<code>.dylib</code>):</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Linker linker <span class="op">=</span> Linker<span class="op">.</span><span class="fu">nativeLinker</span><span class="op">();</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>SymbolLookup stdlib <span class="op">=</span> linker<span class="op">.</span><span class="fu">defaultLookup</span><span class="op">();</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>MemorySegment putsAddress <span class="op">=</span> stdlib<span class="op">.</span><span class="fu">find</span><span class="op">(</span><span class="st">&quot;puts&quot;</span><span class="op">).</span><span class="fu">orElseThrow</span><span class="op">();</span></span></code></pre></div>
+<p>The resulting <code>MemorySegment</code> represents the raw memory
+pointer pointing directly to the compiled target function in memory.</p>
+<h3 id="2-abi-aware-type-modeling">2. ABI-Aware Type Modeling</h3>
+<p>Rather than compiling an intermediate C function with specific types,
+Java developers describe the signature of the target function
+programmatically using a <code>FunctionDescriptor</code>. This
+descriptor pairs Java carrier types (such as <code>int</code>,
+<code>long</code>, or <code>MemorySegment</code>) with native memory
+layouts (<code>ValueLayout.JAVA_INT</code>, <code>AddressLayout</code>,
+etc.):</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>FunctionDescriptor descriptor <span class="op">=</span> FunctionDescriptor<span class="op">.</span><span class="fu">of</span><span class="op">(</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    ValueLayout<span class="op">.</span><span class="fu">JAVA_INT</span><span class="op">,</span>      <span class="co">// Return type</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    ValueLayout<span class="op">.</span><span class="fu">ADDRESS</span>        <span class="co">// Argument type (char*)</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span></code></pre></div>
+<p>Because the <code>Linker</code> implementation is tailored to the
+host platform (such as SysV ABI on Linux x86_64, or AAPCS on ARM64), it
+knows precisely how the declared native types translate into specific
+machine registers and stack offsets.</p>
+<h3 id="3-dynamic-stub-generation-via-method-handles">3. Dynamic Stub
+Generation via Method Handles</h3>
+<p>The foreign linker combines the raw native memory address and the
+<code>FunctionDescriptor</code> into a native downcall method
+handle:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>MethodHandle puts <span class="op">=</span> linker<span class="op">.</span><span class="fu">downcallHandle</span><span class="op">(</span>putsAddress<span class="op">,</span> descriptor<span class="op">);</span></span></code></pre></div>
+<p>During this downcall linkage, the JVM generates a specialized
+machine-code stub on the fly. When invoked:</p>
+<ol type="1">
+<li>The stub takes the incoming Java parameters from the JVM execution
+context.</li>
+<li>It marshals these values into the exact CPU registers or stack
+locations required by the platform's native calling convention (e.g.,
+placing the first argument into the <code>RDI</code> register on Linux
+x86_64).</li>
+<li>It performs a direct machine jump (<code>call</code> instruction) to
+the target function's address.</li>
+<li>Upon return, the stub reads the result from the architecture's
+native return register (e.g., <code>RAX</code>) and delivers it back to
+the JVM call frame.</li>
+</ol>
+<h2 id="jit-compilation-and-performance">JIT Compilation and
+Performance</h2>
+<p>Because these native invocations are exposed as standard
+<code>java.lang.invoke.MethodHandle</code> objects, the HotSpot
+Just-In-Time (JIT) compiler can optimize them extensively. During C2
+compilation, the JIT can inline the dynamically generated downcall stub
+directly into the compiled Java code. This removes nearly all JNI
+transition overhead, bringing native call performance close to that of a
+native C-to-C function call while remaining entirely within Java source
+code.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

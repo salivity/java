@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IdentityHashMap vs HashMap Comparisons in Java - java</title>
+    <meta name="description" content="In Java, the primary distinction between IdentityHashMap and a standard HashMap lies in how keys are compared and hashed. While a standard HashMap relies on object value equality using equals() and hashCode(), IdentityHashMap strictly enforces reference">
+    <link rel="canonical" href="https://salivity.github.io/java/article/identity-hash-map-vs-hash-map-comparisons-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="IdentityHashMap vs HashMap Comparisons in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/identity-hash-map-vs-hash-map-comparisons-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, the primary distinction between IdentityHashMap and a standard HashMap lies in how keys are compared and hashed. While a standard HashMap relies on object value equality using equals() and hashCode(), IdentityHashMap strictly enforces reference" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="identityhashmap-vs-hashmap-comparisons-in-java">IdentityHashMap
+vs HashMap Comparisons in Java</h1>
+<p>In Java, the primary distinction between <code>IdentityHashMap</code>
+and a standard <code>HashMap</code> lies in how keys are compared and
+hashed. While a standard <code>HashMap</code> relies on object value
+equality using <code>equals()</code> and <code>hashCode()</code>,
+<code>IdentityHashMap</code> strictly enforces reference equality using
+the <code>==</code> operator and <code>System.identityHashCode()</code>.
+This fundamental difference alters how key collisions occur, how
+duplicate keys are identified, and how memory references are tracked
+throughout an application.</p>
+<h3 id="key-equality-reference--vs-value-equals">Key Equality: Reference
+(<code>==</code>) vs. Value (<code>equals</code>)</h3>
+<p>The most critical difference is the equality condition used to look
+up, insert, and remove entries:</p>
+<ul>
+<li><strong>Standard <code>HashMap</code>:</strong> Compares keys using
+<code>k1 == null ? k2 == null : k1.equals(k2)</code>. If two distinct
+object instances have different memory addresses but represent the same
+logical value according to their overridden <code>equals()</code>
+method, <code>HashMap</code> treats them as the same key.</li>
+<li><strong><code>IdentityHashMap</code>:</strong> Compares keys using
+reference identity: <code>k1 == k2</code>. Two keys are considered equal
+if and only if they point to the exact same memory location. Even if two
+objects evaluate to <code>true</code> with <code>equals()</code>,
+<code>IdentityHashMap</code> treats them as entirely separate keys if
+they are separate instances.</li>
+</ul>
+<h3 id="hashing-mechanism-hashcode-vs-systemidentityhashcode">Hashing
+Mechanism: <code>hashCode()</code> vs.
+<code>System.identityHashCode()</code></h3>
+<p>The hashing algorithm directly dictates bucket placement and
+collision handling:</p>
+<ul>
+<li><strong>Standard <code>HashMap</code>:</strong> Invokes
+<code>key.hashCode()</code>. If a class overrides this method, the
+custom hash code determines bucket placement. If the key's state changes
+and alters the hash code, the entry becomes unretrievable.</li>
+<li><strong><code>IdentityHashMap</code>:</strong> Invokes
+<code>System.identityHashCode(key)</code>. It ignores any custom
+<code>hashCode()</code> implementation defined on the object. Because
+<code>System.identityHashCode()</code> relies on the internal identity
+of the object (often based on memory address), the hash value remains
+consistent regardless of any internal state changes to the key.</li>
+</ul>
+<h3 id="concrete-behavior-with-objects-and-strings">Concrete Behavior
+with Objects and Strings</h3>
+<p>The practical impact of these differences is evident when handling
+newly instantiated objects and strings:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> key1 <span class="op">=</span> <span class="kw">new</span> <span class="bu">String</span><span class="op">(</span><span class="st">&quot;example&quot;</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> key2 <span class="op">=</span> <span class="kw">new</span> <span class="bu">String</span><span class="op">(</span><span class="st">&quot;example&quot;</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Standard HashMap</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="bu">Map</span><span class="op">&lt;</span><span class="bu">String</span><span class="op">,</span> <span class="bu">String</span><span class="op">&gt;</span> standardMap <span class="op">=</span> <span class="kw">new</span> <span class="bu">HashMap</span><span class="op">&lt;&gt;();</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>standardMap<span class="op">.</span><span class="fu">put</span><span class="op">(</span>key1<span class="op">,</span> <span class="st">&quot;First&quot;</span><span class="op">);</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>standardMap<span class="op">.</span><span class="fu">put</span><span class="op">(</span>key2<span class="op">,</span> <span class="st">&quot;Second&quot;</span><span class="op">);</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">// Result: standardMap.size() is 1 because key1.equals(key2) is true.</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">// IdentityHashMap</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="bu">Map</span><span class="op">&lt;</span><span class="bu">String</span><span class="op">,</span> <span class="bu">String</span><span class="op">&gt;</span> identityMap <span class="op">=</span> <span class="kw">new</span> <span class="bu">IdentityHashMap</span><span class="op">&lt;&gt;();</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>identityMap<span class="op">.</span><span class="fu">put</span><span class="op">(</span>key1<span class="op">,</span> <span class="st">&quot;First&quot;</span><span class="op">);</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>identityMap<span class="op">.</span><span class="fu">put</span><span class="op">(</span>key2<span class="op">,</span> <span class="st">&quot;Second&quot;</span><span class="op">);</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">// Result: identityMap.size() is 2 because key1 != key2 (distinct memory references).</span></span></code></pre></div>
+<p>If string literals are used (e.g., <code>"example"</code>), the Java
+compiler interns them, causing <code>key1 == key2</code> to evaluate to
+<code>true</code>. In that specific case, both map types would yield a
+size of 1.</p>
+<h3 id="internal-data-structures">Internal Data Structures</h3>
+<p>Beyond equality semantics, their internal architectures differ:</p>
+<ul>
+<li><strong><code>HashMap</code>:</strong> Uses an array of buckets,
+where each bucket holds a linked list or a red-black tree (for
+high-collision buckets) containing node entries.</li>
+<li><strong><code>IdentityHashMap</code>:</strong> Uses a flat,
+alternating array (<code>[key1, val1, key2, val2, ...]</code>) with
+linear probing. It does not use chained nodes or trees, prioritizing
+cache locality and fast reference checks.</li>
+</ul>
+<h3 id="intentional-violation-of-the-map-interface">Intentional
+Violation of the <code>Map</code> Interface</h3>
+<p>The Java <code>Map</code> interface is defined in terms of the
+<code>equals()</code> contract. Because <code>IdentityHashMap</code>
+uses <code>==</code> instead of <code>equals()</code>, it intentionally
+violates the general contract of the <code>Map</code> interface. It is
+not intended for general-purpose key-value storage.</p>
+<h3 id="when-to-use-each">When to Use Each</h3>
+<ul>
+<li><strong>Use <code>HashMap</code>:</strong> For typical application
+logic where keys represent data values (e.g., IDs, names, or domain
+models) and need to be resolved based on logical equivalence.</li>
+<li><strong>Use <code>IdentityHashMap</code>:</strong> For specialized
+tasks such as serialization frameworks, object-graph traversals, or
+proxy maintenance, where it is necessary to track individual object
+instances uniquely—such as detecting circular references—regardless of
+their internal values.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

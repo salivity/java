@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initialization-on-Demand Holder Idiom in Java - java</title>
+    <meta name="description" content="The initialization-on-demand holder idiom is a design pattern in Java that provides thread-safe, lazy singleton initialization without requiring explicit synchronization mechanisms like synchronized blocks or volatile variables. This article explains how">
+    <link rel="canonical" href="https://salivity.github.io/java/article/initialization-on-demand-holder-idiom-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Initialization-on-Demand Holder Idiom in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/initialization-on-demand-holder-idiom-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The initialization-on-demand holder idiom is a design pattern in Java that provides thread-safe, lazy singleton initialization without requiring explicit synchronization mechanisms like synchronized blocks or volatile variables. This article explains how" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="initialization-on-demand-holder-idiom-in-java">Initialization-on-Demand
+Holder Idiom in Java</h1>
+<p>The initialization-on-demand holder idiom is a design pattern in Java
+that provides thread-safe, lazy singleton initialization without
+requiring explicit synchronization mechanisms like
+<code>synchronized</code> blocks or <code>volatile</code> variables.
+This article explains how this idiom works, the JVM class initialization
+mechanics that enable it, a standard code implementation, and why it is
+superior to traditional lazy loading approaches.</p>
+<h2 id="the-problem-with-traditional-singleton-approaches">The Problem
+with Traditional Singleton Approaches</h2>
+<p>Implementing a singleton pattern with lazy initialization typically
+leads developers toward either synchronized accessor methods or the
+double-checked locking pattern.</p>
+<p>Synchronizing the entire accessor method introduces an unnecessary
+performance bottleneck on every read, even after the instance is
+created. Double-checked locking resolves the ongoing synchronization
+overhead, but it requires the <code>volatile</code> keyword to prevent
+instruction reordering issues and can be prone to implementation errors
+across different JVM versions.</p>
+<h2 id="the-holder-idiom-implementation">The Holder Idiom
+Implementation</h2>
+<p>The initialization-on-demand holder idiom resolves these issues by
+using a static nested class to defer instance creation.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Singleton <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="fu">Singleton</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Prevent instantiation via reflection</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>InstanceHolder<span class="op">.</span><span class="fu">INSTANCE</span> <span class="op">!=</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>            <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">IllegalStateException</span><span class="op">(</span><span class="st">&quot;Already initialized&quot;</span><span class="op">);</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="dt">static</span> <span class="kw">class</span> InstanceHolder <span class="op">{</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="kw">private</span> <span class="dt">static</span> <span class="dt">final</span> Singleton INSTANCE <span class="op">=</span> <span class="kw">new</span> <span class="fu">Singleton</span><span class="op">();</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> Singleton <span class="fu">getInstance</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> InstanceHolder<span class="op">.</span><span class="fu">INSTANCE</span><span class="op">;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="how-it-achieves-lazy-loading">How It Achieves Lazy Loading</h2>
+<p>The idiom relies on the JVM's class-loading behavior. In Java,
+loading an outer class does not automatically load or initialize its
+static nested classes.</p>
+<p>When the <code>Singleton</code> class is referenced or loaded into
+memory elsewhere in the application, the <code>InstanceHolder</code>
+class remains unloaded. The JVM only loads and initializes
+<code>InstanceHolder</code> when execution enters the
+<code>getInstance()</code> method and references
+<code>InstanceHolder.INSTANCE</code> for the first time. This guarantees
+true lazy loading without requiring runtime null checks.</p>
+<h2 id="how-it-achieves-thread-safety">How It Achieves Thread
+Safety</h2>
+<p>Thread safety is guaranteed directly by the Java Language
+Specification (JLS), specifically through section 12.4 detailing class
+initialization.</p>
+<p>When a class is initialized, the JVM acquires an internal
+initialization lock. Any other threads attempting to access the class
+concurrently are forced to wait until class initialization completes.
+Because <code>INSTANCE</code> is a <code>static final</code> field
+initialized during the static initialization phase
+(<code>&lt;clinit&gt;</code>) of <code>InstanceHolder</code>, the JVM
+ensures:</p>
+<ol type="1">
+<li><strong>Mutual Exclusion:</strong> Only one thread can execute the
+<code>&lt;clinit&gt;</code> phase to initialize the
+<code>INSTANCE</code> field.</li>
+<li><strong>Safe Publication:</strong> Once the class is initialized,
+the <code>INSTANCE</code> reference is fully constructed and safely
+visible to all other threads without memory barriers or the
+<code>volatile</code> keyword.</li>
+</ol>
+<h2 id="advantages-of-the-idiom">Advantages of the Idiom</h2>
+<ul>
+<li><strong>Zero Synchronization Overhead:</strong> Subsequent calls to
+<code>getInstance()</code> bypass synchronization checks entirely,
+operating at the speed of a standard field access.</li>
+<li><strong>No <code>volatile</code> Required:</strong> Avoids the
+performance and complexity trade-offs associated with memory visibility
+barriers in double-checked locking.</li>
+<li><strong>Simplicity:</strong> The pattern relies on standard compiler
+and JVM guarantees rather than complex concurrency logic.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

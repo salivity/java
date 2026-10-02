@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Thread States: BLOCKED vs WAITING vs TIMED_WAITING - java</title>
+    <meta name="description" content="During Java runtime profiling, threads spend significant time outside the RUNNABLE state, often appearing as BLOCKED, WAITING, or TIMEDWAITING. While all three indicate that a thread has paused execution and is consuming virtually zero CPU, they represen">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-thread-states-blocked-vs-waiting-vs-timed-waiting">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Thread States: BLOCKED vs WAITING vs TIMED_WAITING - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-thread-states-blocked-vs-waiting-vs-timed-waiting" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="During Java runtime profiling, threads spend significant time outside the RUNNABLE state, often appearing as BLOCKED, WAITING, or TIMEDWAITING. While all three indicate that a thread has paused execution and is consuming virtually zero CPU, they represen" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-thread-states-blocked-vs-waiting-vs-timed_waiting">Java
+Thread States: BLOCKED vs WAITING vs TIMED_WAITING</h1>
+<p>During Java runtime profiling, threads spend significant time outside
+the <code>RUNNABLE</code> state, often appearing as
+<code>BLOCKED</code>, <code>WAITING</code>, or
+<code>TIMED_WAITING</code>. While all three indicate that a thread has
+paused execution and is consuming virtually zero CPU, they represent
+fundamentally different runtime conditions: monitor lock contention,
+indefinite inter-thread synchronization, and duration-bounded
+suspension. Distinguishing between these states in thread dumps and
+profilers is critical for pinpointing lock contention, thread pool
+sizing issues, and latency bottlenecks.</p>
+<h2 id="the-blocked-state">The BLOCKED State</h2>
+<p>A thread enters the <code>BLOCKED</code> state exclusively when it is
+waiting to acquire an intrinsic monitor lock to enter or re-enter a
+<code>synchronized</code> block or method.</p>
+<ul>
+<li><strong>Trigger Mechanism:</strong> Another thread currently holds
+the synchronized monitor that the blocked thread requires.</li>
+<li><strong>Common Profiler Triggers:</strong>
+<code>synchronized(lock) { ... }</code> or
+<code>public synchronized void method()</code>.</li>
+<li><strong>Diagnostic Meaning:</strong> A high count of
+<code>BLOCKED</code> threads indicates severe lock contention. Multiple
+threads are competing for the same synchronized resource, forcing
+serialization of execution. If two or more threads are permanently
+<code>BLOCKED</code> waiting on each other's held monitors, this
+indicates a classic Java monitor deadlock.</li>
+</ul>
+<h2 id="the-waiting-state">The WAITING State</h2>
+<p>A thread enters the <code>WAITING</code> state when it voluntarily
+suspends its execution indefinitely until another thread performs a
+specific action to wake it up.</p>
+<ul>
+<li><strong>Trigger Mechanism:</strong> Explicit calls to
+synchronization APIs without a timeout parameter.</li>
+<li><strong>Common Profiler Triggers:</strong>
+<ul>
+<li><code>Object.wait()</code> (waiting for <code>Object.notify()</code>
+or <code>notifyAll()</code>)</li>
+<li><code>Thread.join()</code> (waiting for the target thread to
+terminate)</li>
+<li><code>LockSupport.park()</code> (the underlying primitive used
+heavily by <code>java.util.concurrent</code> locks, such as
+<code>ReentrantLock</code> and <code>CompletableFuture</code>)</li>
+</ul></li>
+<li><strong>Diagnostic Meaning:</strong> <code>WAITING</code> threads
+are normal in healthy applications, particularly in idle thread pools
+(like <code>ThreadPoolExecutor</code>) waiting for incoming tasks from a
+<code>BlockingQueue</code>. However, unexpected spikes in
+<code>WAITING</code> threads can signal missing notification events,
+broken producer-consumer pipelines, or concurrency deadlocks governed by
+<code>java.util.concurrent</code> locks rather than intrinsic
+monitors.</li>
+</ul>
+<h2 id="the-timed_waiting-state">The TIMED_WAITING State</h2>
+<p>The <code>TIMED_WAITING</code> state is functionally identical to the
+<code>WAITING</code> state, with the crucial exception that the
+suspension has a predefined maximum duration. The thread returns to
+<code>RUNNABLE</code> either when explicitly awakened by another thread
+or when the specified timeout elapses—whichever happens first.</p>
+<ul>
+<li><strong>Trigger Mechanism:</strong> Explicit calls to
+synchronization or sleep methods with a positive timeout value.</li>
+<li><strong>Common Profiler Triggers:</strong>
+<ul>
+<li><code>Thread.sleep(long millis)</code></li>
+<li><code>Object.wait(long timeout)</code></li>
+<li><code>Thread.join(long millis)</code></li>
+<li><code>LockSupport.parkNanos()</code> and
+<code>LockSupport.parkUntil()</code></li>
+<li>Timed concurrency methods such as
+<code>BlockingQueue.poll(long timeout, TimeUnit unit)</code></li>
+</ul></li>
+<li><strong>Diagnostic Meaning:</strong> Common sources of
+<code>TIMED_WAITING</code> include worker threads polling for queue
+tasks with keep-alive limits, retry loops with backoff strategies, and
+rate limiters. In profiling, excessive <code>TIMED_WAITING</code> often
+points to defensive timeout architectures, slow external dependencies
+forcing threads to wait on response timeouts, or inefficient polling
+loops.</li>
+</ul>
+<h2 id="key-diagnostic-differences-for-profiling">Key Diagnostic
+Differences for Profiling</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">BLOCKED</th>
+<th style="text-align: left;">WAITING</th>
+<th style="text-align: left;">TIMED_WAITING</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Primary Cause</strong></td>
+<td style="text-align: left;">Waiting for an intrinsic monitor lock</td>
+<td style="text-align: left;">Waiting indefinitely for a signal or
+termination</td>
+<td style="text-align: left;">Waiting for a signal with an expiration
+timer</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Involved APIs</strong></td>
+<td style="text-align: left;"><code>synchronized</code></td>
+<td style="text-align: left;"><code>Object.wait()</code>,
+<code>Thread.join()</code>, <code>LockSupport.park()</code></td>
+<td style="text-align: left;"><code>Thread.sleep()</code>,
+<code>wait(timeout)</code>, <code>parkNanos()</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Exit Condition</strong></td>
+<td style="text-align: left;">The lock becomes available</td>
+<td style="text-align: left;">An explicit wake-up signal
+(<code>notify</code>, <code>unpark</code>)</td>
+<td style="text-align: left;">A wake-up signal OR the timeout
+expires</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Typical Profiling
+Issue</strong></td>
+<td style="text-align: left;">Lock contention, synchronization
+bottlenecks</td>
+<td style="text-align: left;">Starvation, lost wake-up signals, idle
+pools</td>
+<td style="text-align: left;">Slow downstream I/O timeouts,
+sleep/polling delays</td>
+</tr>
+</tbody>
+</table>
+<p>In runtime profiling tools (such as VisualVM, Java Flight Recorder,
+or thread dump analyzers), threads held in <code>BLOCKED</code> demand
+immediate optimization because they indicate active execution delays due
+to contention. Threads in <code>WAITING</code> and
+<code>TIMED_WAITING</code> typically demand contextual evaluation: they
+are standard for idle thread pools and event listeners, but become
+pathological when they accumulate in request-processing paths where
+execution should proceed without delay.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Continuous Integration with Jenkins for Java Workflows - java</title>
+    <meta name="description" content="Continuous Integration (CI) is a modern software development practice where developers frequently merge code changes into a central repository, triggering automated builds and tests to identify defects early. This article covers the core principles of CI">
+    <link rel="canonical" href="https://salivity.github.io/java/article/continuous-integration-with-jenkins-for-java-workflows">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Continuous Integration with Jenkins for Java Workflows - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/continuous-integration-with-jenkins-for-java-workflows" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Continuous Integration (CI) is a modern software development practice where developers frequently merge code changes into a central repository, triggering automated builds and tests to identify defects early. This article covers the core principles of CI" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="continuous-integration-with-jenkins-for-java-workflows">Continuous
+Integration with Jenkins for Java Workflows</h1>
+<p>Continuous Integration (CI) is a modern software development practice
+where developers frequently merge code changes into a central
+repository, triggering automated builds and tests to identify defects
+early. This article covers the core principles of CI, the mechanics of
+how Jenkins acts as an orchestration engine, and the step-by-step
+process of automating Java build, test, and reporting pipelines using
+Jenkins and build tools like Maven or Gradle.</p>
+<h2 id="what-is-continuous-integration">What is Continuous
+Integration?</h2>
+<p>Continuous Integration requires developers to commit code to a shared
+branch multiple times a day. Traditionally, developers worked in
+isolation for weeks, leading to severe merge conflicts and hidden bugs
+during final integration—a problem often called "integration hell."</p>
+<p>CI solves this by validating every commit through an automated
+pipeline. A typical CI workflow consists of four essential stages:</p>
+<ol type="1">
+<li><strong>Source Code Management (SCM):</strong> Developers push
+commits to a repository (such as Git).</li>
+<li><strong>Automated Trigger:</strong> The CI server detects the change
+via webhooks or polling.</li>
+<li><strong>Automated Build:</strong> The project compiles, resolving
+all necessary dependencies.</li>
+<li><strong>Automated Testing:</strong> The server executes unit and
+integration tests, reporting results immediately to the development
+team.</li>
+</ol>
+<h2 id="how-jenkins-automates-java-workflows">How Jenkins Automates Java
+Workflows</h2>
+<p>Jenkins is an open-source automation server that orchestrates the
+entire CI/CD lifecycle. In a Java environment, Jenkins integrates
+directly with Java build tools like Apache Maven and Gradle, version
+control systems, and testing frameworks like JUnit and TestNG.</p>
+<h3 id="1-code-integration-and-triggers">1. Code Integration and
+Triggers</h3>
+<p>The automation begins at the source repository. When a developer
+creates a pull request or pushes code to branches like <code>main</code>
+or <code>develop</code>, GitHub, GitLab, or Bitbucket sends an HTTP POST
+payload (webhook) to Jenkins. Jenkins intercepts this webhook and
+initiates a predefined build job.</p>
+<h3 id="2-dependency-management-and-compilation">2. Dependency
+Management and Compilation</h3>
+<p>Java applications require compilation from source code
+(<code>.java</code>) into bytecode (<code>.class</code>) and packaging
+into artifacts like JAR or WAR files. Rather than running manual
+terminal commands, Jenkins executes build automation tools through a
+<code>Jenkinsfile</code> (Pipeline-as-Code).</p>
+<p>For a Maven project, Jenkins calls commands such as:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode groovy"><code class="sourceCode groovy"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>sh <span class="st">&#39;mvn clean compile&#39;</span></span></code></pre></div>
+<p>During this stage, Jenkins ensures the proper Java Development Kit
+(JDK) is configured, pulls external dependencies from artifact
+repositories (like Maven Central or Nexus), and compiles the source
+code.</p>
+<h3 id="3-automated-test-execution">3. Automated Test Execution</h3>
+<p>Once the code compiles successfully, Jenkins runs the automated test
+suites:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode groovy"><code class="sourceCode groovy"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>sh <span class="st">&#39;mvn test&#39;</span></span></code></pre></div>
+<p>Jenkins executes unit tests written in frameworks like JUnit. If any
+test fails, Jenkins marks the build as "Failed" or "Unstable," stops the
+pipeline to prevent broken code from progressing, and alerts the
+developer via email, Slack, or repository status checks.</p>
+<h3 id="4-code-quality-and-test-reporting">4. Code Quality and Test
+Reporting</h3>
+<p>Beyond executing tests, Jenkins processes the generated XML reports
+(such as Surefire test reports) to visualize trends in test failures,
+execution times, and code coverage over time. Plugins such as JaCoCo can
+be added to measure test coverage, while tools like SonarQube integrate
+directly into the Jenkins pipeline to perform static code analysis,
+detecting security vulnerabilities, code smells, and technical debt.</p>
+<h3 id="5-packaging-and-artifact-archival">5. Packaging and Artifact
+Archival</h3>
+<p>If all tests pass and quality gates are met, Jenkins packages the
+application:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode groovy"><code class="sourceCode groovy"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>sh <span class="st">&#39;mvn package -DskipTests&#39;</span></span></code></pre></div>
+<p>The resulting JAR or WAR file can then be archived within Jenkins or
+published to a binary repository manager like JFrog Artifactory or AWS
+S3, ensuring that only verified, deployable artifacts reach staging and
+production environments.</p>
+<h2 id="the-declarative-jenkins-pipeline-for-java">The Declarative
+Jenkins Pipeline for Java</h2>
+<p>Modern Jenkins workflows use Declarative Pipelines defined in a
+version-controlled <code>Jenkinsfile</code>. A streamlined Java CI
+pipeline looks like this:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode groovy"><code class="sourceCode groovy"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>pipeline <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    agent any</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    tools <span class="op">{</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        maven <span class="st">&#39;Maven-3.9.0&#39;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        jdk <span class="st">&#39;JDK-17&#39;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    stages <span class="op">{</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        <span class="fu">stage</span><span class="op">(</span><span class="st">&#39;Checkout&#39;</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>            steps <span class="op">{</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>                checkout scm</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>        <span class="fu">stage</span><span class="op">(</span><span class="st">&#39;Build&#39;</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>            steps <span class="op">{</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>                sh <span class="st">&#39;mvn clean compile&#39;</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>        <span class="fu">stage</span><span class="op">(</span><span class="st">&#39;Test&#39;</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>            steps <span class="op">{</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>                sh <span class="st">&#39;mvn test&#39;</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>            post <span class="op">{</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>                always <span class="op">{</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>                    junit <span class="st">&#39;**/target/surefire-reports/*.xml&#39;</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>        <span class="fu">stage</span><span class="op">(</span><span class="st">&#39;Package&#39;</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>            steps <span class="op">{</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>                sh <span class="st">&#39;mvn package -DskipTests&#39;</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="benefits-of-jenkins-java-automation">Benefits of Jenkins Java
+Automation</h2>
+<p>Automating Java builds and tests with Jenkins provides several core
+advantages:</p>
+<ul>
+<li><strong>Rapid Feedback Loop:</strong> Developers learn within
+minutes if their latest commit broke a test or failed compilation.</li>
+<li><strong>Consistent Build Environments:</strong> Jenkins ensures
+builds run in isolated, standardized environments rather than relying on
+local machine configurations ("it works on my machine").</li>
+<li><strong>Reduced Manual Effort:</strong> Eliminates the need for
+manual compilation, packaging, and testing before code reviews.</li>
+<li><strong>Higher Software Quality:</strong> Catching bugs early
+drastically reduces the cost and complexity of fixing them later in the
+development lifecycle.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

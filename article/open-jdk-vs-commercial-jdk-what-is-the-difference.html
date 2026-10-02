@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenJDK vs Commercial JDK: What Is the Difference? - java</title>
+    <meta name="description" content="While OpenJDK serves as the free, open-source reference implementation of the Java Platform, Standard Edition (Java SE), commercial distributions of the Java Development Kit (JDK) are vendor-packaged builds derived from this source code. The core functio">
+    <link rel="canonical" href="https://salivity.github.io/java/article/open-jdk-vs-commercial-jdk-what-is-the-difference">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="OpenJDK vs Commercial JDK: What Is the Difference? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/open-jdk-vs-commercial-jdk-what-is-the-difference" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="While OpenJDK serves as the free, open-source reference implementation of the Java Platform, Standard Edition (Java SE), commercial distributions of the Java Development Kit (JDK) are vendor-packaged builds derived from this source code. The core functio" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="openjdk-vs-commercial-jdk-what-is-the-difference">OpenJDK vs
+Commercial JDK: What Is the Difference?</h1>
+<p>While OpenJDK serves as the free, open-source reference
+implementation of the Java Platform, Standard Edition (Java SE),
+commercial distributions of the Java Development Kit (JDK) are
+vendor-packaged builds derived from this source code. The core
+functionality and language specifications remain identical across both,
+but commercial distributions differentiate themselves through
+proprietary enhancements, distinct licensing terms, dedicated enterprise
+technical support, and extended long-term security patch roadmaps.</p>
+<h2 id="the-core-foundation-openjdk">The Core Foundation: OpenJDK</h2>
+<p>OpenJDK is the upstream codebase where all modern Java development
+occurs. Governed by Oracle and the broader Java community, it is
+distributed under the GNU General Public License version 2 with a
+Classpath Exception (GPLv2+CE). This license permits developers to build
+and distribute commercial applications without being forced to
+open-source their own software.</p>
+<p>Anyone can download and use raw OpenJDK binaries free of charge.
+However, standard OpenJDK community updates for any specific major
+version cease shortly after the next major version is released—typically
+every six months.</p>
+<h2 id="what-are-commercial-distributions">What Are Commercial
+Distributions?</h2>
+<p>Commercial distributions take the OpenJDK source code, compile it
+into ready-to-run binaries, test it against the Java Technology
+Compatibility Kit (TCK), and distribute it under their own terms. Common
+providers include Oracle (Oracle JDK), Azul Systems (Azul Platform
+Core/Prime), Amazon (Amazon Corretto), Red Hat, and IBM.</p>
+<p>While some vendors offer their distributions entirely for free, they
+often sell commercial subscriptions tied to these binaries to deliver
+specific enterprise benefits.</p>
+<h2 id="key-differences">Key Differences</h2>
+<h3 id="1-licensing-and-usage-rights">1. Licensing and Usage Rights</h3>
+<ul>
+<li><strong>OpenJDK:</strong> Free for development, testing, and
+production under the GPLv2+CE.</li>
+<li><strong>Commercial JDKs:</strong> Licensing varies widely. For
+example, Oracle JDK historically altered its licensing to require paid
+subscriptions for production use, later transitioning to the "Free Terms
+and Conditions" (FTC) license with specific limitations on long-term
+availability. Other vendors provide commercial-only licenses tailored to
+enterprise infrastructure.</li>
+</ul>
+<h3 id="2-long-term-support-lts-and-security-patches">2. Long-Term
+Support (LTS) and Security Patches</h3>
+<p>Standard OpenJDK feature releases receive security patches for only
+six months. If an organization remains on an LTS release (such as Java
+11, 17, or 21) using standard OpenJDK, they must eventually rely on
+third parties to backport security fixes.</p>
+<p>Commercial providers solve this by offering paid Service Level
+Agreements (SLAs) that guarantee quarterly security updates, critical
+vulnerability patches, and bug fixes for older versions for up to 10 to
+15 years.</p>
+<h3 id="3-performance-optimizations-and-proprietary-features">3.
+Performance Optimizations and Proprietary Features</h3>
+<p>Most distributions perform identically to OpenJDK. However, certain
+commercial products include proprietary enhancements:</p>
+<ul>
+<li><strong>Alternative Garbage Collectors:</strong> Azul Platform Prime
+(formerly Zing) includes the C4 pauseless garbage collector for
+ultra-low latency workloads.</li>
+<li><strong>Alternative Virtual Machines:</strong> IBM Semeru uses the
+OpenJ9 engine instead of OpenJDK's HotSpot, optimizing for faster
+startup times and lower memory footprints in containerized
+environments.</li>
+<li><strong>Diagnostic Tools:</strong> Enhanced flight recorders,
+telemetry, and heap analysis tools are often bundled exclusively with
+commercial offerings.</li>
+</ul>
+<h3 id="4-enterprise-support-and-warranties">4. Enterprise Support and
+Warranties</h3>
+<p>OpenJDK comes with no official customer support; issues must be
+reported to community bug trackers with no guaranteed resolution
+timeline. Commercial distributions include direct access to Java
+engineers, defined resolution times (SLAs), legal indemnification
+against intellectual property claims, and architecture consulting.</p>
+<h2 id="summary-which-should-you-choose">Summary: Which Should You
+Choose?</h2>
+<p>For development, testing, and modern cloud-native architectures that
+deploy frequently and stay on the latest Java releases, free OpenJDK
+builds (such as Adoptium Eclipse Temurin or Amazon Corretto) are
+typically sufficient. For mission-critical enterprise environments,
+legacy applications that cannot be frequently upgraded, or workloads
+requiring strict regulatory compliance, low-latency performance tuning,
+and 24/7 technical assistance, a commercial JDK subscription is the
+standard choice.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

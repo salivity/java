@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClassLoader.loadClass vs Class.forName in Java - java</title>
+    <meta name="description" content="In Java, dynamically loading classes at runtime is primarily accomplished using either ClassLoader.loadClass or Class.forName. While both mechanisms locate bytecode and load the specified class into the Java Virtual Machine (JVM), their primary differenc">
+    <link rel="canonical" href="https://salivity.github.io/java/article/class-loader-load-class-vs-class-for-name-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ClassLoader.loadClass vs Class.forName in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/class-loader-load-class-vs-class-for-name-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, dynamically loading classes at runtime is primarily accomplished using either ClassLoader.loadClass or Class.forName. While both mechanisms locate bytecode and load the specified class into the Java Virtual Machine (JVM), their primary differenc" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="classloaderloadclass-vs-classforname-in-java">ClassLoader.loadClass
+vs Class.forName in Java</h1>
+<p>In Java, dynamically loading classes at runtime is primarily
+accomplished using either <code>ClassLoader.loadClass</code> or
+<code>Class.forName</code>. While both mechanisms locate bytecode and
+load the specified class into the Java Virtual Machine (JVM), their
+primary difference lies in class initialization. This article explains
+how each method behaves during the class loading lifecycle, illustrates
+the differences in static block execution, and outlines the appropriate
+use cases for each approach.</p>
+<h2 id="the-core-difference-class-initialization">The Core Difference:
+Class Initialization</h2>
+<p>The Java class loading process consists of three main phases:
+<strong>Loading</strong>, <strong>Linking</strong> (verification,
+preparation, and resolution), and <strong>Initialization</strong>. The
+fundamental difference between the two methods is whether the class is
+initialized upon loading.</p>
+<ul>
+<li><strong><code>Class.forName(String className)</code></strong>: Loads
+the class and initializes it by default. During initialization, the JVM
+executes static initialization blocks and initializes static variables.
+Calling this method is functionally equivalent to calling
+<code>Class.forName(className, true, currentClassLoader)</code>.</li>
+<li><strong><code>ClassLoader.loadClass(String className)</code></strong>:
+Loads and links the class, but does <strong>not</strong> initialize it.
+Initialization is deferred until the class is actively used for the
+first time, such as when creating a new instance, invoking a static
+method, or accessing a static field.</li>
+</ul>
+<h2 id="behavioral-comparison">Behavioral Comparison</h2>
+<p>Consider a target class containing a static initialization block:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> DemoClass <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">static</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;DemoClass has been initialized!&quot;</span><span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="using-classforname">Using <code>Class.forName</code></h3>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Class</span><span class="op">&lt;?&gt;</span> clazz <span class="op">=</span> <span class="bu">Class</span><span class="op">.</span><span class="fu">forName</span><span class="op">(</span><span class="st">&quot;com.example.DemoClass&quot;</span><span class="op">);</span></span></code></pre></div>
+<p><strong>Output:</strong></p>
+<pre class="text"><code>DemoClass has been initialized!</code></pre>
+<p>The static block executes immediately because
+<code>Class.forName</code> initializes the class by default.</p>
+<h3 id="using-classloaderloadclass">Using
+<code>ClassLoader.loadClass</code></h3>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">ClassLoader</span> classLoader <span class="op">=</span> <span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">getContextClassLoader</span><span class="op">();</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Class</span><span class="op">&lt;?&gt;</span> clazz <span class="op">=</span> classLoader<span class="op">.</span><span class="fu">loadClass</span><span class="op">(</span><span class="st">&quot;com.example.DemoClass&quot;</span><span class="op">);</span></span></code></pre></div>
+<p><strong>Output:</strong> <em>(No output)</em></p>
+<p>The class is loaded into memory, but the static block does not
+execute. It will only run later when an active operation occurs:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>clazz<span class="op">.</span><span class="fu">getDeclaredConstructor</span><span class="op">().</span><span class="fu">newInstance</span><span class="op">();</span> <span class="co">// Output: DemoClass has been initialized!</span></span></code></pre></div>
+<h2 id="additional-technical-differences">Additional Technical
+Differences</h2>
+<h3 id="1-classloader-context">1. ClassLoader Context</h3>
+<ul>
+<li><code>Class.forName(String name)</code> uses the
+<code>ClassLoader</code> of the calling class by default.</li>
+<li><code>ClassLoader.loadClass(String name)</code> is called on an
+explicit instance of a <code>ClassLoader</code> (e.g., the system class
+loader, context class loader, or a custom class loader).</li>
+</ul>
+<h3 id="2-overloaded-method-flexibility">2. Overloaded Method
+Flexibility</h3>
+<ul>
+<li><code>Class.forName</code> provides an overloaded variant:
+<code>Class.forName(String name, boolean initialize, ClassLoader loader)</code>.
+By setting <code>initialize</code> to <code>false</code>, you can
+emulate the lazy initialization behavior of
+<code>ClassLoader.loadClass</code> while specifying a custom class
+loader.</li>
+<li><code>ClassLoader.loadClass</code> provides an internal protected
+method <code>loadClass(String name, boolean resolve)</code>, where
+<code>resolve</code> specifies whether the class should be linked, but
+it does not provide an option to force initialization.</li>
+</ul>
+<h2 id="when-to-use-each-method">When to Use Each Method</h2>
+<h3 id="use-classforname-when">Use <code>Class.forName</code> when:</h3>
+<ul>
+<li><strong>Static configuration is required immediately:</strong>
+Traditional frameworks and libraries (such as legacy JDBC drivers) rely
+on static blocks to register themselves with managers (e.g.,
+<code>DriverManager.registerDriver()</code>).</li>
+<li><strong>Instant failure detection is preferred:</strong> If an error
+inside a static block should fail the loading phase immediately rather
+than during a later method call, initialization should not be
+deferred.</li>
+</ul>
+<h3 id="use-classloaderloadclass-when">Use
+<code>ClassLoader.loadClass</code> when:</h3>
+<ul>
+<li><strong>Performance optimization is needed:</strong> Loading
+multiple classes ahead of time without running their initialization
+logic saves memory and CPU cycles until those classes are explicitly
+needed.</li>
+<li><strong>Avoiding premature side effects:</strong> In plugin systems,
+modular environments, or dependency injection containers, executing
+untrusted or heavy static code before verification is undesirable.</li>
+<li><strong>Working with custom class loaders:</strong> When building
+modular systems (such as OSGi or custom container runtimes) that isolate
+dependencies across distinct class loader boundaries.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

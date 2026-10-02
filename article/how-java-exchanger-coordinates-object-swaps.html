@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Exchanger Coordinates Object Swaps - java</title>
+    <meta name="description" content="Java's Exchanger<V> class, located in the java.util.concurrent package, provides a synchronization point where exactly two threads can pair up and atomically swap objects of type V. Acting as a bidirectional rendezvous mechanism, it blocks the first arri">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-exchanger-coordinates-object-swaps">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Exchanger Coordinates Object Swaps - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-exchanger-coordinates-object-swaps" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's Exchanger<V> class, located in the java.util.concurrent package, provides a synchronization point where exactly two threads can pair up and atomically swap objects of type V. Acting as a bidirectional rendezvous mechanism, it blocks the first arri" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-exchanger-coordinates-object-swaps">How Java Exchanger
+Coordinates Object Swaps</h1>
+<p>Java's <code>Exchanger&lt;V&gt;</code> class, located in the
+<code>java.util.concurrent</code> package, provides a synchronization
+point where exactly two threads can pair up and atomically swap objects
+of type <code>V</code>. Acting as a bidirectional rendezvous mechanism,
+it blocks the first arriving thread until a second thread arrives with
+its corresponding object, swaps their references, and allows both
+threads to proceed with each other's data. This article explains the
+internal mechanics, memory visibility guarantees, and practical usage of
+the <code>Exchanger</code> concurrency utility.</p>
+<h2 id="the-rendezvous-mechanism">The Rendezvous Mechanism</h2>
+<p>The fundamental operation of an <code>Exchanger</code> revolves
+around the overloaded <code>exchange()</code> method:</p>
+<ul>
+<li><code>exchange(V x)</code>: Waits indefinitely for another thread to
+arrive unless interrupted.</li>
+<li><code>exchange(V x, long timeout, TimeUnit unit)</code>: Waits up to
+the specified duration before throwing a
+<code>TimeoutException</code>.</li>
+</ul>
+<p>When Thread A invokes <code>exchange(itemA)</code>, the
+<code>Exchanger</code> checks if another thread is already waiting. If
+the exchange point is empty, Thread A places <code>itemA</code> into an
+internal slot and parks (suspends execution).</p>
+<p>When Thread B subsequently calls <code>exchange(itemB)</code>, it
+detects Thread A's presence, reads <code>itemA</code>, overwrites the
+slot with <code>itemB</code>, and unparks Thread A. Thread B receives
+<code>itemA</code>, Thread A awakens to receive <code>itemB</code>, and
+the exchange completes symmetrically.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">concurrent</span><span class="op">.</span><span class="im">Exchanger</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> ExchangerDemo <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Exchanger</span><span class="op">&lt;</span><span class="bu">String</span><span class="op">&gt;</span> exchanger <span class="op">=</span> <span class="kw">new</span> <span class="bu">Exchanger</span><span class="op">&lt;&gt;();</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>                <span class="bu">String</span> myData <span class="op">=</span> <span class="st">&quot;Buffer from Producer&quot;</span><span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>                <span class="bu">String</span> receivedData <span class="op">=</span> exchanger<span class="op">.</span><span class="fu">exchange</span><span class="op">(</span>myData<span class="op">);</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>                <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Thread 1 received: &quot;</span> <span class="op">+</span> receivedData<span class="op">);</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">InterruptedException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>                <span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">interrupt</span><span class="op">();</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">}).</span><span class="fu">start</span><span class="op">();</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>            <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>                <span class="bu">String</span> myData <span class="op">=</span> <span class="st">&quot;Empty Buffer from Consumer&quot;</span><span class="op">;</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>                <span class="bu">String</span> receivedData <span class="op">=</span> exchanger<span class="op">.</span><span class="fu">exchange</span><span class="op">(</span>myData<span class="op">);</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>                <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Thread 2 received: &quot;</span> <span class="op">+</span> receivedData<span class="op">);</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">InterruptedException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>                <span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">interrupt</span><span class="op">();</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>        <span class="op">}).</span><span class="fu">start</span><span class="op">();</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="memory-visibility-guarantees">Memory Visibility Guarantees</h2>
+<p>The <code>Exchanger</code> enforces a formal <em>happens-before</em>
+relationship as defined by the Java Memory Model (JMM):</p>
+<ol type="1">
+<li><strong>Prior Actions Visible:</strong> Any action taken by a thread
+prior to calling <code>exchange()</code> happens-before the return of
+that <code>exchange()</code> call in the receiving thread.</li>
+<li><strong>Safe Publication:</strong> If Thread A modifies fields
+within an object before passing it into <code>exchange()</code>, Thread
+B is guaranteed to see those updates without requiring additional
+external synchronization.</li>
+</ol>
+<p>Internally, this is achieved using volatile reads/writes and atomic
+compare-and-swap operations through <code>VarHandle</code> or
+<code>Unsafe</code>, ensuring memory fences flush CPU caches
+appropriately.</p>
+<h2 id="internal-architecture-single-slot-vs-arena">Internal
+Architecture: Single-Slot vs. Arena</h2>
+<p>Under the hood, <code>Exchanger</code> avoids global synchronization
+bottlenecks by dynamically scaling its internal structure:</p>
+<ul>
+<li><strong>Single-Slot Exchange:</strong> In low-contention scenarios,
+threads interact over a single shared slot
+(<code>volatile Node slot</code>). The first thread parks on this node
+until the second thread updates it.</li>
+<li><strong>Arena-Based Multi-Slot Exchange:</strong> If multiple pairs
+of threads use the same <code>Exchanger</code> concurrently, a single
+slot suffers severe cache contention and false sharing. When contention
+is detected, the implementation switches to an <code>Arena</code> array.
+Threads hash to different slots within the array, allowing multiple
+independent pairs to exchange objects simultaneously without serializing
+execution across a single memory address.</li>
+</ul>
+<h2 id="interruption-and-timeout-handling">Interruption and Timeout
+Handling</h2>
+<p>If a waiting thread is interrupted while parked in
+<code>exchange()</code>, it aborts the operation, clears its presence
+from the slot, and throws an <code>InterruptedException</code>.
+Similarly, if a timeout expires, the thread cleans up its slot state
+before throwing a <code>TimeoutException</code>. This state cleanup
+ensures that a late-arriving thread does not encounter stale references
+or deadlock waiting for a departed partner.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

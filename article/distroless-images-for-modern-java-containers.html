@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distroless Images for Modern Java Containers - java</title>
+    <meta name="description" content="The distroless base image pattern removes operating system bloat from container runtimes, leaving behind only an application and its direct runtime dependencies. This article explains the purpose of adopting distroless base images for modern Java applica">
+    <link rel="canonical" href="https://salivity.github.io/java/article/distroless-images-for-modern-java-containers">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Distroless Images for Modern Java Containers - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/distroless-images-for-modern-java-containers" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The distroless base image pattern removes operating system bloat from container runtimes, leaving behind only an application and its direct runtime dependencies. This article explains the purpose of adopting distroless base images for modern Java applica" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="distroless-images-for-modern-java-containers">Distroless Images
+for Modern Java Containers</h1>
+<p>The distroless base image pattern removes operating system bloat from
+container runtimes, leaving behind only an application and its direct
+runtime dependencies. This article explains the purpose of adopting
+distroless base images for modern Java applications, highlighting how
+this pattern reduces security attack surfaces, eliminates common
+vulnerabilities and exposures (CVE) alert noise, optimizes image sizes,
+and enforces immutable production practices.</p>
+<h2 id="what-is-a-distroless-base-image">What is a Distroless Base
+Image?</h2>
+<p>A distroless base image is a container image stripped of standard
+Linux utilities, package managers (like <code>apt</code>,
+<code>apk</code>, or <code>yum</code>), shells (<code>/bin/sh</code>,
+<code>/bin/bash</code>), and administrative commands. Popularized by
+Google, distroless images for Java contain only the bare minimum
+required to execute code: the Linux C library (<code>glibc</code>),
+OpenSSL/certificates, and a specific Java Runtime Environment (JRE).</p>
+<h2 id="primary-purposes-for-modern-java-workloads">Primary Purposes for
+Modern Java Workloads</h2>
+<h3 id="1-minimizing-the-security-attack-surface">1. Minimizing the
+Security Attack Surface</h3>
+<p>Modern Java applications are self-contained executable JARs that
+embed web servers (such as Spring Boot, Quarkus, or Micronaut). Once
+launched, these applications interact exclusively via the JRE and
+network ports; they do not need operating system binaries.</p>
+<p>In a traditional image based on Debian, Ubuntu, or Alpine, an
+attacker who exploits a Java vulnerability (such as an arbitrary file
+upload or a deserialization bug) often uses installed binaries like
+<code>curl</code>, <code>wget</code>, or <code>/bin/sh</code> to
+download malicious scripts and initiate lateral movement. In a
+distroless environment, an attacker finds no shell to spawn and no
+system binaries to execute, significantly restricting post-exploitation
+activity.</p>
+<h3 id="2-eliminating-os-level-vulnerability-cve-noise">2. Eliminating
+OS-Level Vulnerability (CVE) Noise</h3>
+<p>Container security scanners routinely flag dozens of low, medium, and
+high severity vulnerabilities residing in OS packages that a Java
+application never uses. Triaging these alerts wastes engineering
+time.</p>
+<p>Because distroless images do not ship with unused utilities,
+libraries, and package managers:</p>
+<ul>
+<li>The volume of scanner-detected vulnerabilities drops close to
+zero.</li>
+<li>Development teams focus only on vulnerabilities present in the Java
+dependencies (via tools like OWASP Dependency-Check or Snyk) rather than
+OS-level noise.</li>
+</ul>
+<h3 id="3-smaller-footprints-and-faster-cluster-deployments">3. Smaller
+Footprints and Faster Cluster Deployments</h3>
+<p>While lightweight distributions like Alpine are small, distroless
+images are stripped even further. A minimal JRE distroless image
+contains solely the Java runtime and system certificates.</p>
+<p>Smaller image sizes result in:</p>
+<ul>
+<li>Faster CI/CD build pipelines and image registry uploads.</li>
+<li>Faster container pull times during Kubernetes auto-scaling events or
+node rescheduling.</li>
+<li>Reduced cold-start latency across distributed microservice
+architectures.</li>
+</ul>
+<h3 id="4-enforcing-immutability-and-cloud-native-best-practices">4.
+Enforcing Immutability and Cloud-Native Best Practices</h3>
+<p>Distroless containers enforce the principle of immutability. Because
+there is no package manager or shell, engineers cannot
+<code>docker exec</code> or <code>kubectl exec</code> into a production
+pod to manually modify configuration files, install hotfixes, or alter
+the runtime state. Any modification must go through the standard build
+and deployment pipeline, ensuring that the running environment matches
+the declared state in version control.</p>
+<h2 id="implementing-distroless-in-java">Implementing Distroless in
+Java</h2>
+<p>The distroless pattern is typically implemented using Docker
+multi-stage builds. The application is built using a full Java
+Development Kit (JDK) and build tool, while the final runtime artifact
+is copied into the distroless image:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build Stage</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> maven:3.9-eclipse-temurin-17 <span class="kw">AS</span> builder</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> pom.xml .</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> src ./src</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">mvn</span> clean package <span class="at">-DskipTests</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Runtime Stage</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> gcr.io/distroless/java17-debian12</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=builder</span> /app/target/application.jar application.jar</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="kw">USER</span> nonroot:nonroot</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="kw">CMD</span> [<span class="st">&quot;application.jar&quot;</span>]</span></code></pre></div>
+<h2 id="considerations">Considerations</h2>
+<ul>
+<li><strong>Debugging:</strong> Because standard tools like
+<code>ps</code>, <code>ls</code>, and <code>sh</code> are missing, live
+interactive troubleshooting within the container is not straightforward.
+Teams resolve this by using Kubernetes ephemeral debug containers
+(<code>kubectl debug</code>) or switching to <code>:debug</code> tags of
+distroless images during development.</li>
+<li><strong>Native Libraries:</strong> If a Java application relies on
+native libraries through JNI (Java Native Interface), those shared
+libraries (<code>.so</code> files) must be explicitly managed, as there
+is no package manager to install system-level packages on demand.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

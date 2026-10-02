@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java TypeMirror Represents the Type System - java</title>
+    <meta name="description" content="The Java TypeMirror API, located in the javax.lang.model.type package, provides a compile-time model of the Java language type system for annotation processors and static analysis tools. This article explains how TypeMirror mirrors the language's semanti">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-type-mirror-represents-the-type-system">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java TypeMirror Represents the Type System - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-type-mirror-represents-the-type-system" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java TypeMirror API, located in the javax.lang.model.type package, provides a compile-time model of the Java language type system for annotation processors and static analysis tools. This article explains how TypeMirror mirrors the language's semanti" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-typemirror-represents-the-type-system">How Java
+TypeMirror Represents the Type System</h1>
+<p>The Java <code>TypeMirror</code> API, located in the
+<code>javax.lang.model.type</code> package, provides a compile-time
+model of the Java language type system for annotation processors and
+static analysis tools. This article explains how <code>TypeMirror</code>
+mirrors the language's semantics prior to bytecode generation, detailing
+the distinction between language elements and types, the structural
+hierarchy of compile-time types, and the mechanism for performing type
+operations without runtime reflection.</p>
+<h2 id="elements-vs-type-mirrors">Elements vs. Type Mirrors</h2>
+<p>A core design principle of the Java annotation processing framework
+(JSR 269) is the separation between structural program declarations and
+actual types:</p>
+<ul>
+<li><strong><code>Element</code></strong>: Represents static program
+constructs declared in source code, such as packages, classes,
+interfaces, methods, or variables.</li>
+<li><strong><code>TypeMirror</code></strong>: Represents the
+<em>type</em> associated with those declarations, including runtime
+manifestations like instantiated generics.</li>
+</ul>
+<p>For example, a generic class declaration
+<code>java.util.Map&lt;K, V&gt;</code> is represented by a single
+<code>TypeElement</code>. However, the distinct usages
+<code>Map&lt;String, Integer&gt;</code> and
+<code>Map&lt;UUID, List&lt;String&gt;&gt;</code> are represented by
+different <code>TypeMirror</code> instances (specifically
+<code>DeclaredType</code>). An element can yield its raw type via
+<code>Element.asType()</code>, while a <code>DeclaredType</code> can
+reference back to its originating element using
+<code>DeclaredType.asElement()</code>.</p>
+<h2 id="the-typemirror-hierarchy">The TypeMirror Hierarchy</h2>
+<p>The Java type system is mirrored through specific sub-interfaces
+extending <code>TypeMirror</code>. Each corresponds to a construct
+defined in the Java Language Specification (JLS):</p>
+<ul>
+<li><strong><code>PrimitiveType</code></strong>: Represents primitive
+data types (<code>boolean</code>, <code>byte</code>, <code>short</code>,
+<code>int</code>, <code>long</code>, <code>char</code>,
+<code>float</code>, and <code>double</code>).</li>
+<li><strong><code>DeclaredType</code></strong>: Represents class and
+interface types. It holds information about the type arguments (e.g.,
+<code>&lt;String&gt;</code> in <code>List&lt;String&gt;</code>) and the
+enclosing type if it is an inner class.</li>
+<li><strong><code>ArrayType</code></strong>: Represents array types,
+providing access to the <code>getComponentType()</code>, which is itself
+a <code>TypeMirror</code>.</li>
+<li><strong><code>TypeVariable</code></strong>: Models generic type
+parameters (e.g., <code>T</code> in
+<code>class Repository&lt;T&gt;</code>). It exposes upper bounds via
+<code>getUpperBound()</code> and lower bounds via
+<code>getLowerBound()</code>.</li>
+<li><strong><code>WildcardType</code></strong>: Represents wildcard type
+arguments (e.g., <code>?</code>, <code>? extends Number</code>, or
+<code>? super Integer</code>), exposing its extends or super bound.</li>
+<li><strong><code>IntersectionType</code></strong>: Models compound
+bounds, such as
+<code>&lt;T extends Comparable&lt;T&gt; &amp; Serializable&gt;</code>.</li>
+<li><strong><code>UnionType</code></strong>: Represents multi-catch
+parameter types (e.g.,
+<code>catch (IOException | SQLException e)</code>).</li>
+<li><strong><code>ExecutableType</code></strong>: Models the signature
+of a method, constructor, or initializer, detailing parameter types,
+return types, thrown types, and type variables.</li>
+<li><strong><code>NoType</code></strong>: A pseudo-type used where an
+actual type does not apply, such as the <code>void</code> return type,
+package elements, or the implicit superclass of
+<code>java.lang.Object</code>.</li>
+<li><strong><code>NullType</code></strong>: Represents the compile-time
+type of the <code>null</code> literal.</li>
+</ul>
+<h2 id="determining-types-with-typekind">Determining Types with
+TypeKind</h2>
+<p>Every <code>TypeMirror</code> exposes a <code>getKind()</code> method
+returning a <code>TypeKind</code> enum. This allows processors to
+quickly query and branch on type categories—such as <code>INT</code>,
+<code>DECLARED</code>, <code>ARRAY</code>, or
+<code>PACKAGE</code>—without relying exclusively on
+<code>instanceof</code> checks.</p>
+<h2 id="compile-time-type-operations-via-the-types-utility">Compile-Time
+Type Operations via the Types Utility</h2>
+<p>Because compile-time types cannot rely on JVM runtime capabilities
+like <code>Class.isAssignableFrom()</code> or reflection, the API
+supplies the <code>javax.lang.model.util.Types</code> utility interface.
+The <code>Types</code> utility provides core compiler operations,
+including:</p>
+<ul>
+<li><strong>Subtyping and Assignability</strong>:
+<code>isSubtype(TypeMirror t1, TypeMirror t2)</code> and
+<code>isAssignable(TypeMirror t1, TypeMirror t2)</code> determine
+relationship rules according to JLS constraints.</li>
+<li><strong>Type Erasure</strong>: <code>erasure(TypeMirror t)</code>
+computes the raw type as it would appear after generic erasure.</li>
+<li><strong>Boxed and Unboxed Conversions</strong>:
+<code>boxedClass(PrimitiveType p)</code> and
+<code>unboxedType(TypeMirror t)</code> translate between primitive types
+and their wrapper classes.</li>
+<li><strong>Member Access Evaluation</strong>:
+<code>asMemberOf(DeclaredType containing, Element element)</code>
+resolves the actual type of a member within a parameterized context
+(e.g., resolving <code>T</code> to <code>String</code> for
+<code>List&lt;String&gt;.get(int)</code>).</li>
+</ul>
+<h2 id="processing-types-with-typevisitor">Processing Types with
+TypeVisitor</h2>
+<p>To safely navigate and process arbitrary types, the API employs the
+Visitor pattern through <code>javax.lang.model.type.TypeVisitor</code>.
+Implementations such as <code>SimpleTypeVisitor8</code> (or newer) allow
+developers to override specific visitor methods (e.g.,
+<code>visitDeclared</code>, <code>visitArray</code>,
+<code>visitTypeVariable</code>) to handle language types robustly and
+adapt to future language changes.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

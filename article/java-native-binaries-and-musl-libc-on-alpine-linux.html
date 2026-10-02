@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Native Binaries and Musl libc on Alpine Linux - java</title>
+    <meta name="description" content="Running Java applications on Alpine Linux often leads to unexpected runtime crashes when using native binaries, primarily due to underlying differences between the standard GNU C Library (glibc) and Alpine's default Musl C library (musl libc). Alpine Lin">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-native-binaries-and-musl-libc-on-alpine-linux">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Native Binaries and Musl libc on Alpine Linux - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-native-binaries-and-musl-libc-on-alpine-linux" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Running Java applications on Alpine Linux often leads to unexpected runtime crashes when using native binaries, primarily due to underlying differences between the standard GNU C Library (glibc) and Alpine's default Musl C library (musl libc). Alpine Lin" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-native-binaries-and-musl-libc-on-alpine-linux">Java Native
+Binaries and Musl libc on Alpine Linux</h1>
+<p>Running Java applications on Alpine Linux often leads to unexpected
+runtime crashes when using native binaries, primarily due to underlying
+differences between the standard GNU C Library (glibc) and Alpine's
+default Musl C library (<code>musl libc</code>). Alpine Linux is widely
+favored in containerized environments for its lightweight footprint, but
+because most precompiled Java native extensions and libraries target
+glibc, compatibility breaks occur during dynamic linking. This article
+explains the technical reasons behind this incompatibility, common error
+signatures, and practical solutions to run Java native components
+smoothly on Alpine.</p>
+<h3 id="the-root-cause-musl-vs-glibc">The Root Cause: Musl vs.
+Glibc</h3>
+<p>Most mainstream Linux distributions (such as Ubuntu, Debian, and
+CentOS) rely on <code>glibc</code>. Consequently, the majority of
+precompiled Java native libraries—including Java Native Interface (JNI)
+dynamic libraries (<code>.so</code> files) bundled inside JARs, Java
+Native Access (JNA) artifacts, and GraalVM native images—are built
+against <code>glibc</code> Application Binary Interfaces (ABIs).</p>
+<p>Alpine Linux replaces <code>glibc</code> with <code>musl libc</code>
+to keep system footprints minimal. While Musl strictly follows POSIX
+standards, it is not ABI-compatible with glibc. Key differences
+include:</p>
+<ul>
+<li><strong>Dynamic Linker Paths:</strong> Standard glibc-linked
+binaries expect the dynamic linker at
+<code>/lib64/ld-linux-x86-64.so.2</code> (or similar paths), whereas
+Alpine provides <code>/lib/ld-musl-x86_64.so.1</code>.</li>
+<li><strong>Symbol Implementations:</strong> Musl handles thread-local
+storage, memory allocation, and certain GNU-specific extensions (such as
+<code>execinfo.h</code> for backtraces) differently or omits them
+entirely.</li>
+<li><strong>Symbol Versioning:</strong> Unlike glibc, Musl does not
+implement symbol versioning, meaning binaries compiled with glibc's
+symbol version requirements fail to resolve references under Musl.</li>
+</ul>
+<h3 id="common-failure-symptoms">Common Failure Symptoms</h3>
+<p>When a Java application attempts to load a glibc-dependent native
+library on an Alpine container, the JVM typically triggers one of the
+following errors:</p>
+<ol type="1">
+<li><strong><code>java.lang.UnsatisfiedLinkError</code>:</strong><br />
+Occurs when loading a dynamic library via
+<code>System.loadLibrary()</code> or JNA. The message often cites a
+missing file or an unresolved symbol:
+<pre class="text"><code>java.lang.UnsatisfiedLinkError: /tmp/libexample.so: Error loading shared library ld-linux-x86-64.so.2: No such file or directory</code></pre></li>
+<li><strong>Missing Interpreter Errors:</strong><br />
+When attempting to execute a standalone native binary (such as a GraalVM
+native image or a tool like <code>jcmd</code>), the shell may report:
+<pre class="text"><code>sh: ./my-native-image: not found</code></pre>
+Even though the file exists, the system cannot find the glibc dynamic
+interpreter referenced in the binary's ELF header.</li>
+</ol>
+<h3 id="affected-components-in-the-java-ecosystem">Affected Components
+in the Java Ecosystem</h3>
+<p>The issue does not affect pure Java bytecode running on an
+Alpine-compatible JVM (e.g., standard Alpine <code>openjdk</code>
+packages), as the JVM itself is compiled against Musl. Instead, it
+impacts:</p>
+<ul>
+<li><strong>Embedded Native Dependencies:</strong> Commonly used
+libraries that embed native C/C++ code inside JAR files, such as
+SQLite-JDBC, Snappy-Java, RocksDB, Netty's native transport layers
+(epoll), and OpenCV.</li>
+<li><strong>GraalVM Native Images:</strong> Precompiled native
+executables built in non-Alpine environments without explicit Musl
+targeting.</li>
+<li><strong>Custom JNI/JNA Bindings:</strong> Proprietary C/C++
+libraries compiled on developer workstations or standard CI/CD runners
+without Musl cross-compilation.</li>
+</ul>
+<h3 id="solutions-and-workarounds">Solutions and Workarounds</h3>
+<h4 id="1-use-musl-compatible-library-builds">1. Use Musl-Compatible
+Library Builds</h4>
+<p>Modern Java libraries frequently package Alpine-specific binaries
+alongside their glibc counterparts. Ensure your dependencies are up to
+date. Many projects now ship multi-platform native libraries containing
+separate <code>.so</code> files explicitly compiled against
+<code>musl</code>.</p>
+<h4 id="2-build-graalvm-native-images-statically-with-musl">2. Build
+GraalVM Native Images Statically with Musl</h4>
+<p>If generating standalone executables using GraalVM Native Image,
+produce a fully static binary using the Musl toolchain. Pass the
+<code>--static --libc=musl</code> flags during compilation:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">native-image</span> <span class="at">--static</span> <span class="at">--libc</span><span class="op">=</span>musl <span class="at">-jar</span> my-application.jar</span></code></pre></div>
+<p>This bundles all required C standard library routines into the output
+executable, removing any runtime dynamic linker dependencies.</p>
+<h4 id="3-install-compatibility-layers-gcompat-or-glibc-for-alpine">3.
+Install Compatibility Layers (gcompat or glibc for Alpine)</h4>
+<p>If rebuilding the native library is not an option, you can add a
+compatibility layer directly to the Alpine image:</p>
+<ul>
+<li><strong><code>gcompat</code>:</strong> A Musl-compatible layer
+providing glibc-compatible interfaces. Install it via:
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">apk</span> add <span class="at">--no-cache</span> gcompat</span></code></pre></div></li>
+<li><strong>Community glibc Packages:</strong> Third-party Alpine
+packages can install a parallel glibc environment inside the container
+to provide the missing linker and symbols.</li>
+</ul>
+<h4 id="4-switch-to-a-minimal-glibc-based-image">4. Switch to a Minimal
+Glibc-Based Image</h4>
+<p>If native performance, thread behavior, and broad dependency support
+are required without the operational overhead of resolving linking
+mismatches, consider replacing Alpine with minimal glibc-based container
+bases such as <code>debian-slim</code>, <code>ubuntu-minimal</code>, or
+Google's <code>distroless</code> (Java/glibc variants). These images
+preserve a small footprint while ensuring full out-of-the-box
+compatibility with the wider Java native ecosystem.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

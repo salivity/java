@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Memory Model Happens-Before Relationships - java</title>
+    <meta name="description" content="The Java Memory Model (JMM) relies on the "happens-before" relationship to guarantee memory visibility and execution ordering across multiple concurrent threads. Without these guarantees, modern compilers, Java Virtual Machines (JVMs), and multi-core pro">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-memory-model-happens-before-relationships">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Memory Model Happens-Before Relationships - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-memory-model-happens-before-relationships" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Memory Model (JMM) relies on the "happens-before" relationship to guarantee memory visibility and execution ordering across multiple concurrent threads. Without these guarantees, modern compilers, Java Virtual Machines (JVMs), and multi-core pro" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-memory-model-happens-before-relationships">Java Memory
+Model Happens-Before Relationships</h1>
+<p>The Java Memory Model (JMM) relies on the "happens-before"
+relationship to guarantee memory visibility and execution ordering
+across multiple concurrent threads. Without these guarantees, modern
+compilers, Java Virtual Machines (JVMs), and multi-core processors may
+reorder instructions or cache variable values in registers, leading to
+data races and stale reads. This article explains what the
+happens-before relationship is, why it is essential for concurrent
+programming, and the specific program rules defined by the Java language
+specification that establish these ordering guarantees.</p>
+<h2 id="what-is-a-happens-before-relationship">What is a Happens-Before
+Relationship?</h2>
+<p>In Java, a happens-before relationship between two operations, <span
+class="math inline">\(A\)</span> and <span
+class="math inline">\(B\)</span> (denoted as <span
+class="math inline">\(A \prec B\)</span>), ensures that memory writes
+performed by operation <span class="math inline">\(A\)</span> are
+guaranteed to be visible to operation <span
+class="math inline">\(B\)</span>. It also ensures that the execution of
+<span class="math inline">\(A\)</span> completes logically before the
+execution of <span class="math inline">\(B\)</span> begins.</p>
+<p>If no happens-before relationship exists between a write operation
+and a subsequent read operation on the same variable, the JVM makes no
+guarantees about when the write will be visible to the reading thread,
+resulting in a data race.</p>
+<h2 id="the-core-happens-before-rules">The Core Happens-Before
+Rules</h2>
+<p>The Java Language Specification (JLS §17.4.5) defines a set of
+specific rules that automatically establish happens-before
+orderings:</p>
+<h3 id="1-program-order-rule">1. Program Order Rule</h3>
+<p>Within an individual thread, each statement happens-before every
+statement that appears later in that thread's program source order.
+While the runtime or CPU may reorder instructions internally for
+performance, it may only do so if the observable outcome within that
+single thread does not change (the "as-if-serial" semantics).</p>
+<h3 id="2-monitor-lock-rule">2. Monitor Lock Rule</h3>
+<p>An unlock action on an intrinsic lock (such as exiting a
+<code>synchronized</code> block or method) happens-before every
+subsequent lock acquisition on that same monitor. Any modifications made
+by a thread before releasing a lock are flushed to main memory and made
+visible to whichever thread acquires that same lock next.</p>
+<h3 id="3-volatile-variable-rule">3. Volatile Variable Rule</h3>
+<p>A write to a <code>volatile</code> variable happens-before every
+subsequent read of that same <code>volatile</code> variable. Writes to
+volatile fields bypass thread-local CPU caches and write directly to
+main memory, while reads invalidate local caches and pull directly from
+main memory.</p>
+<h3 id="4-thread-start-rule">4. Thread Start Rule</h3>
+<p>A call to <code>Thread.start()</code> on a new thread happens-before
+any action executed by that started thread. Variables initialized by the
+parent thread prior to calling <code>start()</code> are guaranteed to be
+visible inside the child thread's <code>run()</code> method.</p>
+<h3 id="5-thread-termination-rule">5. Thread Termination Rule</h3>
+<p>All actions inside a thread happen-before any other thread detects
+that the thread has terminated, whether by returning successfully from
+<code>Thread.join()</code> or by observing <code>Thread.isAlive()</code>
+return <code>false</code>.</p>
+<h3 id="6-interruption-rule">6. Interruption Rule</h3>
+<p>A thread invoking <code>interrupt()</code> on another thread
+happens-before the interrupted thread detects that interruption, whether
+by catching an <code>InterruptedException</code> or by querying
+<code>Thread.isInterrupted()</code>.</p>
+<h3 id="7-finalizer-and-final-fields-rules">7. Finalizer and Final
+Fields Rules</h3>
+<ul>
+<li><strong>Object Construction:</strong> The end of a constructor for
+an object happens-before the start of the finalizer for that
+object.</li>
+<li><strong>Safe Publication:</strong> An object with <code>final</code>
+fields whose reference is properly constructed and safely published
+ensures that any thread reading the object will observe the correctly
+initialized values of those <code>final</code> fields without explicit
+synchronization.</li>
+</ul>
+<h3 id="8-transitivity">8. Transitivity</h3>
+<p>If operation <span class="math inline">\(A\)</span> happens-before
+operation <span class="math inline">\(B\)</span>, and operation <span
+class="math inline">\(B\)</span> happens-before operation <span
+class="math inline">\(C\)</span>, then operation <span
+class="math inline">\(A\)</span> automatically happens-before operation
+<span class="math inline">\(C\)</span>.</p>
+<h2 id="how-transitivity-creates-visibility-guarantees">How Transitivity
+Creates Visibility Guarantees</h2>
+<p>Transitivity allows developers to create synchronization guarantees
+without marking every single variable as <code>volatile</code> or
+wrapping every line in a <code>synchronized</code> block.</p>
+<p>Consider the following scenario:</p>
+<ol type="1">
+<li>Thread 1 updates normal variable <code>x = 42</code>.</li>
+<li>Thread 1 writes to volatile variable <code>flag = true</code>.</li>
+<li>Thread 2 reads <code>flag == true</code>.</li>
+<li>Thread 2 reads variable <code>x</code>.</li>
+</ol>
+<p>By the <strong>Program Order Rule</strong>, writing
+<code>x = 42</code> happens-before writing <code>flag = true</code>. By
+the <strong>Volatile Variable Rule</strong>, writing
+<code>flag = true</code> happens-before Thread 2 reading
+<code>flag</code>. By the <strong>Transitivity Rule</strong>, the write
+to <code>x = 42</code> happens-before Thread 2 reads <code>x</code>.
+Consequently, Thread 2 is guaranteed to observe <code>x</code> as
+<code>42</code>.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

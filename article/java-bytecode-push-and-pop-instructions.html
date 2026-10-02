@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Bytecode Push and Pop Instructions - java</title>
+    <meta name="description" content="The Java Virtual Machine (JVM) is a stack-based execution engine that uses an operand stack to evaluate expressions, pass method arguments, and store return values. This article outlines the standard bytecode instructions responsible for pushing values o">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-bytecode-push-and-pop-instructions">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Bytecode Push and Pop Instructions - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-bytecode-push-and-pop-instructions" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Virtual Machine (JVM) is a stack-based execution engine that uses an operand stack to evaluate expressions, pass method arguments, and store return values. This article outlines the standard bytecode instructions responsible for pushing values o" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-bytecode-push-and-pop-instructions">Java Bytecode Push and
+Pop Instructions</h1>
+<p>The Java Virtual Machine (JVM) is a stack-based execution engine that
+uses an operand stack to evaluate expressions, pass method arguments,
+and store return values. This article outlines the standard bytecode
+instructions responsible for pushing values onto and popping values off
+the operand stack, categorized by their specific behavior, operand
+types, and memory models.</p>
+<h2 id="pushing-constants-to-the-operand-stack">Pushing Constants to the
+Operand Stack</h2>
+<p>Constant push instructions load hardcoded literal values or pool
+references directly onto the top of the stack.</p>
+<h3 id="1-inherent-constant-instructions">1. Inherent Constant
+Instructions</h3>
+<p>These instructions embed the value directly within the opcode itself
+without requiring extra operand bytes:</p>
+<ul>
+<li><strong><code>aconst_null</code></strong>: Pushes a
+<code>null</code> object reference.</li>
+<li><strong><code>iconst_m1</code> to <code>iconst_5</code></strong>:
+Pushes integer constants <code>-1</code>, <code>0</code>,
+<code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, or
+<code>5</code>.</li>
+<li><strong><code>lconst_0</code>, <code>lconst_1</code></strong>:
+Pushes 64-bit <code>long</code> values <code>0L</code> or
+<code>1L</code> (occupies two stack slots).</li>
+<li><strong><code>fconst_0</code>, <code>fconst_1</code>,
+<code>fconst_2</code></strong>: Pushes 32-bit <code>float</code> values
+<code>0.0f</code>, <code>1.0f</code>, or <code>2.0f</code>.</li>
+<li><strong><code>dconst_0</code>, <code>dconst_1</code></strong>:
+Pushes 64-bit <code>double</code> values <code>0.0d</code> or
+<code>1.0d</code> (occupies two stack slots).</li>
+</ul>
+<h3 id="2-immediate-byte-and-short-instructions">2. Immediate Byte and
+Short Instructions</h3>
+<p>For small numbers outside the inherent range, the JVM provides
+instructions that read following bytes:</p>
+<ul>
+<li><strong><code>bipush &lt;byte&gt;</code></strong>: Takes an 8-bit
+signed byte, sign-extends it to a 32-bit integer, and pushes it onto the
+stack.</li>
+<li><strong><code>sipush &lt;short&gt;</code></strong>: Takes a 16-bit
+signed short, sign-extends it to a 32-bit integer, and pushes it onto
+the stack.</li>
+</ul>
+<h3 id="3-constant-pool-push-instructions-ldc">3. Constant Pool Push
+Instructions (<code>ldc</code>)</h3>
+<p>For arbitrary constants, strings, floating-point numbers, and class
+references, instructions pull data from the runtime constant pool:</p>
+<ul>
+<li><strong><code>ldc &lt;index&gt;</code></strong>: Pushes an 8-bit
+indexed item (e.g., an int, float, string literal, or class
+reference).</li>
+<li><strong><code>ldc_w &lt;index&gt;</code></strong>: Pushes an item
+from a wider 16-bit constant pool index.</li>
+<li><strong><code>ldc2_w &lt;index&gt;</code></strong>: Pushes a 64-bit
+constant (<code>long</code> or <code>double</code>) using a 16-bit
+index.</li>
+</ul>
+<hr />
+<h2 id="pushing-local-variables-to-the-stack-load-instructions">Pushing
+Local Variables to the Stack (Load Instructions)</h2>
+<p>Values stored in local variable slots are transferred to the operand
+stack via load instructions.</p>
+<ul>
+<li><strong><code>iload</code> / <code>iload_&lt;n&gt;</code></strong>
+(where <code>n</code> is <code>0</code> through <code>3</code>): Pushes
+an integer or boolean/byte/char/short value from a local variable.</li>
+<li><strong><code>lload</code> / <code>lload_&lt;n&gt;</code></strong>:
+Pushes a 64-bit long from a local variable.</li>
+<li><strong><code>fload</code> / <code>fload_&lt;n&gt;</code></strong>:
+Pushes a 32-bit float from a local variable.</li>
+<li><strong><code>dload</code> / <code>dload_&lt;n&gt;</code></strong>:
+Pushes a 64-bit double from a local variable.</li>
+<li><strong><code>aload</code> / <code>aload_&lt;n&gt;</code></strong>:
+Pushes a reference type from a local variable.</li>
+</ul>
+<hr />
+<h2 id="popping-from-the-operand-stack">Popping from the Operand
+Stack</h2>
+<p>Popping instructions remove values from the top of the stack.
+Depending on the opcode, values can be discarded entirely or transferred
+into local variables.</p>
+<h3 id="1-pure-discard-instructions">1. Pure Discard Instructions</h3>
+<p>These instructions remove entries from the stack without writing them
+to memory:</p>
+<ul>
+<li><strong><code>pop</code></strong>: Removes the top 32-bit value from
+the stack (Category 1 computational types: <code>int</code>,
+<code>float</code>, reference).</li>
+<li><strong><code>pop2</code></strong>: Pops either:
+<ul>
+<li>Two 32-bit values (Category 1).</li>
+<li>One 64-bit value (Category 2 computational types: <code>long</code>,
+<code>double</code>).</li>
+</ul></li>
+</ul>
+<h3 id="2-store-instructions-pop-to-local-variable">2. Store
+Instructions (Pop to Local Variable)</h3>
+<p>Store instructions pop the top value off the stack and write it into
+a specific local variable index:</p>
+<ul>
+<li><strong><code>istore</code> /
+<code>istore_&lt;n&gt;</code></strong>: Pops an integer from the stack
+and stores it into a local variable.</li>
+<li><strong><code>lstore</code> /
+<code>lstore_&lt;n&gt;</code></strong>: Pops a long value from the
+stack.</li>
+<li><strong><code>fstore</code> /
+<code>fstore_&lt;n&gt;</code></strong>: Pops a float value from the
+stack.</li>
+<li><strong><code>dstore</code> /
+<code>dstore_&lt;n&gt;</code></strong>: Pops a double value from the
+stack.</li>
+<li><strong><code>astore</code> /
+<code>astore_&lt;n&gt;</code></strong>: Pops an object reference from
+the stack.</li>
+</ul>
+<hr />
+<h2 id="stack-manipulation-duplicate-and-swap">Stack Manipulation:
+Duplicate and Swap</h2>
+<p>In addition to pure push and pop operations, the JVM defines
+instructions to reorder and duplicate values already present on the
+operand stack:</p>
+<ul>
+<li><strong><code>dup</code></strong>: Duplicates the top 32-bit value
+and pushes it back onto the stack.</li>
+<li><strong><code>dup2</code></strong>: Duplicates the top one 64-bit or
+two 32-bit values.</li>
+<li><strong><code>dup_x1</code> / <code>dup_x2</code></strong>:
+Duplicates the top value and inserts it beneath one or two existing
+items.</li>
+<li><strong><code>dup2_x1</code> / <code>dup2_x2</code></strong>:
+Duplicates top Category 2 values and inserts them lower in the
+stack.</li>
+<li><strong><code>swap</code></strong>: Swaps the top two 32-bit values
+on the stack.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

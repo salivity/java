@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How finalize Enables Object Resurrection in Java - java</title>
+    <meta name="description" content="In Java, the finalize method presents a notorious loophole in the standard object lifecycle by allowing an object marked for garbage collection to restore its own reachability. Under normal conditions, once an object becomes unreachable from any Garbage">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-finalize-enables-object-resurrection-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How finalize Enables Object Resurrection in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-finalize-enables-object-resurrection-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, the finalize method presents a notorious loophole in the standard object lifecycle by allowing an object marked for garbage collection to restore its own reachability. Under normal conditions, once an object becomes unreachable from any Garbage" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-finalize-enables-object-resurrection-in-java">How finalize
+Enables Object Resurrection in Java</h1>
+<p>In Java, the <code>finalize</code> method presents a notorious
+loophole in the standard object lifecycle by allowing an object marked
+for garbage collection to restore its own reachability. Under normal
+conditions, once an object becomes unreachable from any Garbage
+Collection (GC) roots, it is considered dead and scheduled for memory
+reclamation. However, the execution of <code>finalize()</code>
+temporarily provides the dying instance with an active thread context,
+enabling it to reassign a reference of itself (<code>this</code>) to a
+live, reachable variable. This process, known as object resurrection,
+breaks the linear progression of an object's lifecycle, leads to
+unpredictable application states, and is the primary reason the
+finalization mechanism was deprecated in modern Java.</p>
+<h3 id="the-normal-java-object-lifecycle">The Normal Java Object
+Lifecycle</h3>
+<p>A standard Java object traverses a predictable lifecycle:</p>
+<ol type="1">
+<li><strong>Creation:</strong> Memory is allocated, and the constructor
+initializes the instance.</li>
+<li><strong>Reachability:</strong> The object is actively referenced by
+running threads, static variables, or other live objects.</li>
+<li><strong>Unreachability:</strong> All strong references to the object
+are dropped, making it a candidate for garbage collection.</li>
+<li><strong>Reclamation:</strong> The JVM frees the object's allocated
+memory and returns it to the heap.</li>
+</ol>
+<p>This lifecycle ensures memory safety by guaranteeing that once an
+object is no longer accessible, it cannot perform further work or alter
+the application state.</p>
+<h3 id="how-finalize-intervenes">How <code>finalize</code>
+Intervenes</h3>
+<p>When a class overrides <code>protected void finalize()</code>, the
+JVM alters how its instances are collected:</p>
+<ol type="1">
+<li><strong>Finalization Registration:</strong> When the object is
+instantiated, the JVM registers it as finalizable.</li>
+<li><strong>Identification by GC:</strong> When the garbage collector
+detects that the object is no longer reachable, it does not immediately
+free its memory. Instead, it moves the object to a finalization
+queue.</li>
+<li><strong>Execution on the Finalizer Thread:</strong> A low-priority,
+JVM-managed thread runs the <code>finalize()</code> method for each
+queued object.</li>
+</ol>
+<p>Because <code>finalize()</code> is an instance method, the object
+receives a valid, temporary <code>this</code> reference while the method
+executes.</p>
+<h3 id="the-mechanism-of-object-resurrection">The Mechanism of Object
+Resurrection</h3>
+<p>Object resurrection occurs directly inside the
+<code>finalize()</code> implementation. If the method assigns
+<code>this</code> to a live reference—such as a static collection, an
+active singleton, or any object reachable from a GC root—a new reference
+chain is created.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> ResurrectedObject <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> ResurrectedObject liveHolder<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">protected</span> <span class="dt">void</span> <span class="fu">finalize</span><span class="op">()</span> <span class="kw">throws</span> <span class="bu">Throwable</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Resurrects the object by exposing &#39;this&#39; to an active GC root</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        liveHolder <span class="op">=</span> <span class="kw">this</span><span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>When the garbage collector inspects the heap in a subsequent cycle,
+it discovers a valid path from a GC root to the instance via
+<code>liveHolder</code>. Consequently, the JVM aborts the collection of
+the object, fully restoring it to the active pool of reachable
+memory.</p>
+<h3 id="consequences-and-lifecycle-breakage">Consequences and Lifecycle
+Breakage</h3>
+<p>Resurrection bypasses fundamental lifecycle safety in several
+distinct ways:</p>
+<ul>
+<li><strong>Single Execution Guarantee:</strong> The Java Virtual
+Machine guarantees that <code>finalize()</code> will run at most once
+per object. If a resurrected object becomes unreachable a second time,
+the JVM will reclaim it immediately without calling
+<code>finalize()</code> again. This leads to silent failures if cleanup
+logic was expected to run prior to actual reclamation.</li>
+<li><strong>Inconsistent State:</strong> Often, cleanup logic partially
+tears down the object's internal resources (closing file descriptors,
+clearing collections, or nullifying pointers) before or during the
+resurrection. The resurrected object re-enters the program in a
+corrupted or half-destroyed state.</li>
+<li><strong>Thread Safety Issues:</strong> The resurrection happens on
+the JVM's finalizer thread rather than the application thread that
+originally owned the object. Unless explicit, defensive synchronization
+is applied, publishing <code>this</code> across threads can result in
+memory visibility bugs and race conditions.</li>
+</ul>
+<h3 id="modern-alternatives">Modern Alternatives</h3>
+<p>To eliminate the safety hazards introduced by
+<code>finalize()</code>, modern Java applications rely on deterministic
+and safer mechanisms:</p>
+<ul>
+<li><strong><code>AutoCloseable</code> with
+<code>try-with-resources</code>:</strong> Provides deterministic,
+synchronous resource reclamation as soon as a block of code
+completes.</li>
+<li><strong><code>java.lang.ref.Cleaner</code>:</strong> Introduced in
+Java 9 to replace <code>finalize()</code>. Cleaners register cleanup
+actions that run asynchronously after an object becomes
+phantom-reachable, ensuring the object itself cannot be resurrected
+because the cleanup task never holds a strong reference to the target
+instance.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

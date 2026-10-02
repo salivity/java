@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maven Build Lifecycle: Compile, Test, and Deploy - java</title>
+    <meta name="description" content="Apache Maven manages Java project workflows through a standardized build lifecycle framework that defines the exact order in which tasks are executed. This article explains how Maven structures its built-in lifecycle phases to transition raw source code">
+    <link rel="canonical" href="https://salivity.github.io/java/article/maven-build-lifecycle-compile-test-and-deploy">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Maven Build Lifecycle: Compile, Test, and Deploy - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/maven-build-lifecycle-compile-test-and-deploy" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Apache Maven manages Java project workflows through a standardized build lifecycle framework that defines the exact order in which tasks are executed. This article explains how Maven structures its built-in lifecycle phases to transition raw source code" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="maven-build-lifecycle-compile-test-and-deploy">Maven Build
+Lifecycle: Compile, Test, and Deploy</h1>
+<p>Apache Maven manages Java project workflows through a standardized
+build lifecycle framework that defines the exact order in which tasks
+are executed. This article explains how Maven structures its built-in
+lifecycle phases to transition raw source code through compilation,
+automated testing, packaging, and final deployment to remote
+repositories.</p>
+<h2 id="understanding-the-build-lifecycle-concept">Understanding the
+Build Lifecycle Concept</h2>
+<p>Maven operates on three built-in build lifecycles:
+<strong>clean</strong> (handles project cleaning), <strong>site</strong>
+(handles project site documentation creation), and
+<strong>default</strong> (handles project build and deployment).</p>
+<p>The <code>default</code> lifecycle manages the entire process from
+compilation to deployment. It consists of sequential, ordered steps
+called <strong>phases</strong>. Executing a specific phase automatically
+executes every preceding phase in that lifecycle. Each phase delegates
+its actual work to underlying goals provided by Maven plugins.</p>
+<h2 id="the-compilation-phases">The Compilation Phases</h2>
+<p>The compilation stage prepares the environment and converts Java
+source code into bytecode:</p>
+<ol type="1">
+<li><strong><code>validate</code></strong>: Validates whether the
+project structure is correct and all necessary metadata in the
+<code>pom.xml</code> is available.</li>
+<li><strong><code>generate-sources</code> /
+<code>process-sources</code></strong>: Generates any needed source code
+(such as annotation-processor generated classes) and modifies them.</li>
+<li><strong><code>process-resources</code></strong>: Copies and filters
+static resources (from <code>src/main/resources</code>) into the target
+output directory so they are available on the runtime classpath.</li>
+<li><strong><code>compile</code></strong>: Invokes the
+<code>maven-compiler-plugin</code> to compile the production source code
+found in <code>src/main/java</code> and places the compiled
+<code>.class</code> files into the <code>target/classes</code>
+directory.</li>
+</ol>
+<h2 id="the-testing-phases">The Testing Phases</h2>
+<p>Maven isolates test execution from production code to ensure
+non-production dependencies do not pollute the final build output:</p>
+<ol type="1">
+<li><strong><code>test-compile</code></strong>: Compiles the source
+files located in <code>src/test/java</code> using the compiled
+production code and test-scoped dependencies on the classpath. Test
+classes are placed into <code>target/test-classes</code>.</li>
+<li><strong><code>process-test-resources</code></strong>: Copies
+configuration files and resources from <code>src/test/resources</code>
+into the test target directory.</li>
+<li><strong><code>test</code></strong>: Executes unit tests using test
+frameworks like JUnit or TestNG via the
+<code>maven-surefire-plugin</code>. If any unit test fails, the build
+halts immediately by default, preventing unverified code from being
+packaged.</li>
+</ol>
+<h2 id="packaging-and-verification">Packaging and Verification</h2>
+<p>Once tests pass successfully, Maven prepares the compiled classes for
+distribution:</p>
+<ol type="1">
+<li><strong><code>package</code></strong>: Assembles the compiled code
+and resources into their distributable format, defined by the
+<code>&lt;packaging&gt;</code> element in <code>pom.xml</code> (e.g.,
+JAR, WAR, or EAR), using plugins such as
+<code>maven-jar-plugin</code>.</li>
+<li><strong><code>pre-integration-test</code> /
+<code>integration-test</code></strong>: Sets up environments and
+executes tests that require the packaged application to be running via
+the <code>maven-failsafe-plugin</code>.</li>
+<li><strong><code>post-integration-test</code></strong>: Cleans up
+resources or environments initialized during integration testing.</li>
+<li><strong><code>verify</code></strong>: Checks integration test
+results to verify the package meets quality criteria.</li>
+</ol>
+<h2 id="the-deployment-phases">The Deployment Phases</h2>
+<p>The final phases distribute the verified artifact:</p>
+<ol type="1">
+<li><strong><code>install</code></strong>: Uses the
+<code>maven-install-plugin</code> to install the package into your local
+machine's repository cache (<code>~/.m2/repository</code>). This allows
+other locally built Maven projects to consume it as a dependency.</li>
+<li><strong><code>deploy</code></strong>: Invoked in a continuous
+integration/continuous deployment (CI/CD) environment. The
+<code>maven-deploy-plugin</code> copies the final artifact, along with
+its associated POM and metadata, to a shared remote repository (such as
+Nexus, Artifactory, or Maven Central) specified in the
+<code>&lt;distributionManagement&gt;</code> section of the project
+configuration.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Does Java Garbage Collection Manage Heap Memory? - java</title>
+    <meta name="description" content="The Java Garbage Collector (GC) automates dynamic memory management by allocating heap space for newly instantiated objects and reclaiming memory occupied by objects that are no longer reachable by the application. Instead of relying on manual deallocati">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-does-java-garbage-collection-manage-heap-memory">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Does Java Garbage Collection Manage Heap Memory? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-does-java-garbage-collection-manage-heap-memory" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Garbage Collector (GC) automates dynamic memory management by allocating heap space for newly instantiated objects and reclaiming memory occupied by objects that are no longer reachable by the application. Instead of relying on manual deallocati" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-does-java-garbage-collection-manage-heap-memory">How Does
+Java Garbage Collection Manage Heap Memory?</h1>
+<p>The Java Garbage Collector (GC) automates dynamic memory management
+by allocating heap space for newly instantiated objects and reclaiming
+memory occupied by objects that are no longer reachable by the
+application. Instead of relying on manual deallocation, Java tracks
+reference trees rooted in active execution contexts, divides the heap
+into distinct generations based on object lifespan, and executes
+specialized collection algorithms to minimize throughput overhead and
+pause times.</p>
+<h2 id="core-memory-layout-the-generational-hypothesis">Core Memory
+Layout: The Generational Hypothesis</h2>
+<p>The design of the Java Virtual Machine (JVM) heap relies heavily on
+the <strong>Weak Generational Hypothesis</strong>, which observes two
+primary patterns in enterprise workloads: most objects become
+unreachable shortly after creation, and references from older objects to
+newer objects are relatively rare.</p>
+<p>To capitalize on this behavior, the heap is split into two primary
+physical areas:</p>
+<ul>
+<li><p><strong>Young Generation:</strong> The landing zone for newly
+created instances. It is subdivided into:</p></li>
+<li><p><strong>Eden Space:</strong> Where all objects are initially
+allocated.</p></li>
+<li><p><strong>Survivor Spaces (S0 and S1 / From and To):</strong> Two
+semi-spaces of identical size used to retain objects that survive
+initial collection cycles.</p></li>
+<li><p><strong>Old Generation (Tenured):</strong> Reserved for
+long-lived objects that have survived multiple collection cycles in the
+Young Generation, as well as exceptionally large objects that bypass
+Young Generation buffers entirely to prevent excessive copying
+overhead.</p></li>
+</ul>
+<h2 id="the-allocation-lifecycle-and-tlabs">The Allocation Lifecycle and
+TLABs</h2>
+<p>Allocation performance is critical in multi-threaded Java
+applications. To avoid thread contention on a single heap allocation
+pointer, the JVM uses <strong>Thread-Local Allocation Buffers
+(TLABs)</strong>.</p>
+<p>Each thread is assigned a dedicated chunk within the Eden space. When
+a thread requests memory via the <code>new</code> keyword, the JVM uses
+a bump-the-pointer technique inside that thread's local TLAB:</p>
+<ol type="1">
+<li>The thread checks if its TLAB has sufficient contiguous space for
+the object.</li>
+<li>If space exists, the pointer advances by the size of the instance,
+returning the memory address without synchronization locks.</li>
+<li>If the TLAB is full, the thread requests a new buffer from the
+shared Eden space (requiring synchronization) or allocates directly in
+shared Eden if the object exceeds TLAB limits.</li>
+</ol>
+<h2
+id="identifying-unreachable-objects-tracing-reachability">Identifying
+Unreachable Objects: Tracing Reachability</h2>
+<p>The garbage collector determines whether an object's memory can be
+reclaimed through <strong>Reachability Analysis</strong> rather than
+reference counting. Reference counting fails to detect circular
+references, whereas reachability analysis determines viability based on
+accessibility from a set of starting references known as <strong>GC
+Roots</strong>.</p>
+<p>GC Roots include:</p>
+<ul>
+<li>Local variables and parameters active within thread call
+stacks.</li>
+<li>Active Java threads.</li>
+<li>Static fields held by loaded classes.</li>
+<li>JNI (Java Native Interface) global and local references.</li>
+<li>Objects utilized as synchronization monitors.</li>
+</ul>
+<p>During collection, the GC traverses object references starting at
+these roots. Any object reachable through a continuous chain of
+references is marked as alive; any unvisited object is marked for
+reclamation.</p>
+<h2 id="reclamation-minor-vs-major-collections">Reclamation: Minor vs.
+Major Collections</h2>
+<p>Garbage collection runs at different intervals and granularities
+across the heap regions:</p>
+<h3 id="minor-gc-young-generation">Minor GC (Young Generation)</h3>
+<p>When Eden exhausts its available capacity, the JVM triggers a Minor
+GC:</p>
+<ol type="1">
+<li>Live objects in Eden and the active Survivor space ("From") are
+identified.</li>
+<li>Survivors are copied into the alternate Survivor space ("To"),
+packing them contiguously to eliminate fragmentation.</li>
+<li>Eden and the previously active Survivor space are cleared
+entirely.</li>
+<li>Each time an object survives a cycle, its internal tenure age
+increments. Once an object exceeds the aging threshold (configured by
+<code>-XX:MaxTenuringThreshold</code>), it is promoted to the Old
+Generation.</li>
+</ol>
+<h3 id="major-or-full-gc-old-generation">Major or Full GC (Old
+Generation)</h3>
+<p>When the Old Generation approaches capacity or fails to satisfy an
+incoming promotion from the Young Generation, a collection cycle
+targeting tenured memory begins. Because the Old Generation contains
+significantly more live references, algorithms prioritize low
+fragmentation and low pause times using techniques such as
+mark-sweep-compact or concurrent region evacuation.</p>
+<h2 id="modern-garbage-collection-implementations">Modern Garbage
+Collection Implementations</h2>
+<p>Modern production JVMs provide distinct collectors tailored for
+differing latency and throughput constraints:</p>
+<ul>
+<li><strong>G1 GC (Garbage-First):</strong> Partitions the heap into
+equal-sized, non-contiguous regions rather than static memory blocks. It
+continuously tracks the volume of reclaimable space across regions and
+prioritizes collecting regions containing the most garbage within a
+user-defined pause-time target.</li>
+<li><strong>ZGC and Shenandoah:</strong> Low-latency collectors that
+perform marking, evacuation, and reference updating concurrently with
+application thread execution. By using colored pointers, load barriers,
+or Brooks pointers, they reduce stop-the-world pauses to sub-millisecond
+ranges regardless of heap size.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Algorithm Does Java Collections.sort Use? - java</title>
+    <meta name="description" content="In Java, sorting object collections via Collections.sort() is powered by TimSort, an adaptive, stable, and hybrid sorting algorithm derived from Merge Sort and Insertion Sort. This article explains how Collections.sort() executes internally, why Java rel">
+    <link rel="canonical" href="https://salivity.github.io/java/article/what-algorithm-does-java-collections-sort-use">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What Algorithm Does Java Collections.sort Use? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/what-algorithm-does-java-collections-sort-use" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, sorting object collections via Collections.sort() is powered by TimSort, an adaptive, stable, and hybrid sorting algorithm derived from Merge Sort and Insertion Sort. This article explains how Collections.sort() executes internally, why Java rel" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="what-algorithm-does-java-collectionssort-use">What Algorithm
+Does Java Collections.sort Use?</h1>
+<p>In Java, sorting object collections via
+<code>Collections.sort()</code> is powered by <strong>TimSort</strong>,
+an adaptive, stable, and hybrid sorting algorithm derived from Merge
+Sort and Insertion Sort. This article explains how
+<code>Collections.sort()</code> executes internally, why Java relies on
+TimSort for reference types, and the performance characteristics that
+make it ideal for real-world applications.</p>
+<h3 id="how-collectionssort-works-under-the-hood">How
+<code>Collections.sort()</code> Works Under the Hood</h3>
+<p>When you invoke <code>Collections.sort(List&lt;T&gt; list)</code>,
+the method does not implement sorting logic directly. Since Java 8, it
+delegates execution to the <code>List.sort()</code> method, passing a
+<code>null</code> comparator (or a custom comparator if provided).</p>
+<p>The list is converted into an array of objects, and Java calls
+<code>Arrays.sort()</code>. For arrays of objects,
+<code>Arrays.sort()</code> utilizes either
+<code>ComparableTimSort</code> (when elements implement
+<code>Comparable</code>) or <code>TimSort</code> (when a custom
+<code>Comparator</code> is supplied). Once sorted, the elements are
+written back into the original list structure.</p>
+<p>Prior to Java 7, Java used a modified version of classic Merge Sort
+for object collections. Since Java 7, TimSort has been the default
+implementation, though developers can still opt into the legacy merge
+sort using the <code>-Djava.util.Arrays.useLegacyMergeSort=true</code>
+system flag.</p>
+<h3 id="understanding-the-timsort-algorithm">Understanding the TimSort
+Algorithm</h3>
+<p>Originally created by Tim Peters in 2002 for use in Python, TimSort
+is designed to perform exceptionally well on real-world data, which
+often contains pre-sorted patterns or "natural runs."</p>
+<ol type="1">
+<li><strong>Run Identification</strong>: The algorithm scans the array
+to identify continuous sequences of ordered elements, called "runs." If
+a run is descending, it reverses it in place so it becomes strictly
+ascending.</li>
+<li><strong>Binary Insertion Sort</strong>: If a detected run is smaller
+than a predetermined minimum size (typically between 32 and 64 elements,
+known as <code>minrun</code>), TimSort uses binary insertion sort to
+expand the run to that minimum size. Insertion sort is extremely fast
+for small datasets.</li>
+<li><strong>Merging Runs</strong>: As runs are identified and adjusted,
+they are pushed onto a stack. TimSort then merges adjacent runs using a
+balanced, highly optimized merge sort strategy until the entire array is
+sorted.</li>
+</ol>
+<h3 id="why-timsort-is-chosen-for-java-objects">Why TimSort is Chosen
+for Java Objects</h3>
+<p>Java uses <strong>Dual-Pivot Quicksort</strong> for primitive arrays
+(such as <code>int[]</code> or <code>double[]</code>), but deliberately
+uses <strong>TimSort</strong> for object collections due to two primary
+factors:</p>
+<ul>
+<li><strong>Stability</strong>: A sorting algorithm is stable if it
+preserves the relative order of elements with equal keys. In
+object-oriented programming, stability is critical (for example, sorting
+a list of employees by salary and then by department). TimSort
+guarantees stability, whereas standard Quicksort variants do not.</li>
+<li><strong>Adaptivity</strong>: Real-world object data is rarely
+entirely random. TimSort takes advantage of existing patterns,
+drastically reducing comparisons and element shifts.</li>
+</ul>
+<h3 id="time-and-space-complexity">Time and Space Complexity</h3>
+<ul>
+<li><strong>Best Case</strong>: <span
+class="math inline">\(O(n)\)</span> when the array is already sorted or
+nearly sorted, requiring only a single pass to verify the runs.</li>
+<li><strong>Average Case</strong>: <span class="math inline">\(O(n \log
+n)\)</span> for general datasets.</li>
+<li><strong>Worst Case</strong>: <span class="math inline">\(O(n \log
+n)\)</span>, preventing performance degradation on adversarial or poorly
+distributed input.</li>
+<li><strong>Space Complexity</strong>: <span
+class="math inline">\(O(n)\)</span> auxiliary memory required to store
+temporary runs during the merge phase.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typical Java Cache Line Size for Data Alignment - java</title>
+    <meta name="description" content="In multi-threaded Java applications, CPU memory subsystem performance depends heavily on how data maps to CPU cache lines to prevent issues like false sharing. This article covers the cache line size typically assumed by the Java runtime when aligning da">
+    <link rel="canonical" href="https://salivity.github.io/java/article/typical-java-cache-line-size-for-data-alignment">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Typical Java Cache Line Size for Data Alignment - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/typical-java-cache-line-size-for-data-alignment" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In multi-threaded Java applications, CPU memory subsystem performance depends heavily on how data maps to CPU cache lines to prevent issues like false sharing. This article covers the cache line size typically assumed by the Java runtime when aligning da" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="typical-java-cache-line-size-for-data-alignment">Typical Java
+Cache Line Size for Data Alignment</h1>
+<p>In multi-threaded Java applications, CPU memory subsystem performance
+depends heavily on how data maps to CPU cache lines to prevent issues
+like false sharing. This article covers the cache line size typically
+assumed by the Java runtime when aligning data, the distinction between
+object alignment and cache line alignment, and the specific mechanisms
+HotSpot uses to isolate performance-critical variables in hardware
+memory structures.</p>
+<h3 id="the-typical-assumed-cache-line-size">The Typical Assumed Cache
+Line Size</h3>
+<p>The Java Virtual Machine (JVM), specifically the standard OpenJDK
+HotSpot implementation, typically assumes a cache line size of
+<strong>64 bytes</strong> on modern hardware architectures, including
+x86-64 and ARM64.</p>
+<p>While the exact size is ultimately determined by the host CPU, 64
+bytes has been the industry standard for mainstream consumer and server
+processors for decades. The JVM queries the operating system and CPU
+capabilities at startup to confirm this geometry, but core HotSpot
+design heuristics and padding defaults are tailored around 64-byte
+boundaries.</p>
+<h3 id="object-alignment-vs-cache-line-alignment">Object Alignment vs.
+Cache Line Alignment</h3>
+<p>It is important to separate regular object alignment from cache-level
+alignment:</p>
+<ul>
+<li><strong>Object Alignment:</strong> By default, HotSpot aligns
+objects on an <strong>8-byte</strong> boundary
+(<code>-XX:ObjectAlignmentInBytes=8</code>). This allows the JVM to use
+compressed object pointers (Compressed Oops) on heaps up to 32 GB. This
+alignment is designed for memory density and pointer addressing
+efficiency, not cache-line isolation.</li>
+<li><strong>Cache Line Alignment:</strong> Cache line alignment is
+applied to prevent two independent variables from residing within the
+same 64-byte chunk of memory, which avoids false sharing across CPU
+cores.</li>
+</ul>
+<h3 id="cache-line-padding-and-false-sharing">Cache Line Padding and
+False Sharing</h3>
+<p>When multiple threads read and write to independent fields located
+within the same 64-byte cache line, the CPU cores must continuously
+invalidate and synchronize that entire line across their L1/L2 caches.
+This phenomenon, known as false sharing, introduces substantial
+latency.</p>
+<p>To address this, Java provides the
+<code>@jdk.internal.vm.annotation.Contended</code> annotation
+(originally <code>@sun.misc.Contended</code>). When a field or class is
+marked with this annotation, the runtime introduces padding to isolate
+the data.</p>
+<p>Interestingly, while the baseline cache line size is 64 bytes,
+HotSpot's default padding configuration uses <strong>128 bytes</strong>
+via the flag:</p>
+<pre class="text"><code>-XX:ContendedPaddingWidth=128</code></pre>
+<p>The runtime defaults to 128 bytes rather than 64 bytes to mitigate
+the effects of modern CPU hardware prefetchers (such as adjacent cache
+line prefetchers found in Intel and AMD processors). These hardware
+units frequently fetch two consecutive 64-byte cache lines at once. By
+enforcing a 128-byte padding isolation, the runtime guarantees that the
+annotated field will not share a line pair with any neighboring memory
+locations.</p>
+<h3 id="runtime-configuration">Runtime Configuration</h3>
+<p>Developers can inspect and modify these alignment behaviors using JVM
+command-line options:</p>
+<ul>
+<li><code>-XX:ContendedPaddingWidth=&lt;bytes&gt;</code>: Adjusts the
+padding width used by <code>@Contended</code> (default is usually 128,
+but can be set to 64 if adjacent prefetching is disabled).</li>
+<li><code>-XX:-RestrictContended</code>: Enables the use of
+<code>@Contended</code> outside the JDK internal packages in application
+code.</li>
+</ul>
+<p>In summary, while the Java runtime assumes a base hardware cache line
+size of 64 bytes, it typically enforces 128-byte data isolation
+boundaries for concurrent padding to account for both the cache line
+size and hardware-level prefetching.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequential Consistency and the Java Memory Model - java</title>
+    <meta name="description" content="This article explores the concept of sequential consistency in concurrent computing and examines how it is addressed by the Java Memory Model (JMM). It defines sequential consistency, explains the conditions required for a system to satisfy this model, a">
+    <link rel="canonical" href="https://salivity.github.io/java/article/sequential-consistency-and-the-java-memory-model">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Sequential Consistency and the Java Memory Model - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/sequential-consistency-and-the-java-memory-model" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the concept of sequential consistency in concurrent computing and examines how it is addressed by the Java Memory Model (JMM). It defines sequential consistency, explains the conditions required for a system to satisfy this model, a" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="sequential-consistency-and-the-java-memory-model">Sequential
+Consistency and the Java Memory Model</h1>
+<p>This article explores the concept of sequential consistency in
+concurrent computing and examines how it is addressed by the Java Memory
+Model (JMM). It defines sequential consistency, explains the conditions
+required for a system to satisfy this model, and clarifies whether Java
+guarantees sequentially consistent execution when programs contain data
+races.</p>
+<h2 id="what-is-sequential-consistency">What Is Sequential
+Consistency?</h2>
+<p>Sequential consistency is a consistency model first formally defined
+by Leslie Lamport in 1979. It serves as an intuitive benchmark for
+concurrent systems, describing how developers naturally expect
+multithreaded programs to execute.</p>
+<p>A system is sequentially consistent if it satisfies two core
+conditions:</p>
+<ol type="1">
+<li><strong>Program Order:</strong> The operations of each individual
+processor or thread appear to execute in the exact order specified by
+the program code.</li>
+<li><strong>Single Global Order:</strong> All operations appear to
+execute in a single, total, interleaved order that is observed
+identically by every thread in the system.</li>
+</ol>
+<p>In a sequentially consistent environment, memory acts like a
+centralized global storage unit with a switch that connects to one
+thread at a time. Every read operation immediately sees the value
+written by the most recent write operation in this global execution
+sequence.</p>
+<h2 id="the-java-memory-model-and-sequential-consistency">The Java
+Memory Model and Sequential Consistency</h2>
+<p>Modern hardware architectures and optimizing compilers regularly
+reorder instructions, utilize store buffers, and rely on local CPU
+caches. Enforcing global sequential consistency for every memory
+operation imposes severe performance penalties. Consequently, the Java
+Memory Model (JMM) does not enforce sequential consistency across all
+executions by default.</p>
+<p>Instead, the JMM provides a formal guarantee known as
+<strong>Sequential Consistency for Data-Race-Free (SC-DRF)</strong>
+programs. If a Java program is correctly synchronized—meaning it
+contains no data races—the JMM guarantees that the execution will appear
+sequentially consistent.</p>
+<p>Synchronization in Java is achieved using primitives such as the
+<code>synchronized</code> keyword, <code>volatile</code> variables, and
+classes from the <code>java.util.concurrent</code> package. These
+constructs establish <em>happens-before</em> relationships, ensuring
+that memory writes by one thread become visibly ordered to reads by
+other threads.</p>
+<h2
+id="does-the-jmm-guarantee-sequential-consistency-for-data-races">Does
+the JMM Guarantee Sequential Consistency for Data Races?</h2>
+<p>No, the Java Memory Model does <strong>not</strong> guarantee
+sequential consistency for programs that contain data races.</p>
+<p>A data race occurs when:</p>
+<ul>
+<li>Two or more threads concurrently access the same memory location
+(variable).</li>
+<li>At least one of these accesses is a write.</li>
+<li>The accesses are not ordered by a <em>happens-before</em>
+relationship.</li>
+</ul>
+<p>When a data race is present, the JMM permits compilers to reorder
+instructions, CPUs to flush caches asynchronously, and threads to
+observe actions in different orders. For example, if Thread A writes to
+variable <code>x</code> and then to variable <code>y</code>, Thread B
+may observe the update to <code>y</code> before it observes the update
+to <code>x</code>. This directly violates the program order requirement
+of sequential consistency.</p>
+<h3 id="what-the-jmm-guarantees-under-data-races">What the JMM
+Guarantees Under Data Races</h3>
+<p>Although sequential consistency is abandoned in the presence of data
+races, the JMM does not allow arbitrary behavior. Java still enforces
+certain safety boundaries:</p>
+<ul>
+<li><strong>Type Safety:</strong> The runtime prevents memory
+corruption. A thread will never read an arbitrary bit-pattern that
+violates object typing.</li>
+<li><strong>Out-of-Thin-Air Safety:</strong> A variable will only hold a
+value that was actually written to it by some thread, or its default
+initial value (such as <code>0</code> or <code>null</code>). Values
+cannot materialize out of nowhere.</li>
+<li><strong>Primitive Integrity:</strong> With the exception of
+non-volatile 64-bit primitives (<code>long</code> and
+<code>double</code> on some 32-bit platforms), reads and writes to
+primitive references are atomic.</li>
+</ul>
+<p>In summary, the Java Memory Model only guarantees sequential
+consistency for data-race-free programs. Once a program exhibits a data
+race, sequential consistency is lost, leading to non-intuitive
+reorderings and visibility anomalies.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

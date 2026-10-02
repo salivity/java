@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java FileLock: Prevent Multi-Process File Corruption - java</title>
+    <meta name="description" content="Concurrent file access across multiple Java Virtual Machines (JVMs) or external operating system processes presents a severe risk of data corruption, race conditions, and inconsistent reads. While standard Java synchronization primitives like synchronize">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-file-lock-prevent-multi-process-file-corruption">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java FileLock: Prevent Multi-Process File Corruption - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-file-lock-prevent-multi-process-file-corruption" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Concurrent file access across multiple Java Virtual Machines (JVMs) or external operating system processes presents a severe risk of data corruption, race conditions, and inconsistent reads. While standard Java synchronization primitives like synchronize" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-filelock-prevent-multi-process-file-corruption">Java
+FileLock: Prevent Multi-Process File Corruption</h1>
+<p>Concurrent file access across multiple Java Virtual Machines (JVMs)
+or external operating system processes presents a severe risk of data
+corruption, race conditions, and inconsistent reads. While standard Java
+synchronization primitives like <code>synchronized</code> blocks and
+<code>ReentrantLock</code> control concurrency between threads within a
+single JVM, they cannot coordinate actions across separate process
+boundaries. This article explains the role of Java's
+<code>FileLock</code> mechanism, how it leverages the underlying
+operating system kernel to manage inter-process synchronization, and
+best practices for implementing it effectively to safeguard data
+integrity.</p>
+<h3 id="the-limits-of-in-memory-synchronization">The Limits of In-Memory
+Synchronization</h3>
+<p>Standard Java synchronization operates exclusively within the memory
+space of a single JVM instance. If two separate applications—or two
+distinct instances of the same application—attempt to write to
+<code>/var/log/data.txt</code> simultaneously, neither JVM is aware of
+the other's internal locks. Without an external coordinator, their
+writes can interleave, overwriting headers, truncating files
+mid-operation, or creating partially written records that leave the file
+unreadable.</p>
+<h3 id="how-filelock-bridges-the-gap">How FileLock Bridges the Gap</h3>
+<p>Introduced in Java NIO, <code>java.nio.channels.FileLock</code>
+offloads file synchronization from the JVM memory layer directly to the
+operating system's kernel-level locking mechanisms (such as
+<code>fcntl</code> on POSIX systems or <code>LockFileEx</code> on
+Windows).</p>
+<p>By integrating with the OS, <code>FileLock</code> establishes an
+authority that all running processes respect. When a process acquires a
+file lock through a <code>FileChannel</code>, any other process
+requesting an incompatible lock on the same file region will either be
+forced to wait or immediately receive an indication that the resource is
+occupied.</p>
+<h3 id="shared-vs-exclusive-locks">Shared vs. Exclusive Locks</h3>
+<p><code>FileLock</code> provides two primary locking modes to maximize
+throughput while preserving integrity:</p>
+<ul>
+<li><strong>Exclusive Locks (Write Locks):</strong> An exclusive lock
+prevents all other processes from acquiring any type of lock (shared or
+exclusive) on the specified file or byte range. This mode is mandatory
+during modification operations (writing, appending, truncating) to
+guarantee that no other process reads an incomplete state or performs a
+concurrent write.</li>
+<li><strong>Shared Locks (Read Locks):</strong> A shared lock allows
+multiple processes to concurrently read the locked region while
+prohibiting any process from obtaining an exclusive write lock. This
+ensures that data remains immutable for the duration of the read
+operations.</li>
+</ul>
+<h3 id="blocking-vs-non-blocking-acquisition">Blocking vs. Non-Blocking
+Acquisition</h3>
+<p>Java offers two strategies for acquiring a lock via
+<code>FileChannel</code>:</p>
+<ol type="1">
+<li><strong>Blocking (<code>channel.lock()</code>):</strong> The calling
+thread suspends execution until the lock is successfully acquired. This
+is optimal for batch jobs or queues where the current process must
+complete its write operation before proceeding.</li>
+<li><strong>Non-Blocking (<code>channel.tryLock()</code>):</strong> The
+method immediately attempts acquisition. If another process holds a
+conflicting lock, <code>tryLock()</code> returns <code>null</code>
+instead of waiting. This approach is ideal for resilient systems that
+need to fail fast, skip redundant processing, or retry after an
+interval.</li>
+</ol>
+<h3 id="implementation-pattern">Implementation Pattern</h3>
+<p>To prevent resource leaks and guarantee lock release even during
+unexpected exceptions, locks should always be managed within a
+<code>try-with-resources</code> block:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">io</span><span class="op">.</span><span class="im">RandomAccessFile</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">ByteBuffer</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">channels</span><span class="op">.</span><span class="im">FileChannel</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">nio</span><span class="op">.</span><span class="im">channels</span><span class="op">.</span><span class="im">FileLock</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> ProcessSafeWriter <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">writeData</span><span class="op">(</span><span class="bu">String</span> filePath<span class="op">,</span> <span class="dt">byte</span><span class="op">[]</span> data<span class="op">)</span> <span class="kw">throws</span> <span class="bu">Exception</span> <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span> <span class="op">(</span><span class="bu">RandomAccessFile</span> file <span class="op">=</span> <span class="kw">new</span> <span class="bu">RandomAccessFile</span><span class="op">(</span>filePath<span class="op">,</span> <span class="st">&quot;rw&quot;</span><span class="op">);</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>             <span class="bu">FileChannel</span> channel <span class="op">=</span> file<span class="op">.</span><span class="fu">getChannel</span><span class="op">();</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>             <span class="bu">FileLock</span> lock <span class="op">=</span> channel<span class="op">.</span><span class="fu">lock</span><span class="op">())</span> <span class="op">{</span> <span class="co">// Blocks until exclusive lock is acquired</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Critical section: Safe from other processes</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>            channel<span class="op">.</span><span class="fu">position</span><span class="op">(</span>channel<span class="op">.</span><span class="fu">size</span><span class="op">());</span> <span class="co">// Move to end of file</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>            channel<span class="op">.</span><span class="fu">write</span><span class="op">(</span><span class="bu">ByteBuffer</span><span class="op">.</span><span class="fu">wrap</span><span class="op">(</span>data<span class="op">));</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>            channel<span class="op">.</span><span class="fu">force</span><span class="op">(</span><span class="kw">true</span><span class="op">);</span> <span class="co">// Flush changes to storage device</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="co">// Lock and channel are automatically released here</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="critical-operational-considerations">Critical Operational
+Considerations</h3>
+<p>While <code>FileLock</code> is essential for multi-process safety,
+developers must account for platform-specific and architectural
+nuances:</p>
+<ul>
+<li><strong>Advisory vs. Mandatory Locking:</strong> On many operating
+systems (including most Linux distributions), file locks are
+<em>advisory</em> by default. This means a process that bypasses the
+locking API entirely can still read or write to the file. All competing
+applications must cooperatively request locks before accessing the
+shared target.</li>
+<li><strong>Inter-Thread Invalidation:</strong> <code>FileLock</code> is
+designed strictly for multi-process coordination, not multi-threading
+within the same JVM. If Thread A in JVM 1 acquires an exclusive lock,
+Thread B in JVM 1 will not necessarily be blocked by the operating
+system from reading or writing through its own channel, and overlapping
+lock attempts on the same file channel will throw an
+<code>OverlappingFileLockException</code>. Thread-level safety must
+still be handled using standard Java concurrency utilities.</li>
+<li><strong>Lock Release on Process Termination:</strong> One of the
+most resilient aspects of kernel-managed locking is failure recovery. If
+a process crashes or is terminated abruptly, the operating system kernel
+automatically cleans up and releases any held <code>FileLock</code>
+instances, preventing deadlocks that often plague custom lockfile
+implementations.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

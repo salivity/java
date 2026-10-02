@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Class File Constant Pool Table Explained - java</title>
+    <meta name="description" content="The constant pool table is a foundational component of the compiled Java class file format, serving as an indexed symbol table that stores numeric literals, string constants, class and interface names, and method and field references. Residing immediatel">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-class-file-constant-pool-table-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Class File Constant Pool Table Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-class-file-constant-pool-table-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The constant pool table is a foundational component of the compiled Java class file format, serving as an indexed symbol table that stores numeric literals, string constants, class and interface names, and method and field references. Residing immediatel" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-class-file-constant-pool-table-explained">Java Class File
+Constant Pool Table Explained</h1>
+<p>The constant pool table is a foundational component of the compiled
+Java class file format, serving as an indexed symbol table that stores
+numeric literals, string constants, class and interface names, and
+method and field references. Residing immediately after the version
+metadata in a <code>.class</code> file, this table acts as a central
+repository that bytecode instructions reference by index, drastically
+reducing the binary size and enabling the dynamic linking mechanism of
+the Java Virtual Machine (JVM).</p>
+<h3 id="where-the-constant-pool-resides">Where the Constant Pool
+Resides</h3>
+<p>A compiled <code>.class</code> file is a strictly ordered sequence of
+binary data. The constant pool table occupies a fixed position near the
+very beginning of this binary layout:</p>
+<ol type="1">
+<li><strong>Magic Number (4 bytes):</strong> Always
+<code>0xCAFEBABE</code>, identifying the file as valid Java
+bytecode.</li>
+<li><strong>Minor Version (2 bytes):</strong> The minor version of the
+class file format.</li>
+<li><strong>Major Version (2 bytes):</strong> The major version (e.g.,
+65 for Java 21).</li>
+<li><strong><code>constant_pool_count</code> (2 bytes):</strong> An
+unsigned 16-bit integer indicating the number of entries in the constant
+pool table plus one.</li>
+<li><strong><code>constant_pool[]</code> (Variable size):</strong> The
+constant pool table itself.</li>
+</ol>
+<p>Immediately following the major version bytes, the JVM reads the
+<code>constant_pool_count</code>. The actual table begins directly after
+this count and precedes the access flags, <code>this_class</code>
+reference, and <code>super_class</code> reference.</p>
+<h3 id="structure-of-the-constant-pool-table">Structure of the Constant
+Pool Table</h3>
+<p>The constant pool table is an array of variable-length structures
+known as <code>cp_info</code>. Unlike typical zero-indexed arrays in
+Java, the constant pool is 1-indexed (indices run from <code>1</code> to
+<code>constant_pool_count - 1</code>). Index <code>0</code> is reserved
+for internal JVM use and represents an invalid or null reference.</p>
+<p>Each entry in the table starts with a 1-byte tag that defines the
+entry type:</p>
+<ul>
+<li><strong>Literals:</strong> Store raw constant values, such as
+<code>CONSTANT_Integer</code>, <code>CONSTANT_Float</code>,
+<code>CONSTANT_Long</code>, <code>CONSTANT_Double</code>, and
+<code>CONSTANT_Utf8</code> (which holds raw character strings).</li>
+<li><strong>Symbolic References:</strong> Structures that point to other
+constant pool entries to represent program entities without hardcoding
+memory addresses. Examples include:
+<ul>
+<li><code>CONSTANT_Class</code>: References a <code>CONSTANT_Utf8</code>
+holding the fully qualified class name.</li>
+<li><code>CONSTANT_Fieldref</code>: References class and name-and-type
+entries for a specific field.</li>
+<li><code>CONSTANT_Methodref</code> and
+<code>CONSTANT_InterfaceMethodref</code>: Reference class and
+name-and-type entries for methods.</li>
+<li><code>CONSTANT_NameAndType</code>: References two
+<code>CONSTANT_Utf8</code> entries representing a field or method's name
+and its type descriptor.</li>
+<li><code>CONSTANT_MethodHandle</code> and
+<code>CONSTANT_InvokeDynamic</code>: Support dynamic language features
+and lambda expressions introduced in Java 7 and 8.</li>
+</ul></li>
+</ul>
+<p>Note that 64-bit constants (<code>CONSTANT_Long</code> and
+<code>CONSTANT_Double</code>) occupy two consecutive entries in the
+table, meaning the index following a long or double entry is
+skipped.</p>
+<h3 id="how-the-jvm-uses-the-constant-pool">How the JVM Uses the
+Constant Pool</h3>
+<p>Rather than inlining extensive strings, signatures, and symbol names
+directly into executable instructions, bytecode instructions use
+lightweight index pointers to reference entries in the constant
+pool.</p>
+<p>For instance, the instruction <code>ldc #4</code> tells the JVM to
+load the constant located at index 4 of the constant pool onto the
+operand stack. Similarly, method invocation instructions like
+<code>invokevirtual #12</code> instruct the JVM to look up index 12 to
+resolve the target method's name, class, and descriptor. When the JVM
+loads the class, it uses these symbolic entries to resolve references
+into actual direct memory pointers during the linking and resolution
+phases.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Monitorenter Implements Java Synchronization - java</title>
+    <meta name="description" content="This article provides an in-depth look at how the Java Virtual Machine (JVM) uses the monitorenter bytecode instruction to enforce thread synchronization. You will learn how Java source-level synchronized blocks are translated into low-level bytecode, ho">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-monitorenter-implements-java-synchronization">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Monitorenter Implements Java Synchronization - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-monitorenter-implements-java-synchronization" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an in-depth look at how the Java Virtual Machine (JVM) uses the monitorenter bytecode instruction to enforce thread synchronization. You will learn how Java source-level synchronized blocks are translated into low-level bytecode, ho" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-monitorenter-implements-java-synchronization">How
+Monitorenter Implements Java Synchronization</h1>
+<p>This article provides an in-depth look at how the Java Virtual
+Machine (JVM) uses the <code>monitorenter</code> bytecode instruction to
+enforce thread synchronization. You will learn how Java source-level
+<code>synchronized</code> blocks are translated into low-level bytecode,
+how the JVM manages object monitors and lock counters, the role of
+reentrancy, and how the runtime guarantees lock release even in the
+event of unexpected runtime exceptions.</p>
+<h2 id="bytecode-translation-of-synchronized-blocks">Bytecode
+Translation of Synchronized Blocks</h2>
+<p>When the Java compiler (<code>javac</code>) encounters a
+<code>synchronized(lock)</code> statement, it does not rely on
+method-level modifiers. Instead, it explicitly wraps the block's
+instructions between paired <code>monitorenter</code> and
+<code>monitorexit</code> bytecode instructions.</p>
+<p>The <code>monitorenter</code> instruction requires a reference to an
+object on top of the operand stack. Once executed, it attempts to
+acquire ownership of the monitor associated with that referenced
+object.</p>
+<pre class="bytecode"><code>aload_1             // Push lock object reference onto the stack
+monitorenter        // Acquire the monitor for the object
+// ... synchronized block body ...
+aload_1             // Push lock object reference
+monitorexit         // Release the monitor</code></pre>
+<p>To guarantee that the monitor is released even if an exception occurs
+inside the block, the compiler automatically generates an exception
+table entry that routes any thrown exception to a cleanup block
+containing a second <code>monitorexit</code> instruction before
+re-throwing the exception.</p>
+<h2 id="the-object-monitor-and-lock-state">The Object Monitor and Lock
+State</h2>
+<p>In the HotSpot JVM, every object has an object header that includes a
+"Mark Word." This Mark Word stores metadata about the object, including
+its hash code, garbage collection age, and synchronization state.</p>
+<p>When a thread attempts to acquire an object's monitor via
+<code>monitorenter</code>, the JVM checks the status of the monitor
+associated with the object:</p>
+<ol type="1">
+<li><strong>Unassigned Monitor (Counter is 0):</strong> If the monitor
+has no owner, the calling thread successfully takes ownership. The
+monitor's reference is assigned to the current thread, and its entry
+count is set to 1.</li>
+<li><strong>Reentrant Lock Acquisition:</strong> If the calling thread
+already owns the monitor, the JVM permits re-entry. It increments the
+monitor's entry count by 1 and continues execution without
+blocking.</li>
+<li><strong>Contended Monitor:</strong> If another thread holds the
+monitor, the executing thread cannot proceed. It is placed into a
+blocked state and added to the monitor's wait list (an entry queue)
+until the owning thread releases the monitor and the entry count resets
+to 0.</li>
+</ol>
+<h2 id="monitor-escalation">Monitor Escalation</h2>
+<p>The JVM optimizes <code>monitorenter</code> execution through lock
+escalation:</p>
+<ul>
+<li><strong>Biased Locking / Lightweight Locking:</strong> In
+low-contention scenarios, HotSpot attempts to avoid costly OS-level
+thread synchronization. It uses atomic compare-and-swap (CAS) operations
+to write the thread ID directly into the object's Mark Word.</li>
+<li><strong>Inflation to Heavyweight Monitor:</strong> When multiple
+threads actively contend for the same lock, the JVM inflates the lock
+into a full <code>ObjectMonitor</code> structure (managed by the
+operating system's native mutexes and condition variables). At this
+stage, <code>monitorenter</code> interacts directly with OS primitives
+to park and unpark threads.</li>
+</ul>
+<h2 id="reentrancy-and-the-exit-counter">Reentrancy and the Exit
+Counter</h2>
+<p>Reentrancy is fundamental to how <code>monitorenter</code> works.
+Because each successful <code>monitorenter</code> invocation increments
+an internal recursion counter, a thread can enter nested synchronized
+blocks on the same object without deadlocking itself.</p>
+<p>Full release of the lock occurs only when a corresponding number of
+<code>monitorexit</code> instructions have run. Each
+<code>monitorexit</code> decrements the counter; once the counter
+reaches 0, the current thread relinquishes ownership, allowing waiting
+threads to contend for the monitor.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

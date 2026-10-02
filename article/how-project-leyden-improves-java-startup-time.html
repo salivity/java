@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Project Leyden Improves Java Startup Time - java</title>
+    <meta name="description" content="OpenJDK Project Leyden addresses Java's historically slow startup times, lengthy warm-up phases, and high initial memory overhead. Rather than replacing the Java Virtual Machine (JVM) or enforcing strict, inflexible execution models, Leyden introduces in">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-project-leyden-improves-java-startup-time">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Project Leyden Improves Java Startup Time - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-project-leyden-improves-java-startup-time" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="OpenJDK Project Leyden addresses Java's historically slow startup times, lengthy warm-up phases, and high initial memory overhead. Rather than replacing the Java Virtual Machine (JVM) or enforcing strict, inflexible execution models, Leyden introduces in" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-project-leyden-improves-java-startup-time">How Project
+Leyden Improves Java Startup Time</h1>
+<p>OpenJDK Project Leyden addresses Java's historically slow startup
+times, lengthy warm-up phases, and high initial memory overhead. Rather
+than replacing the Java Virtual Machine (JVM) or enforcing strict,
+inflexible execution models, Leyden introduces incremental ahead-of-time
+(AOT) optimizations. By shifting computation—such as class loading,
+verification, and code compilation—from runtime to earlier phases,
+Leyden delivers near-instant startup and reduced static footprint while
+preserving standard Java specifications and runtime dynamics.</p>
+<h3 id="the-core-concept-shifting-computation-forward">The Core Concept:
+Shifting Computation Forward</h3>
+<p>Java applications spend significant time and memory upon launch
+parsing class files, verifying bytecode, initializing static structures,
+and dynamically compiling methods via the Just-In-Time (JIT) compiler.
+Leyden's design principle is to shift these expensive operations forward
+in time: from application execution to an earlier training run or build
+step.</p>
+<p>By executing and recording this work once, the JVM produces an
+optimized artifact—an AOT cache—that the application can load directly
+into memory during subsequent runs.</p>
+<h3 id="enhancing-application-class-data-sharing-cds">Enhancing
+Application Class-Data Sharing (CDS)</h3>
+<p>Leyden builds heavily upon Application Class-Data Sharing (AppCDS).
+In standard Java, AppCDS maps pre-processed metadata into memory to
+accelerate startup. Leyden expands this mechanism into a comprehensive
+runtime cache that includes:</p>
+<ul>
+<li><strong>Pre-resolved Class Metadata:</strong> Bypassing verification
+and resolution steps at boot.</li>
+<li><strong>Stored Heap Objects:</strong> Capturing the state of
+pre-initialized classes and constant pools directly into a mapped heap
+archive.</li>
+<li><strong>Pre-generated Reflection and Method Handle Data:</strong>
+Eliminating the dynamic overhead of modern frameworks (like Spring and
+Quarkus) that rely heavily on <code>invokedynamic</code> call
+sites.</li>
+</ul>
+<h3
+id="ahead-of-time-aot-compilation-without-closed-world-constraints">Ahead-of-Time
+(AOT) Compilation Without Closed-World Constraints</h3>
+<p>Unlike technologies such as GraalVM Native Image, which generally
+mandate a strict "closed-world assumption" (requiring all classes and
+dynamic behaviors to be known at build time), Leyden preserves Java’s
+"open-world" model.</p>
+<p>Leyden introduces a spectrum of constraints:</p>
+<ol type="1">
+<li><strong>Training Runs:</strong> The application runs temporarily to
+record hot paths, loaded classes, and profile data.</li>
+<li><strong>AOT Compilation:</strong> Leyden compiles critical methods
+into native machine code ahead of time using the standard HotSpot
+compiler pipeline (C1 and C2).</li>
+<li><strong>Dynamic Fallback:</strong> If the application dynamically
+loads an unexpected class or executes unprofiled code at runtime, the
+standard HotSpot interpreter and JIT compilers seamlessly take
+over.</li>
+</ol>
+<p>This hybrid approach delivers near-native startup performance without
+breaking dynamic reflection, runtime proxies, or third-party libraries
+that fail under strict closed-world compilation.</p>
+<h3 id="reducing-static-footprint">Reducing Static Footprint</h3>
+<p>To optimize memory and disk footprint, Leyden uses "condensers."
+Condensers are pluggable transformation steps that inspect and optimize
+code between compilation and execution. They analyze the dependency
+graph of an application to:</p>
+<ul>
+<li>Prune unused bytecode and metadata from the generated cache.</li>
+<li>Pre-compute immutable data structures so they consume less heap at
+runtime.</li>
+<li>Compact internal JVM data structures so the base memory footprint of
+the runtime process is significantly smaller.</li>
+</ul>
+<p>Through the strategic combination of AOT caching, HotSpot-native
+pre-compilation, and selective computation shifting, Project Leyden
+enables Java applications to start in milliseconds and use less memory,
+making Java dramatically more efficient for microservices, serverless
+architectures, and containerized deployments.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

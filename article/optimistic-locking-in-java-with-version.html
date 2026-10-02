@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimistic Locking in Java with @Version - java</title>
+    <meta name="description" content="Optimistic locking in Java manages concurrent database modifications without acquiring costly database-level locks during read operations. By using the @Version annotation provided by Jakarta Persistence (JPA) and Hibernate, an application tracks an enti">
+    <link rel="canonical" href="https://salivity.github.io/java/article/optimistic-locking-in-java-with-version">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Optimistic Locking in Java with @Version - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/optimistic-locking-in-java-with-version" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Optimistic locking in Java manages concurrent database modifications without acquiring costly database-level locks during read operations. By using the @Version annotation provided by Jakarta Persistence (JPA) and Hibernate, an application tracks an enti" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="optimistic-locking-in-java-with-version">Optimistic Locking in
+Java with @Version</h1>
+<p>Optimistic locking in Java manages concurrent database modifications
+without acquiring costly database-level locks during read operations. By
+using the <code>@Version</code> annotation provided by Jakarta
+Persistence (JPA) and Hibernate, an application tracks an entity's state
+changes using an internal counter or timestamp. This mechanism prevents
+the "lost update" problem by detecting conflicting writes at commit time
+and automatically aborting transactions that attempt to overwrite newer
+data.</p>
+<h3 id="the-mechanism-behind-version">The Mechanism Behind @Version</h3>
+<p>Optimistic locking operates on the assumption that data conflicts are
+infrequent. Instead of locking a record when it is read (pessimistic
+locking), the application verifies that no other transaction has
+modified the entity between the time it was read and the time it is
+updated.</p>
+<p>To enable this behavior, JPA requires an entity to designate a
+version attribute using the <code>@Version</code> annotation:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">jakarta</span><span class="op">.</span><span class="im">persistence</span><span class="op">.</span><span class="im">Entity</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">jakarta</span><span class="op">.</span><span class="im">persistence</span><span class="op">.</span><span class="im">Id</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">jakarta</span><span class="op">.</span><span class="im">persistence</span><span class="op">.</span><span class="im">Version</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">@Entity</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Product <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Id</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="bu">Long</span> id<span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="bu">String</span> name<span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="bu">Double</span> price<span class="op">;</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Version</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="bu">Long</span> version<span class="op">;</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Getters and setters omitted</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The version field can be an <code>int</code>, <code>Integer</code>,
+<code>short</code>, <code>Short</code>, <code>long</code>,
+<code>Long</code>, or <code>java.sql.Timestamp</code>. Numeric types are
+strongly recommended because timestamps rely on system clocks, which may
+lack sufficient resolution in high-throughput environments.</p>
+<h3 id="how-concurrent-updates-are-handled-at-the-database-level">How
+Concurrent Updates Are Handled at the Database Level</h3>
+<p>When an entity with a <code>@Version</code> field is modified, the
+persistence provider automatically appends the version check to the
+generated SQL <code>UPDATE</code> statement and increments the version
+value.</p>
+<p>For example, when an entity with <code>id = 1</code> and
+<code>version = 3</code> is updated, the provider executes:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">UPDATE</span> Product </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">SET</span> name <span class="op">=</span> <span class="st">&#39;New Name&#39;</span>, price <span class="op">=</span> <span class="fl">19.99</span>, version <span class="op">=</span> <span class="dv">4</span> </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">WHERE</span> <span class="kw">id</span> <span class="op">=</span> <span class="dv">1</span> <span class="kw">AND</span> version <span class="op">=</span> <span class="dv">3</span>;</span></code></pre></div>
+<p>If two transactions, Transaction A and Transaction B, concurrently
+read the same product with <code>version = 3</code>:</p>
+<ol type="1">
+<li><strong>Transaction A completes first:</strong> It issues the
+<code>UPDATE</code> query matching <code>version = 3</code>. The
+database updates the row and sets <code>version = 4</code>. The database
+returns an updated row count of <code>1</code>.</li>
+<li><strong>Transaction B attempts to update:</strong> It attempts to
+execute its update using the initial state it loaded
+(<code>version = 3</code>). However, the database row now has
+<code>version = 4</code>.</li>
+<li><strong>Detection:</strong> Because the <code>WHERE</code> clause
+condition <code>version = 3</code> is no longer met, the database
+updates <code>0</code> rows.</li>
+<li><strong>Failure Trigger:</strong> The persistence provider expects
+exactly <code>1</code> affected row. Seeing <code>0</code> affected
+rows, it determines that a concurrent modification occurred and rolls
+back Transaction B.</li>
+</ol>
+<h3 id="exception-handling-and-recovery">Exception Handling and
+Recovery</h3>
+<p>When the row count check fails, JPA immediately throws an
+<code>OptimisticLockException</code> (which Spring translates into an
+<code>ObjectOptimisticLockingFailureException</code>).</p>
+<p>Applications typically handle this exception in one of two ways:</p>
+<ul>
+<li><strong>Automatic Retries:</strong> For automated processes, the
+application catches the exception, reloads the fresh entity state with
+the updated version from the database, re-applies the business logic,
+and attempts the commit again. In Spring-based applications, this can be
+automated using annotations like <code>@Retryable</code>.</li>
+<li><strong>User Notification:</strong> For user-facing forms, the
+application alerts the user that another user or process updated the
+record while they were viewing it, prompting them to refresh the page
+and review the changes before resubmitting.</li>
+</ul>
+<h3 id="when-to-use-optimistic-locking">When to Use Optimistic
+Locking</h3>
+<p>Optimistic locking is ideal for systems with high read-to-write
+ratios and low-to-medium contention. Because it avoids holding open
+database locks while transactions are in progress, it reduces database
+connection pool exhaustion, maximizes throughput, and prevents
+deadlocks. If a system experiences high contention where multiple
+workers constantly update the same rows, pessimistic locking is
+typically preferred to avoid the overhead of repeated rollbacks and
+retries.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

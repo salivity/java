@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safepoint Polling in Java Counted vs Uncounted Loops - java</title>
+    <meta name="description" content="Java's HotSpot virtual machine relies on safepoints to pause application threads for global operations such as garbage collection, code deoptimization, and thread dumps. The Just-In-Time (JIT) compiler optimizes these pause checks differently depending o">
+    <link rel="canonical" href="https://salivity.github.io/java/article/safepoint-polling-in-java-counted-vs-uncounted-loops">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Safepoint Polling in Java Counted vs Uncounted Loops - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/safepoint-polling-in-java-counted-vs-uncounted-loops" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's HotSpot virtual machine relies on safepoints to pause application threads for global operations such as garbage collection, code deoptimization, and thread dumps. The Just-In-Time (JIT) compiler optimizes these pause checks differently depending o" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="safepoint-polling-in-java-counted-vs-uncounted-loops">Safepoint
+Polling in Java Counted vs Uncounted Loops</h1>
+<p>Java's HotSpot virtual machine relies on safepoints to pause
+application threads for global operations such as garbage collection,
+code deoptimization, and thread dumps. The Just-In-Time (JIT) compiler
+optimizes these pause checks differently depending on whether a loop is
+categorized as counted or uncounted. While uncounted loops retain
+safepoint polls on every backedge to prevent threads from running
+indefinitely, counted loops traditionally strip these polls to optimize
+throughput, a trade-off that can significantly impact application pause
+times.</p>
+<h3 id="safepoints-and-loop-backedges">Safepoints and Loop
+Backedges</h3>
+<p>To bring threads to a safepoint, the JVM injects safepoint polls into
+compiled code. Common locations for these polls are method exits and
+loop backedges (the branch instruction that jumps back to the start of
+the loop). When the JVM requests a safepoint, it alters the memory page
+used for polling, causing threads encountering the check to trap into
+the kernel and suspend execution.</p>
+<p>Without safepoint checks in loops, a thread executing a long-running
+iteration could prevent the entire JVM from reaching a Stop-the-World
+(STW) safepoint, stalling operations like garbage collection.</p>
+<h3 id="uncounted-loops">Uncounted Loops</h3>
+<p>An uncounted loop is any loop whose iteration count cannot be
+predetermined by the JIT compiler as a finite, standard bounded range.
+Common examples include:</p>
+<ul>
+<li><code>while</code> loops dependent on volatile variables, external
+conditions, or object states (e.g.,
+<code>while (node != null)</code>).</li>
+<li>Loops using iterators or non-integer indices.</li>
+<li>Loops with counter variables of type <code>long</code> (in many
+older HotSpot versions, <code>long</code> counters were treated strictly
+as uncounted because their range is vast enough to execute for decades
+without terminating).</li>
+</ul>
+<p>Because the compiler cannot guarantee when—or if—an uncounted loop
+will terminate, it places a safepoint poll at the backedge of every
+iteration. This guarantees that the executing thread will acknowledge a
+safepoint request promptly, avoiding Time-to-Safepoint (TTSP) latency
+spikes. The trade-off is runtime overhead, as the thread must check the
+polling page on every pass through the loop.</p>
+<h3 id="counted-loops">Counted Loops</h3>
+<p>A counted loop is a loop with a clear, finite iteration pattern.
+Typically, it has the structure:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> start<span class="op">;</span> i <span class="op">&lt;</span> limit<span class="op">;</span> i <span class="op">+=</span> stride<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// loop body</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The HotSpot C2 compiler analyzes the loop bounds and step size. If it
+determines that the loop uses an <code>int</code> counter with a fixed
+stride and bound, and contains no internal safepoints (like non-inlined
+method calls), it classifies the loop as counted.</p>
+<p>To maximize execution speed, C2 historically removes the safepoint
+poll from the backedge of counted loops. The assumption was that
+<code>int</code>-bounded loops complete relatively quickly, meaning the
+thread will reach a safepoint poll at the loop exit without causing an
+unacceptable delay.</p>
+<h3 id="the-ttsp-problem-in-counted-loops">The TTSP Problem in Counted
+Loops</h3>
+<p>When a counted loop contains intensive computations or runs across
+the full <code>Integer.MAX_VALUE</code> range, removing safepoint polls
+introduces severe performance problems:</p>
+<ol type="1">
+<li><strong>Extended TTSP (Time-to-Safepoint):</strong> If a garbage
+collector needs to pause the JVM, it must wait for all threads to reach
+a safepoint. A thread running a heavy counted loop will not yield until
+the loop finishes entirely.</li>
+<li><strong>Apparent Freezes:</strong> Other application threads reach
+their safepoints almost instantly and halt, but the JVM remains paused
+waiting for the single lagging thread. This manifests as multi-second GC
+pause times, even though the actual GC work took only milliseconds.</li>
+</ol>
+<h3 id="modern-solutions-loop-strip-mining">Modern Solutions: Loop Strip
+Mining</h3>
+<p>To resolve the conflict between high performance and predictable
+latency, modern versions of HotSpot introduced an optimization called
+<strong>Loop Strip Mining</strong> (enabled by default in modern JDKs
+when using collectors like G1 or ZGC):</p>
+<ul>
+<li>The compiler converts a single counted loop into a nested loop
+structure.</li>
+<li>The <strong>inner loop</strong> runs a fixed number of iterations (a
+"strip") with safepoint polls stripped, maintaining high execution speed
+and vectorization capabilities.</li>
+<li>The <strong>outer loop</strong> executes between these strips and
+contains a safepoint poll.</li>
+</ul>
+<p>This design ensures that threads in counted loops check for safepoint
+requests at predictable intervals (for example, every few thousand
+iterations) without paying the penalty of a safepoint check on every
+single iteration.</p>
+<h3 id="key-differences-summary">Key Differences Summary</h3>
+<ul>
+<li><strong>Safepoint Placement:</strong> Uncounted loops place a
+safepoint poll on every backedge; standard counted loops omit them
+entirely to improve throughput.</li>
+<li><strong>Latency Impact:</strong> Uncounted loops respond immediately
+to JVM safepoint requests. Counted loops without strip mining can delay
+safepoints, causing prolonged application stalls.</li>
+<li><strong>Compiler Treatment:</strong> Counted loops undergo
+aggressive optimizations like unrolling, vectorization, and strip
+mining, whereas uncounted loops maintain conservative control flows to
+guarantee safepoint responsiveness.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

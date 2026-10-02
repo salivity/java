@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java CompletableFuture allOf Explained - java</title>
+    <meta name="description" content="This article provides a concise overview of CompletableFuture.allOf(), a core method used in Java for managing multiple asynchronous operations concurrently. You will learn how allOf() synchronizes parallel tasks, its return type behavior, how to extract">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-completable-future-all-of-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java CompletableFuture allOf Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-completable-future-all-of-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides a concise overview of CompletableFuture.allOf(), a core method used in Java for managing multiple asynchronous operations concurrently. You will learn how allOf() synchronizes parallel tasks, its return type behavior, how to extract" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-completablefuture-allof-explained">Java CompletableFuture
+allOf Explained</h1>
+<p>This article provides a concise overview of
+<code>CompletableFuture.allOf()</code>, a core method used in Java for
+managing multiple asynchronous operations concurrently. You will learn
+how <code>allOf()</code> synchronizes parallel tasks, its return type
+behavior, how to extract results from individual futures, and how it
+handles exceptions when awaiting multiple asynchronous computations.</p>
+<h3 id="the-role-of-completablefutureallof">The Role of
+CompletableFuture.allOf</h3>
+<p>In Java's concurrent programming model,
+<code>CompletableFuture.allOf()</code> is a static method designed to
+coordinate the execution of multiple independent asynchronous tasks. It
+accepts a variable number (varargs) or an array of
+<code>CompletableFuture&lt;?&gt;</code> instances and returns a single
+<code>CompletableFuture&lt;Void&gt;</code>.</p>
+<p>This returned future completes only when all of the provided futures
+have finished their execution, whether they complete successfully or
+exceptionally. It acts as an asynchronous barrier, enabling you to
+trigger subsequent actions only after every background task has
+concluded.</p>
+<h3 id="awaiting-completion">Awaiting Completion</h3>
+<p>To wait for all tasks to complete, you can either block the calling
+thread or continue processing asynchronously:</p>
+<ul>
+<li><strong>Blocking:</strong> Calling <code>.join()</code> or
+<code>.get()</code> on the <code>CompletableFuture&lt;Void&gt;</code>
+returned by <code>allOf()</code> will pause the current thread until
+every underlying future is done.</li>
+<li><strong>Non-blocking:</strong> Chaining callback methods such as
+<code>.thenRun()</code> or <code>.thenAccept()</code> allows the
+application to proceed without blocking, executing the callback
+automatically once all tasks complete.</li>
+</ul>
+<h3 id="extracting-results">Extracting Results</h3>
+<p>Because <code>CompletableFuture.allOf()</code> returns
+<code>CompletableFuture&lt;Void&gt;</code>, it does not directly return
+the values produced by the individual futures. To retrieve the computed
+results:</p>
+<ol type="1">
+<li>Maintain references to your original <code>CompletableFuture</code>
+instances (for example, in a <code>List</code>).</li>
+<li>Pass them into <code>CompletableFuture.allOf(...)</code>.</li>
+<li>Once the <code>allOf</code> future completes, invoke
+<code>.join()</code> on each individual future.</li>
+</ol>
+<p>Because <code>allOf</code> guarantees that every task has finished
+before continuing, calling <code>.join()</code> on each task at this
+stage is guaranteed not to block.</p>
+<h3 id="error-handling">Error Handling</h3>
+<p>If any of the underlying tasks fail, the future returned by
+<code>CompletableFuture.allOf()</code> completes exceptionally with a
+<code>CompletionException</code>.</p>
+<p>By default, <code>allOf</code> will expose the exception of the first
+task that failed. If multiple tasks encounter errors, the remaining
+exceptions are suppressed in the aggregated future. To handle or inspect
+failures across all tasks, iterate through the original list of futures
+and inspect each task's status using methods like
+<code>isCompletedExceptionally()</code>.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

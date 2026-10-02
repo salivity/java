@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handling Uncaught Exceptions in Java Threads - java</title>
+    <meta name="description" content="In Java multithreaded applications, an unhandled exception inside a worker thread can cause that thread to terminate silently without notifying the main application. The Thread.UncaughtExceptionHandler interface solves this problem by providing a central">
+    <link rel="canonical" href="https://salivity.github.io/java/article/handling-uncaught-exceptions-in-java-threads">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Handling Uncaught Exceptions in Java Threads - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/handling-uncaught-exceptions-in-java-threads" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java multithreaded applications, an unhandled exception inside a worker thread can cause that thread to terminate silently without notifying the main application. The Thread.UncaughtExceptionHandler interface solves this problem by providing a central" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="handling-uncaught-exceptions-in-java-threads">Handling Uncaught
+Exceptions in Java Threads</h1>
+<p>In Java multithreaded applications, an unhandled exception inside a
+worker thread can cause that thread to terminate silently without
+notifying the main application. The
+<code>Thread.UncaughtExceptionHandler</code> interface solves this
+problem by providing a centralized mechanism to intercept and process
+unchecked exceptions that escape a thread's execution scope. This
+article explores how <code>UncaughtExceptionHandler</code> works, its
+hierarchical execution order, and how to implement it to ensure robust
+logging and error management.</p>
+<h2 id="the-problem-with-exceptions-in-multithreaded-java">The Problem
+with Exceptions in Multithreaded Java</h2>
+<p>When an unchecked exception (<code>RuntimeException</code> or
+<code>Error</code>) occurs in a standard single-threaded program, the
+Java Virtual Machine (JVM) prints the stack trace to standard error and
+halts execution. However, in a multithreaded environment, an uncaught
+exception only terminates the specific thread in which it occurred.</p>
+<p>Traditional <code>try-catch</code> blocks in caller threads cannot
+intercept exceptions thrown in separate threads:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// This try-catch will NOT catch exceptions thrown inside the thread</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">RuntimeException</span><span class="op">(</span><span class="st">&quot;Background task failed&quot;</span><span class="op">);</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}).</span><span class="fu">start</span><span class="op">();</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">Exception</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Caught!&quot;</span><span class="op">);</span> <span class="co">// Never executes</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Without proper interception, tasks fail silently, background jobs
+cease running, and critical application state issues go unnoticed.</p>
+<h2 id="what-is-uncaughtexceptionhandler">What is
+UncaughtExceptionHandler?</h2>
+<p>Introduced in Java 1.5, <code>Thread.UncaughtExceptionHandler</code>
+is a functional interface defined inside the <code>Thread</code>
+class:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="at">@FunctionalInterface</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> UncaughtExceptionHandler <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="fu">uncaughtException</span><span class="op">(</span><span class="bu">Thread</span> t<span class="op">,</span> <span class="bu">Throwable</span> e<span class="op">);</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>When a thread is about to terminate due to an uncaught exception, the
+JVM queries the thread for its <code>UncaughtExceptionHandler</code> and
+invokes <code>uncaughtException(Thread t, Throwable e)</code>, passing
+the originating thread and the exception.</p>
+<h2 id="exception-resolution-hierarchy">Exception Resolution
+Hierarchy</h2>
+<p>The JVM searches for an exception handler using a three-tier
+hierarchy:</p>
+<ol type="1">
+<li><strong>Thread-Specific Handler:</strong> Set on an individual
+thread instance using <code>setUncaughtExceptionHandler()</code>.</li>
+<li><strong>ThreadGroup Handler:</strong> If no specific handler is
+found, the thread's <code>ThreadGroup</code> handles the exception.
+<code>ThreadGroup</code> implements
+<code>Thread.UncaughtExceptionHandler</code>, and its default behavior
+is to delegate to its parent group or fallback to the default
+handler.</li>
+<li><strong>Default Handler:</strong> A global, JVM-wide handler
+configured via
+<code>Thread.setDefaultUncaughtExceptionHandler()</code>.</li>
+</ol>
+<p>If none of these handlers are configured, the JVM prints the stack
+trace to <code>System.err</code>.</p>
+<h2 id="implementing-uncaughtexceptionhandler">Implementing
+UncaughtExceptionHandler</h2>
+<h3 id="1-global-default-handler">1. Global Default Handler</h3>
+<p>Setting a default handler is the most effective way to ensure no
+thread in the application fails silently. It captures exceptions from
+all threads that do not have a dedicated handler.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> GlobalExceptionHandlerDemo <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Set the global handler</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Thread</span><span class="op">.</span><span class="fu">setDefaultUncaughtExceptionHandler</span><span class="op">((</span>thread<span class="op">,</span> throwable<span class="op">)</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">err</span><span class="op">.</span><span class="fu">printf</span><span class="op">(</span><span class="st">&quot;Global Alert: Exception in thread &#39;</span><span class="sc">%s</span><span class="st">&#39;: </span><span class="sc">%s%n</span><span class="st">&quot;</span><span class="op">,</span> </span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>                thread<span class="op">.</span><span class="fu">getName</span><span class="op">(),</span> throwable<span class="op">.</span><span class="fu">getMessage</span><span class="op">());</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Log to external monitoring tools (e.g., Sentry, Datadog)</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">});</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Test with a thread lacking a local handler</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>            <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">IllegalStateException</span><span class="op">(</span><span class="st">&quot;Database connection dropped&quot;</span><span class="op">);</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">},</span> <span class="st">&quot;Worker-1&quot;</span><span class="op">).</span><span class="fu">start</span><span class="op">();</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="2-thread-specific-handler">2. Thread-Specific Handler</h3>
+<p>For critical tasks requiring distinct recovery logic or specialized
+logging, assign a handler directly to that thread.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Thread</span> criticalThread <span class="op">=</span> <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">NullPointerException</span><span class="op">(</span><span class="st">&quot;Critical data missing&quot;</span><span class="op">);</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="op">},</span> <span class="st">&quot;Critical-Worker&quot;</span><span class="op">);</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>criticalThread<span class="op">.</span><span class="fu">setUncaughtExceptionHandler</span><span class="op">((</span>thread<span class="op">,</span> throwable<span class="op">)</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">System</span><span class="op">.</span><span class="fu">err</span><span class="op">.</span><span class="fu">printf</span><span class="op">(</span><span class="st">&quot;Dedicated Handler: </span><span class="sc">%s</span><span class="st"> crashed. Triggering alert.</span><span class="sc">%n</span><span class="st">&quot;</span><span class="op">,</span> thread<span class="op">.</span><span class="fu">getName</span><span class="op">());</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="op">});</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>criticalThread<span class="op">.</span><span class="fu">start</span><span class="op">();</span></span></code></pre></div>
+<h3 id="3-usage-with-executorservice">3. Usage with ExecutorService</h3>
+<p>Tasks submitted to thread pools via
+<code>ExecutorService.submit()</code> return a <code>Future</code>,
+which encapsulates exceptions. The <code>UncaughtExceptionHandler</code>
+is only triggered when tasks are submitted using
+<code>execute()</code>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// UncaughtExceptionHandler will be invoked</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>executorService<span class="op">.</span><span class="fu">execute</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">RuntimeException</span><span class="op">(</span><span class="st">&quot;Task failed&quot;</span><span class="op">);</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="op">});</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co">// UncaughtExceptionHandler will NOT be invoked; exception is held in the Future</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="bu">Future</span><span class="op">&lt;?&gt;</span> future <span class="op">=</span> executorService<span class="op">.</span><span class="fu">submit</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">RuntimeException</span><span class="op">(</span><span class="st">&quot;Task failed&quot;</span><span class="op">);</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="op">});</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">// The exception is only revealed upon calling future.get()</span></span></code></pre></div>
+<p>To use custom handlers within an <code>ExecutorService</code>,
+configure a custom <code>ThreadFactory</code> that sets the handler on
+each newly created thread.</p>
+<h2 id="best-practices">Best Practices</h2>
+<ul>
+<li><strong>Always Configure a Default Handler:</strong> Set
+<code>Thread.setDefaultUncaughtExceptionHandler</code> at application
+startup to catch any stray exceptions from third-party libraries or
+unmanaged threads.</li>
+<li><strong>Keep Handlers Safe:</strong> Code inside
+<code>uncaughtException</code> must not throw unchecked exceptions. If
+an exception escapes the handler, the JVM ignores it and proceeds with
+thread termination.</li>
+<li><strong>Focus on Diagnostics and Alerting:</strong> Use the handler
+primarily for logging diagnostic details, generating metrics, alerting
+monitoring systems, and initiating graceful degradation rather than
+attempting complex thread recovery.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

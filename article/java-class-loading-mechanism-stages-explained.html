@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Class Loading Mechanism Stages Explained - java</title>
+    <meta name="description" content="The Java class loading mechanism is a fundamental runtime process that dynamically loads, links, and initializes software components within the Java Virtual Machine (JVM). Instead of loading all classes at startup, the JVM loads classes on demand through">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-class-loading-mechanism-stages-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Class Loading Mechanism Stages Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-class-loading-mechanism-stages-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java class loading mechanism is a fundamental runtime process that dynamically loads, links, and initializes software components within the Java Virtual Machine (JVM). Instead of loading all classes at startup, the JVM loads classes on demand through" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-class-loading-mechanism-stages-explained">Java Class
+Loading Mechanism Stages Explained</h1>
+<p>The Java class loading mechanism is a fundamental runtime process
+that dynamically loads, links, and initializes software components
+within the Java Virtual Machine (JVM). Instead of loading all classes at
+startup, the JVM loads classes on demand through three distinct,
+sequential stages: Loading, Linking, and Initialization. Understanding
+each stage is crucial for mastering JVM internals, debugging runtime
+issues like <code>ClassNotFoundException</code> or
+<code>NoClassDefFoundError</code>, and optimizing application
+performance.</p>
+<h2 id="1-loading">1. Loading</h2>
+<p>Loading is the process where the JVM locates the binary
+representation of a class or interface with a specific name and
+generates a <code>java.lang.Class</code> object from it.</p>
+<p>During this stage, the JVM performs three core actions:</p>
+<ul>
+<li>Locates and imports the binary data for the type (typically from a
+<code>.class</code> file on the local file system, inside a JAR, or
+downloaded over a network).</li>
+<li>Parses the binary data into runtime data structures within the
+Metaspace.</li>
+<li>Instantiates an instance of <code>java.lang.Class</code> to
+represent this type in the JVM.</li>
+</ul>
+<p>This stage is managed by ClassLoaders, which follow the Delegation
+Hierarchy Model:</p>
+<ul>
+<li><strong>Bootstrap ClassLoader:</strong> Loads core Java platform
+classes (e.g., <code>java.lang.*</code>).</li>
+<li><strong>Platform/Extension ClassLoader:</strong> Loads
+platform-specific extensions.</li>
+<li><strong>Application (System) ClassLoader:</strong> Loads application
+classes found on the classpath.</li>
+</ul>
+<h2 id="2-linking">2. Linking</h2>
+<p>Once a class is loaded into memory, it must be linked. Linking
+incorporates the binary type data into the runtime state of the JVM so
+that it can be executed. Linking is divided into three distinct
+sub-phases:</p>
+<h3 id="verification">Verification</h3>
+<p>Verification is a critical security and stability phase. The bytecode
+verifier inspects the binary data to ensure that:</p>
+<ul>
+<li>The format complies with the Java Virtual Machine
+Specification.</li>
+<li>Structural constraints are respected (e.g., no stack
+overflows/underflows in operand stacks).</li>
+<li>Types are checked to prevent illegal operations (such as treating an
+integer as an object reference).</li>
+<li>Access control modifiers (public, private, protected) are
+enforced.</li>
+</ul>
+<h3 id="preparation">Preparation</h3>
+<p>In the preparation phase, the JVM allocates memory for static fields
+and initializes them to their standard default values (not user-assigned
+values):</p>
+<ul>
+<li>Numeric primitives are initialized to <code>0</code> or
+<code>0.0</code>.</li>
+<li>Booleans are initialized to <code>false</code>.</li>
+<li>Object references are initialized to <code>null</code>.</li>
+</ul>
+<p><em>Note: Code expressions or user assignments are not executed yet.
+For instance, <code>public static int count = 10;</code> is initialized
+to <code>0</code> during Preparation, not <code>10</code>.</em></p>
+<h3 id="resolution">Resolution</h3>
+<p>Resolution is the process of navigating the runtime constant pool and
+replacing symbolic references with direct references (actual pointers or
+offsets in memory). This includes resolving:</p>
+<ul>
+<li>Class and interface references.</li>
+<li>Field references.</li>
+<li>Method references.</li>
+</ul>
+<p>The JVM can execute resolution eagerly when the class is verified, or
+lazily when a symbolic reference is first used by executing
+bytecode.</p>
+<h2 id="3-initialization">3. Initialization</h2>
+<p>Initialization is the final stage of class loading. In this phase,
+the JVM executes the class initialization method, designated internally
+as <code>&lt;clinit&gt;</code>.</p>
+<p>Key actions in this phase include:</p>
+<ul>
+<li>Assigning the actual declared values to static variables (e.g.,
+setting <code>public static int count = 10;</code> from <code>0</code>
+to <code>10</code>).</li>
+<li>Executing static initialization blocks (<code>static { ... }</code>)
+in the textual order in which they appear in the source code.</li>
+</ul>
+<p>Initialization occurs strictly when a class is actively used for the
+first time, such as:</p>
+<ul>
+<li>Invoking a <code>new</code> instruction on the class.</li>
+<li>Accessing a non-constant static field.</li>
+<li>Invoking a static method.</li>
+<li>Using reflection (<code>Class.forName(...)</code>).</li>
+<li>Initializing a subclass (which requires the superclass to be
+initialized first).</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

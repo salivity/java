@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Using AtomicStampedReference to Prevent ABA in Java - java</title>
+    <meta name="description" content="In concurrent programming, non-blocking data structures rely on Compare-And-Swap (CAS) operations to achieve lock-free thread safety. However, standard CAS operations are vulnerable to the ABA problem, where a memory location is read as value A, modified">
+    <link rel="canonical" href="https://salivity.github.io/java/article/using-atomic-stamped-reference-to-prevent-aba-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Using AtomicStampedReference to Prevent ABA in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/using-atomic-stamped-reference-to-prevent-aba-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In concurrent programming, non-blocking data structures rely on Compare-And-Swap (CAS) operations to achieve lock-free thread safety. However, standard CAS operations are vulnerable to the ABA problem, where a memory location is read as value A, modified" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="using-atomicstampedreference-to-prevent-aba-in-java">Using
+AtomicStampedReference to Prevent ABA in Java</h1>
+<p>In concurrent programming, non-blocking data structures rely on
+Compare-And-Swap (CAS) operations to achieve lock-free thread safety.
+However, standard CAS operations are vulnerable to the ABA problem,
+where a memory location is read as value A, modified to B, and restored
+back to A, causing a thread to mistakenly assume no changes have
+occurred. Java addresses this issue with the
+<code>AtomicStampedReference</code> class, which pairs an object
+reference with an integer "stamp" acting as a version counter. By
+requiring both the reference and the stamp to match before an update can
+succeed, non-blocking algorithms can reliably detect intermediate state
+changes and maintain data integrity.</p>
+<h3 id="understanding-the-aba-problem">Understanding the ABA
+Problem</h3>
+<p>The ABA problem typically arises in memory management and lock-free
+data structures like stacks and queues. Consider a scenario involving a
+lock-free stack using a standard <code>AtomicReference</code>:</p>
+<ol type="1">
+<li>Thread 1 reads the top of the stack, finding node <code>A</code>.
+Node <code>A</code> points to node <code>B</code>.</li>
+<li>Before Thread 1 can execute its CAS operation, it is preempted.</li>
+<li>Thread 2 pops node <code>A</code>, pops node <code>B</code>, and
+then pushes node <code>A</code> back onto the stack (or allocates a new
+node that reuses memory address <code>A</code>).</li>
+<li>Thread 1 resumes and performs <code>compareAndSet(A, B)</code>.
+Because the reference still points to <code>A</code>, the CAS
+succeeds.</li>
+<li>The stack's top is set to <code>B</code>, even though <code>B</code>
+may have already been freed, modified, or placed into an inconsistent
+state.</li>
+</ol>
+<p>Standard CAS checks value equality (or reference equality in Java),
+not whether the value was modified and restored in the interim.</p>
+<h3 id="how-atomicstampedreference-works">How AtomicStampedReference
+Works</h3>
+<p><code>AtomicStampedReference</code> resolves this vulnerability by
+encapsulating an object reference and an integer stamp into an immutable
+internal pair. When performing an update, both components must match
+their expected values simultaneously.</p>
+<p>Its signature method is:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">boolean</span> <span class="fu">compareAndSet</span><span class="op">(</span>V expectedReference<span class="op">,</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>                             V newReference<span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                             <span class="dt">int</span> expectedStamp<span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>                             <span class="dt">int</span> newStamp<span class="op">)</span></span></code></pre></div>
+<p>The update succeeds only if:</p>
+<ol type="1">
+<li><code>expectedReference == currentReference</code></li>
+<li><code>expectedStamp == currentStamp</code></li>
+</ol>
+<p>If either condition is false, the CAS fails, signaling to the calling
+thread that concurrent modifications occurred.</p>
+<h3 id="implementing-non-blocking-algorithms-with-stamps">Implementing
+Non-Blocking Algorithms with Stamps</h3>
+<p>To integrate <code>AtomicStampedReference</code> into a non-blocking
+algorithm, threads maintain both the reference and the version counter
+throughout the operation lifecycle:</p>
+<ol type="1">
+<li><p><strong>Read Current State:</strong> A thread retrieves both the
+current reference and its associated stamp. Because Java methods can
+return only one value, <code>AtomicStampedReference</code> provides a
+method where the stamp is returned via an array parameter:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span><span class="op">[]</span> stampHolder <span class="op">=</span> <span class="kw">new</span> <span class="dt">int</span><span class="op">[</span><span class="dv">1</span><span class="op">];</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">Node</span> currentTop <span class="op">=</span> atomicStampedRef<span class="op">.</span><span class="fu">get</span><span class="op">(</span>stampHolder<span class="op">);</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> currentStamp <span class="op">=</span> stampHolder<span class="op">[</span><span class="dv">0</span><span class="op">];</span></span></code></pre></div></li>
+<li><p><strong>Compute New State:</strong> The thread prepares the next
+node reference and computes the next stamp, typically by incrementing
+the current stamp (<code>currentStamp + 1</code>).</p></li>
+<li><p><strong>Execute CAS:</strong> The thread executes
+<code>compareAndSet</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">boolean</span> success <span class="op">=</span> atomicStampedRef<span class="op">.</span><span class="fu">compareAndSet</span><span class="op">(</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    currentTop<span class="op">,</span> </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    newTop<span class="op">,</span> </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    currentStamp<span class="op">,</span> </span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    currentStamp <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span></code></pre></div></li>
+<li><p><strong>Retry Loop:</strong> If <code>compareAndSet</code>
+returns <code>false</code>, the operation retries from step 1, reading
+the new reference and updated stamp.</p></li>
+</ol>
+<h3 id="practical-impact">Practical Impact</h3>
+<p>By incrementing the stamp on every write, a state transition from
+<code>A</code> to <code>B</code> and back to <code>A</code> creates a
+progression of stamps (e.g.,
+<code>(A, 0) -&gt; (B, 1) -&gt; (A, 2)</code>). When a lagging thread
+attempts to complete an operation with the outdated stamp
+<code>0</code>, the CAS fails immediately because the reference matches
+<code>A</code>, but the stamp <code>0</code> does not match
+<code>2</code>.</p>
+<p>This mechanism allows non-blocking algorithms to recycle nodes and
+handle transient states safely without introducing blocking
+synchronizations or locks.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

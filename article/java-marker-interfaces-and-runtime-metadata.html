@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Marker Interfaces and Runtime Metadata - java</title>
+    <meta name="description" content="A marker interface is an interface in Java that contains no methods, fields, or abstract behavior, serving exclusively to associate type-level metadata with an implementing class. In traditional Java, particularly before the introduction of annotations i">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-marker-interfaces-and-runtime-metadata">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Marker Interfaces and Runtime Metadata - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-marker-interfaces-and-runtime-metadata" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="A marker interface is an interface in Java that contains no methods, fields, or abstract behavior, serving exclusively to associate type-level metadata with an implementing class. In traditional Java, particularly before the introduction of annotations i" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-marker-interfaces-and-runtime-metadata">Java Marker
+Interfaces and Runtime Metadata</h1>
+<p>A marker interface is an interface in Java that contains no methods,
+fields, or abstract behavior, serving exclusively to associate
+type-level metadata with an implementing class. In traditional Java,
+particularly before the introduction of annotations in Java 5,
+developers and the Java Virtual Machine (JVM) relied on these empty
+interfaces to flag classes for special processing at runtime. This
+article explores the design of marker interfaces, how runtime
+environments inspect them to alter behavior, and standard standard
+library examples such as <code>Serializable</code> and
+<code>Cloneable</code>.</p>
+<h3 id="definition-and-structure">Definition and Structure</h3>
+<p>A marker interface, also referred to as a tagging interface, consists
+of an empty declaration:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> Deletable <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// No fields or methods defined</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>When a class implements this interface, it does not incur any
+contract obligations; it does not need to implement any methods.
+Instead, the implementation acts as a declaration of intent or
+capability:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> UserAccount <span class="kw">implements</span> Deletable <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Normal class implementation</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="providing-runtime-metadata">Providing Runtime Metadata</h3>
+<p>In traditional Java, the type system itself served as the carrier of
+runtime metadata. When a class implements a marker interface, that
+information is preserved in the compiled bytecode and loaded into the
+JVM class metadata.</p>
+<p>Runtime environments, libraries, and frameworks query this metadata
+using Java's dynamic type inspection mechanisms, primarily the
+<code>instanceof</code> operator or reflection via
+<code>Class.isAssignableFrom(Class&lt;?&gt;)</code>.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">processEntity</span><span class="op">(</span><span class="bu">Object</span> entity<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>entity <span class="kw">instanceof</span> Deletable<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Execute deletion logic specific to Deletable types</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        <span class="fu">performDeletion</span><span class="op">(</span>entity<span class="op">);</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">UnsupportedOperationException</span><span class="op">(</span><span class="st">&quot;Entity cannot be deleted.&quot;</span><span class="op">);</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Through this mechanism, the marker interface delivers a binary piece
+of metadata: the object either possesses the tag or it does not. The
+inspecting code branches its execution based on the presence of this
+tag.</p>
+<h3 id="standard-library-implementations">Standard Library
+Implementations</h3>
+<p>The Java standard library contains several foundational marker
+interfaces:</p>
+<ol type="1">
+<li><strong><code>java.io.Serializable</code></strong>: Flags a class as
+safe for serialization. The
+<code>ObjectOutputStream.writeObject(Object)</code> method inspects the
+target object at runtime using <code>instanceof Serializable</code>. If
+the target class does not implement the interface, the runtime aborts
+the operation and throws a <code>NotSerializableException</code>.</li>
+<li><strong><code>java.lang.Cloneable</code></strong>: Signals that
+<code>Object.clone()</code> is legal to call field-for-field. When
+<code>clone()</code> is invoked on an object that does not implement
+<code>Cloneable</code>, the JVM throws a
+<code>CloneNotSupportedException</code>.</li>
+<li><strong><code>java.rmi.Remote</code></strong>: Identifies interfaces
+whose methods may be invoked from a non-local virtual machine in Java
+Remote Method Invocation (RMI).</li>
+</ol>
+<h3 id="marker-interfaces-vs-annotations">Marker Interfaces vs.
+Annotations</h3>
+<p>With the introduction of metadata annotations in Java 5, the
+necessity of marker interfaces diminished. Annotations provide a more
+versatile syntax for attaching metadata without modifying the class
+inheritance hierarchy.</p>
+<p>However, marker interfaces retain a distinct architectural advantage:
+they define a genuine Java type. Because marker interfaces exist within
+the type system, they can be used as method parameter types or generic
+constraints to enforce metadata requirements at compile time (e.g.,
+<code>void save(Serializable data)</code>). Annotations, by contrast,
+cannot enforce type constraints at compile time without dedicated
+annotation processors.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

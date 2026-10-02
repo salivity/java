@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java GC Timing Attacks in Cryptographic Comparisons - java</title>
+    <meta name="description" content="In cryptographic systems, comparing sensitive data such as authentication tokens, signatures, or secret keys requires constant-time operations to avoid leaking information through side channels. While developers typically focus on preventing algorithmic">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-gc-timing-attacks-in-cryptographic-comparisons">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java GC Timing Attacks in Cryptographic Comparisons - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-gc-timing-attacks-in-cryptographic-comparisons" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In cryptographic systems, comparing sensitive data such as authentication tokens, signatures, or secret keys requires constant-time operations to avoid leaking information through side channels. While developers typically focus on preventing algorithmic" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-gc-timing-attacks-in-cryptographic-comparisons">Java GC
+Timing Attacks in Cryptographic Comparisons</h1>
+<p>In cryptographic systems, comparing sensitive data such as
+authentication tokens, signatures, or secret keys requires constant-time
+operations to avoid leaking information through side channels. While
+developers typically focus on preventing algorithmic short-circuits, the
+underlying Java Virtual Machine (JVM) introduces another subtle
+vulnerability: Garbage Collection (GC) pauses. When data comparison
+logic allocates memory unevenly based on input validity or secret
+values, the timing variations introduced by GC cycles can amplify minute
+discrepancies into easily measurable network-level delays, enabling
+attackers to extract secrets.</p>
+<h3 id="the-mechanics-of-timing-attacks">The Mechanics of Timing
+Attacks</h3>
+<p>A standard comparison between two byte arrays often terminates at the
+first mismatched byte. This early exit causes the operation to return
+faster for inputs that fail early compared to those that match more
+bytes:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Vulnerable to classic timing attacks</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">boolean</span> <span class="fu">compare</span><span class="op">(</span><span class="dt">byte</span><span class="op">[]</span> a<span class="op">,</span> <span class="dt">byte</span><span class="op">[]</span> b<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>a<span class="op">.</span><span class="fu">length</span> <span class="op">!=</span> b<span class="op">.</span><span class="fu">length</span><span class="op">)</span> <span class="cf">return</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> a<span class="op">.</span><span class="fu">length</span><span class="op">;</span> i<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>a<span class="op">[</span>i<span class="op">]</span> <span class="op">!=</span> b<span class="op">[</span>i<span class="op">])</span> <span class="cf">return</span> <span class="kw">false</span><span class="op">;</span> <span class="co">// Early return leaks timing</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Attackers exploit this by sending crafted inputs and measuring
+response times down to microsecond or nanosecond resolutions. Over many
+requests, the statistical average reveals how many leading bytes matched
+the expected value, allowing the attacker to reconstruct a secret one
+byte at a time.</p>
+<h3 id="how-garbage-collection-amplifies-timing-differences">How Garbage
+Collection Amplifies Timing Differences</h3>
+<p>On modern networks, microsecond-level timing differences are often
+masked by network jitter, making remote attacks difficult. Garbage
+collection alters this dynamic by acting as an amplifier.</p>
+<h4 id="1-allocation-differences-correlated-with-secret-data">1.
+Allocation Differences Correlated with Secret Data</h4>
+<p>If a comparison method or its error-handling logic allocates
+objects—such as throwing exceptions, creating wrapper objects
+(<code>Byte</code>, <code>Integer</code>), manipulating
+<code>String</code> objects, or allocating intermediate buffers—the
+number of heap allocations can correlate directly with how much of the
+secret input matched.</p>
+<p>For example, an application might parse, decode, or format tokens
+progressively:</p>
+<ul>
+<li>An input that fails on the first byte might trigger zero or one
+small object allocation before failing.</li>
+<li>An input that matches half the bytes might allocate several
+intermediate parsing structures before failing.</li>
+<li>A fully matching input might traverse a deeper execution path,
+generating significantly more heap allocations.</li>
+</ul>
+<h4 id="2-heap-pressure-and-gc-thresholds">2. Heap Pressure and GC
+Thresholds</h4>
+<p>The JVM manages memory automatically. When memory in the young
+generation (specifically the Eden space) fills up, the JVM triggers a
+minor collection to reclaim unused memory.</p>
+<p>Because memory allocations are deterministic relative to code
+execution paths:</p>
+<ul>
+<li>Each byte that matches successfully brings the application closer to
+the Eden space threshold.</li>
+<li>Attackers can deliberately prime the JVM heap (known as heap shaping
+or heap massaging) by sending filler requests that leave the allocation
+space just below the trigger point for a garbage collection event.</li>
+<li>An input that processes one additional byte can push the memory
+usage over the threshold, invoking the collector.</li>
+</ul>
+<h4 id="3-amplification-from-nanoseconds-to-milliseconds">3.
+Amplification from Nanoseconds to Milliseconds</h4>
+<p>Standard instruction-level timing discrepancies are measured in
+nanoseconds. However, a "Stop-the-World" GC pause, even a minor
+young-generation sweep, typically takes between 1 and 50 milliseconds. A
+major collection can take hundreds of milliseconds.</p>
+<p>When a GC pause is triggered as a direct consequence of memory
+allocated during the evaluation of a specific byte index, the latency of
+that request spikes drastically. This produces a clear, statistically
+undeniable signal that cuts directly through network noise, allowing
+remote adversaries to infer successful byte matches without needing
+laboratory-grade network measurement tools.</p>
+<h3 id="writing-gc-safe-constant-time-code">Writing GC-Safe
+Constant-Time Code</h3>
+<p>Preventing GC-induced timing attacks requires eliminating both
+algorithmic branching and dynamic object allocations during sensitive
+operations.</p>
+<h4 id="1-use-constant-time-primitive-comparisons">1. Use Constant-Time
+Primitive Comparisons</h4>
+<p>Java provides built-in utilities designed to compare secrets in
+constant time without allocating memory.
+<code>MessageDigest.isEqual</code> evaluates every byte regardless of
+whether a mismatch occurs early:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">security</span><span class="op">.</span><span class="im">MessageDigest</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">boolean</span> <span class="fu">safeCompare</span><span class="op">(</span><span class="dt">byte</span><span class="op">[]</span> knownSecret<span class="op">,</span> <span class="dt">byte</span><span class="op">[]</span> userSupplied<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">MessageDigest</span><span class="op">.</span><span class="fu">isEqual</span><span class="op">(</span>knownSecret<span class="op">,</span> userSupplied<span class="op">);</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>This method iterates across the entire array, using a bitwise OR
+operation over the differences:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> result <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> len<span class="op">;</span> i<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    result <span class="op">|=</span> a<span class="op">[</span>i<span class="op">]</span> <span class="op">^</span> b<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="cf">return</span> result <span class="op">==</span> <span class="dv">0</span><span class="op">;</span></span></code></pre></div>
+<h4 id="2-eliminate-object-allocations-in-critical-paths">2. Eliminate
+Object Allocations in Critical Paths</h4>
+<p>Ensure that the comparison routine and its immediate dependencies do
+not create heap objects:</p>
+<ul>
+<li>Avoid converting byte arrays to <code>String</code> objects, hex
+strings, or <code>BigInteger</code> instances during or immediately
+prior to the verification step.</li>
+<li>Do not use boxed types (<code>Byte</code>, <code>Character</code>)
+inside comparison loops, as autoboxing creates heap allocations.</li>
+<li>Do not use exceptions for control flow when comparison fails; return
+a boolean indicator directly.</li>
+</ul>
+<h4 id="3-pre-allocate-buffers">3. Pre-Allocate Buffers</h4>
+<p>If parsing or decoding (such as Base64 or hex decoding) must occur
+before a comparison, perform the parsing into pre-allocated byte buffers
+rather than dynamically instantiating new arrays or wrapper classes
+during verification. This isolates allocation activity from the
+sensitive data evaluation phase.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

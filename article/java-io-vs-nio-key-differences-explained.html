@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java IO vs NIO: Key Differences Explained - java</title>
+    <meta name="description" content="Java standard I/O (Input/Output) and Java Non-blocking I/O (NIO) represent two fundamentally different approaches to handling data transfer and networking within the Java ecosystem. Standard I/O, introduced in Java 1.0, utilizes a stream-oriented, synchr">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-io-vs-nio-key-differences-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java IO vs NIO: Key Differences Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-io-vs-nio-key-differences-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java standard I/O (Input/Output) and Java Non-blocking I/O (NIO) represent two fundamentally different approaches to handling data transfer and networking within the Java ecosystem. Standard I/O, introduced in Java 1.0, utilizes a stream-oriented, synchr" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-io-vs-nio-key-differences-explained">Java IO vs NIO: Key
+Differences Explained</h1>
+<p>Java standard I/O (Input/Output) and Java Non-blocking I/O (NIO)
+represent two fundamentally different approaches to handling data
+transfer and networking within the Java ecosystem. Standard I/O,
+introduced in Java 1.0, utilizes a stream-oriented, synchronous, and
+blocking paradigm. In contrast, Java NIO, introduced in Java 1.4,
+provides a buffer-oriented, asynchronous, and non-blocking model
+designed for high-concurrency environments. This article outlines the
+architectural, mechanical, and performance differences between standard
+Java I/O streams and the NIO API.</p>
+<h3 id="stream-oriented-vs-buffer-oriented">Stream-Oriented vs.
+Buffer-Oriented</h3>
+<ul>
+<li><strong>Standard I/O (Streams):</strong> Processes data in streams
+of bytes or characters. Data is read sequentially, one or more bytes at
+a time, directly from the underlying source. Once data has passed
+through the stream, it cannot be read again without re-reading the
+source or manually caching it.</li>
+<li><strong>NIO (Buffers):</strong> Processes data using buffers, which
+are in-memory blocks of data. Instead of reading directly from an
+endpoint, data is first read into a buffer (<code>ByteBuffer</code>,
+<code>CharBuffer</code>, etc.). Buffers provide metadata—such as
+capacity, position, and limit—allowing developers to navigate backward
+and forward through the data as needed.</li>
+</ul>
+<h3 id="blocking-vs-non-blocking-execution">Blocking vs. Non-Blocking
+Execution</h3>
+<ul>
+<li><strong>Standard I/O (Blocking):</strong> Operations are strictly
+blocking. When a thread initiates an <code>InputStream.read()</code> or
+<code>OutputStream.write()</code> call, that thread is suspended until
+the operation completes or an error occurs. In networked applications,
+this generally demands a dedicated thread for each active connection,
+which leads to heavy resource consumption at scale.</li>
+<li><strong>NIO (Non-Blocking):</strong> Channels can be configured in
+non-blocking mode. A thread attempting to read from a channel will
+retrieve whatever data is currently available and immediately return to
+execution, even if no data is present. This non-blocking behavior
+decouples thread execution from data availability.</li>
+</ul>
+<h3 id="streams-vs-channels">Streams vs. Channels</h3>
+<ul>
+<li><strong>Standard I/O Streams:</strong> Streams are strictly
+unidirectional. You must use an <code>InputStream</code> to read data
+and an <code>OutputStream</code> to write data.</li>
+<li><strong>NIO Channels:</strong> Channels serve as gateways to files,
+sockets, and hardware, and they are inherently bidirectional. A single
+channel instance can both read data into a buffer and write data out
+from a buffer simultaneously.</li>
+</ul>
+<h3 id="the-role-of-selectors">The Role of Selectors</h3>
+<p>NIO introduces the <code>Selector</code> component, which enables I/O
+multiplexing. A <code>Selector</code> allows a single thread to monitor
+multiple NIO channels for specific I/O events, such as incoming
+connections, data availability for reading, or readiness for
+writing.</p>
+<p>Standard I/O lacks this mechanism, requiring a 1:1 ratio between
+threads and concurrent connections. With NIO selectors, a single thread
+(or a small thread pool) can manage thousands of open socket connections
+simultaneously, eliminating the operating system context-switching
+overhead associated with large thread counts.</p>
+<h3 id="memory-management-and-direct-buffers">Memory Management and
+Direct Buffers</h3>
+<p>Java NIO provides direct byte buffers
+(<code>ByteBuffer.allocateDirect()</code>), which allocate memory
+outside the JVM garbage-collected heap. Operating systems can perform
+native I/O operations directly to and from these memory regions,
+avoiding intermediate buffer copies between user space and kernel
+space.</p>
+<p>Furthermore, NIO supports zero-copy transfers via methods like
+<code>FileChannel.transferTo()</code>, drastically reducing CPU
+utilization when moving data from a file system directly to a network
+socket. Standard I/O always requires intermediate JVM heap allocations
+and extra data-copying steps.</p>
+<h3 id="summary-comparison">Summary Comparison</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Java Standard I/O
+(<code>java.io</code>)</th>
+<th style="text-align: left;">Java NIO (<code>java.nio</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Data Unit</strong></td>
+<td style="text-align: left;">Stream-oriented (sequential bytes)</td>
+<td style="text-align: left;">Buffer-oriented (blocks of data)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>I/O Style</strong></td>
+<td style="text-align: left;">Blocking (Synchronous)</td>
+<td style="text-align: left;">Non-blocking or Blocking
+(Configurable)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Directionality</strong></td>
+<td style="text-align: left;">Unidirectional (<code>In</code> /
+<code>Out</code>)</td>
+<td style="text-align: left;">Bidirectional (Channels)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Multiplexing</strong></td>
+<td style="text-align: left;">Not supported (1 thread per
+connection)</td>
+<td style="text-align: left;">Supported via <code>Selector</code> (1
+thread for N channels)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Zero-Copy</strong></td>
+<td style="text-align: left;">Not supported natively</td>
+<td style="text-align: left;">Supported
+(<code>FileChannel.transferTo</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Use</strong></td>
+<td style="text-align: left;">Low-concurrency, simple file
+operations</td>
+<td style="text-align: left;">High-throughput, thousands of concurrent
+sockets</td>
+</tr>
+</tbody>
+</table></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

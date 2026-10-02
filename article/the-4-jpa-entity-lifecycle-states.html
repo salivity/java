@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The 4 JPA Entity Lifecycle States - java</title>
+    <meta name="description" content="In the Java Persistence API (JPA), managing data efficiently requires understanding how entities transition between different states during their lifecycle. This article explores the four core entity lifecycle states managed within the Java persistence a">
+    <link rel="canonical" href="https://salivity.github.io/java/article/the-4-jpa-entity-lifecycle-states">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="The 4 JPA Entity Lifecycle States - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/the-4-jpa-entity-lifecycle-states" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In the Java Persistence API (JPA), managing data efficiently requires understanding how entities transition between different states during their lifecycle. This article explores the four core entity lifecycle states managed within the Java persistence a" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="the-4-jpa-entity-lifecycle-states">The 4 JPA Entity Lifecycle
+States</h1>
+<p>In the Java Persistence API (JPA), managing data efficiently requires
+understanding how entities transition between different states during
+their lifecycle. This article explores the four core entity lifecycle
+states managed within the Java persistence architecture—New (Transient),
+Managed, Detached, and Removed—detailing their defining characteristics,
+their relationship with the persistence context, and how they interact
+with the database.</p>
+<h2 id="1-new-transient">1. New (Transient)</h2>
+<p>An entity is in the New (or Transient) state when it has been
+instantiated using the standard Java <code>new</code> operator but has
+not yet been associated with a JPA <code>EntityManager</code> or
+persistence context.</p>
+<p>Key characteristics include:</p>
+<ul>
+<li>It does not represent any row in the database.</li>
+<li>It does not have a persistent database identity (primary key value),
+unless explicitly assigned manually.</li>
+<li>The persistence provider does not track any modifications made to
+this object.</li>
+<li>Invoking <code>entityManager.persist(entity)</code> transitions the
+entity from the New state to the Managed state.</li>
+</ul>
+<h2 id="2-managed-persistent">2. Managed (Persistent)</h2>
+<p>An entity is Managed when it is actively associated with a
+persistence context and possesses a database identity.</p>
+<p>Key characteristics include:</p>
+<ul>
+<li>It directly corresponds to a row in the database or will correspond
+to one once the transaction commits.</li>
+<li>The <code>EntityManager</code> actively tracks any state changes
+made via the entity's setter methods through dirty checking.</li>
+<li>Changes are automatically synchronized (flushed) to the database at
+the end of the transaction without needing an explicit update call.</li>
+<li>Entities become Managed when retrieved via
+<code>entityManager.find()</code>, loaded through a JPQL/Criteria query,
+saved via <code>persist()</code>, or brought back into context via
+<code>merge()</code>.</li>
+</ul>
+<h2 id="3-detached">3. Detached</h2>
+<p>An entity enters the Detached state when it has a persistent identity
+and corresponds to a database record, but is no longer actively tracked
+by a persistence context.</p>
+<p>Key characteristics include:</p>
+<ul>
+<li>Changes made to a detached entity are ignored by the persistence
+provider and are not written to the database.</li>
+<li>Entities become detached when the <code>EntityManager</code> closes,
+when explicitly evicted using <code>entityManager.detach(entity)</code>,
+or when the persistence context is wiped using
+<code>entityManager.clear()</code>.</li>
+<li>A detached entity can be re-associated with an active persistence
+context by calling <code>entityManager.merge(entity)</code>, which
+copies the state to a new managed instance.</li>
+</ul>
+<h2 id="4-removed">4. Removed</h2>
+<p>An entity is in the Removed state when it is associated with an
+active persistence context but is marked for deletion from the
+underlying database.</p>
+<p>Key characteristics include:</p>
+<ul>
+<li>The entity still exists in Java memory, but its corresponding row
+will be deleted upon transaction commit or flush.</li>
+<li>It is placed into this state by calling
+<code>entityManager.remove(entity)</code> on an already managed
+entity.</li>
+<li>If a removed entity is re-persisted via <code>persist()</code>
+before the transaction commits, the removal operation is cancelled and
+the entity returns to the Managed state.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Value Objects and the Identity Problem - java</title>
+    <meta name="description" content="In Java architecture, standard objects carry a distinct identity determined by their memory address, meaning two separate instances with identical state are treated as different entities. This article explores how this reference-based identity model intr">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-value-objects-and-the-identity-problem">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Value Objects and the Identity Problem - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-value-objects-and-the-identity-problem" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java architecture, standard objects carry a distinct identity determined by their memory address, meaning two separate instances with identical state are treated as different entities. This article explores how this reference-based identity model intr" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-value-objects-and-the-identity-problem">Java Value Objects
+and the Identity Problem</h1>
+<p>In Java architecture, standard objects carry a distinct identity
+determined by their memory address, meaning two separate instances with
+identical state are treated as different entities. This article explores
+how this reference-based identity model introduces subtle bugs, aliasing
+issues, and domain inaccuracies, and details how the implementation of
+Value Objects resolves these challenges by replacing reference identity
+with attribute-based equality and immutability.</p>
+<h2 id="the-identity-problem-in-java-architecture">The Identity Problem
+in Java Architecture</h2>
+<p>By default, every object instantiated on the Java Virtual Machine
+(JVM) receives a unique object identity. This identity is inherently
+tied to the object's reference—its physical location in memory—rather
+than the data it encapsulates. Operators such as <code>==</code>
+evaluate whether two references point to the exact same memory address,
+not whether the contents of those references represent the same logical
+concept.</p>
+<p>This reference identity becomes problematic when modeling domain
+concepts that do not naturally possess an inherent lifecycle or
+distinguishing identifier. In enterprise applications, treating every
+piece of data as an identity-bearing entity introduces several critical
+architectural challenges:</p>
+<ul>
+<li><strong>Aliasing Bugs:</strong> When multiple components hold a
+reference to the same mutable object, one component can alter the
+internal state without the knowledge of the others.</li>
+<li><strong>False Inequality:</strong> Two distinct objects representing
+the exact same conceptual data (such as two separate instances
+representing an amount of USD 50) fail equality checks unless explicitly
+handled via custom methods.</li>
+<li><strong>State Drift:</strong> Over time, objects intended to
+represent fixed values can undergo unexpected state changes, leading to
+unpredictable application behavior and complex debugging cycles.</li>
+</ul>
+<h2 id="domain-misalignment-entities-vs-values">Domain Misalignment:
+Entities vs. Values</h2>
+<p>In Domain-Driven Design (DDD) and robust object-oriented
+architecture, objects generally fall into two categories:
+<strong>Entities</strong> and <strong>Value Objects</strong>.</p>
+<p>Entities possess an intrinsic identity that persists across state
+changes and over time. For example, a <code>User</code> or an
+<code>Order</code> typically possesses a unique ID (such as a UUID or
+database primary key). Even if every other attribute of a
+<code>User</code> changes, the entity remains the same unique user.</p>
+<p>Conversely, many domain concepts are defined entirely by what they
+are, not by an arbitrary ID. Examples include:</p>
+<ul>
+<li>Monetary values (<code>Money</code>: amount and currency)</li>
+<li>Geometric coordinates (<code>Point</code>: x and y)</li>
+<li>Communication endpoints (<code>EmailAddress</code>: string
+value)</li>
+<li>Date and time ranges (<code>DateRange</code>: start and end
+dates)</li>
+</ul>
+<p>When developers model these concepts as standard Java objects with
+identity, they misrepresent the domain. A $10 bill in a bank account
+calculation does not need a unique serial number or memory pointer; its
+identity <em>is</em> the combination of the number 10 and the currency
+USD.</p>
+<h2 id="how-value-objects-eliminate-the-identity-problem">How Value
+Objects Eliminate the Identity Problem</h2>
+<p>Value Objects eliminate the identity problem by consciously
+abandoning reference-based identity in favor of structural identity.
+This is achieved through three core design principles:</p>
+<h3 id="1-equality-by-value-equivalence">1. Equality by Value
+(Equivalence)</h3>
+<p>Value Objects override <code>equals()</code> and
+<code>hashCode()</code> so that two distinct instances containing
+identical data evaluate as equal. The framework or domain logic no
+longer cares <em>where</em> the object resides in memory, only
+<em>what</em> data it holds.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Money priceA <span class="op">=</span> <span class="kw">new</span> <span class="fu">Money</span><span class="op">(</span><span class="kw">new</span> <span class="bu">BigDecimal</span><span class="op">(</span><span class="st">&quot;19.99&quot;</span><span class="op">),</span> <span class="bu">Currency</span><span class="op">.</span><span class="fu">USD</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>Money priceB <span class="op">=</span> <span class="kw">new</span> <span class="fu">Money</span><span class="op">(</span><span class="kw">new</span> <span class="bu">BigDecimal</span><span class="op">(</span><span class="st">&quot;19.99&quot;</span><span class="op">),</span> <span class="bu">Currency</span><span class="op">.</span><span class="fu">USD</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Evaluates to true because identity is defined by attributes</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>priceA<span class="op">.</span><span class="fu">equals</span><span class="op">(</span>priceB<span class="op">);</span> </span></code></pre></div>
+<h3 id="2-immutability">2. Immutability</h3>
+<p>A Value Object is immutable once constructed. Since it cannot be
+modified, references can be shared freely across threads and services
+without defensive copying and without risk of unintended side-effects
+caused by aliasing. If the value must change, a new instance is created
+instead of mutating the existing one.</p>
+<h3 id="3-self-validation">3. Self-Validation</h3>
+<p>Because a Value Object represents a specific value rather than a
+generic data container, its constructor enforces domain invariants. For
+example, an <code>EmailAddress</code> Value Object ensures it cannot be
+instantiated with an invalid format, guaranteeing that every instance
+that exists is inherently valid.</p>
+<h2 id="value-objects-in-modern-java">Value Objects in Modern Java</h2>
+<p>Java has evolved to provide first-class support for Value
+Objects:</p>
+<ul>
+<li><strong>Java Records (Java 14+):</strong> The <code>record</code>
+keyword provides a concise syntax for defining immutable data carriers.
+Records automatically generate value-based implementations of
+<code>equals()</code>, <code>hashCode()</code>, and
+<code>toString()</code>, substantially reducing the boilerplate required
+to discard reference identity.</li>
+<li><strong>Project Valhalla:</strong> While records eliminate the
+conceptual identity problem at the language level, the JVM still treats
+them as identity-bearing heap objects under the hood. Project Valhalla
+aims to complete this architectural shift by introducing primitive-like
+value classes (<code>value class</code>). These will allow the JVM to
+flatten objects in memory and discard object headers, eliminating
+identity at both the conceptual domain level and the physical hardware
+execution level.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

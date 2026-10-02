@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G1 Garbage Collector Region Allocation in Java - java</title>
+    <meta name="description" content="Java's Garbage-First (G1) collector departs from traditional memory models by partitioning the Java heap into a large set of uniform, contiguous memory blocks called regions, rather than maintaining physically fixed generation spaces. This article breaks">
+    <link rel="canonical" href="https://salivity.github.io/java/article/g-1-garbage-collector-region-allocation-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="G1 Garbage Collector Region Allocation in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/g-1-garbage-collector-region-allocation-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java's Garbage-First (G1) collector departs from traditional memory models by partitioning the Java heap into a large set of uniform, contiguous memory blocks called regions, rather than maintaining physically fixed generation spaces. This article breaks" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="g1-garbage-collector-region-allocation-in-java">G1 Garbage
+Collector Region Allocation in Java</h1>
+<p>Java's Garbage-First (G1) collector departs from traditional memory
+models by partitioning the Java heap into a large set of uniform,
+contiguous memory blocks called regions, rather than maintaining
+physically fixed generation spaces. This article breaks down how G1
+determines region sizes, dynamically assigns roles to these regions,
+handles standard object allocations via Thread-Local Allocation Buffers,
+accommodates large data through humongous regions, and tracks
+cross-region references for predictable pause times.</p>
+<h2 id="heap-partitioning-and-region-sizing">Heap Partitioning and
+Region Sizing</h2>
+<p>Instead of dividing the heap into contiguous, physical segments for
+the Eden, Survivor, and Tenured generations, G1 splits the total
+available heap into approximately 2,048 equal-sized memory blocks.</p>
+<p>The size of an individual region is determined at JVM startup based
+on the initial and maximum heap size (<code>-Xms</code> and
+<code>-Xmx</code>). A region's size is always a power of two, ranging
+from 1 MB to 32 MB (e.g., 1 MB, 2 MB, 4 MB, 8 MB, 16 MB, or 32 MB).
+While the JVM typically calculates this automatically to hit the target
+of roughly 2,048 regions, administrators can manually override this
+value using the <code>-XX:G1HeapRegionSize</code> flag.</p>
+<h2 id="dynamic-generational-roles">Dynamic Generational Roles</h2>
+<p>In G1, generational boundaries are purely logical. Any region can be
+assigned a specific generational role at runtime and reassigned after
+its contents are reclaimed. At any given moment, a region belongs to one
+of the following categories:</p>
+<ul>
+<li><strong>Free:</strong> Unallocated regions available to be drafted
+into any generation role.</li>
+<li><strong>Eden:</strong> Regions allocated for newly created
+objects.</li>
+<li><strong>Survivor:</strong> Regions containing objects that have
+survived one or more collection cycles.</li>
+<li><strong>Old (Tenured):</strong> Regions holding long-lived objects
+that have exceeded the tenure aging threshold.</li>
+<li><strong>Humongous:</strong> Regions reserved specifically for
+objects larger than half of a standard region size.</li>
+</ul>
+<p>Because these roles are non-contiguous, the G1 collector can freely
+reassign an evacuated Eden or Old region back to the free list, where it
+can later be reused as needed by any generation.</p>
+<h2 id="thread-local-allocation-buffers-tlabs">Thread-Local Allocation
+Buffers (TLABs)</h2>
+<p>For standard objects, G1 optimizes allocation throughput by
+minimizing synchronization bottlenecks across threads. It accomplishes
+this using Thread-Local Allocation Buffers (TLABs):</p>
+<ol type="1">
+<li><strong>Region Assignment:</strong> When a mutator thread requires
+space to create new objects, it requests a portion of an active Eden
+region.</li>
+<li><strong>Buffer Reservation:</strong> The JVM assigns a dedicated
+TLAB inside an Eden region to that specific thread.</li>
+<li><strong>Bump-the-Pointer:</strong> Within its assigned TLAB, a
+thread allocates memory using a fast "bump-the-pointer" technique—simply
+updating a pointer to the next free byte without acquiring global heap
+locks.</li>
+<li><strong>Buffer Exhaustion:</strong> Once a thread fills its TLAB, it
+synchronizes with the heap manager to acquire a new TLAB from the
+current Eden region or prompts the allocation of a fresh Eden region
+from the global free list.</li>
+</ol>
+<h2 id="humongous-allocations">Humongous Allocations</h2>
+<p>Objects that exceed 50% of the configured region size are classified
+as "Humongous" objects. These allocations bypass the standard TLAB
+mechanism because placing them inside standard Eden regions would cause
+excessive fragmentation and trigger premature garbage collection
+cycles.</p>
+<ul>
+<li><strong>Contiguous Sequences:</strong> If an object is larger than a
+single region, G1 allocates a contiguous sequence of regions to hold it.
+The first region is marked as "StartsHumongous," and all subsequent
+regions in the sequence are marked as "ContinuesHumongous."</li>
+<li><strong>Immediate Placement:</strong> Humongous regions are
+allocated directly into the Old generation, skipping Eden and Survivor
+stages entirely.</li>
+<li><strong>Reclamation:</strong> Humongous objects are evaluated during
+cleanup pauses and concurrent mark cycles; if they are no longer
+referenced, they can be eagerly reclaimed to prevent the heap from
+running out of contiguous blocks.</li>
+</ul>
+<h2 id="inter-region-tracking-with-remembered-sets">Inter-Region
+Tracking with Remembered Sets</h2>
+<p>A critical component of G1's region architecture is the ability to
+collect individual regions without scanning the entire heap. G1 achieves
+this using <strong>Remembered Sets (RSets)</strong>.</p>
+<p>Each region has an associated RSet that tracks which external memory
+cards (512-byte segments of other regions) contain references pointing
+into that region. When G1 collects a specific set of regions (the
+Collection Set, or CSet), it uses these RSets to identify all incoming
+references from outside the CSet. This allows G1 to evacuate and compact
+specific regions independently, keeping stop-the-world pause times
+bounded and predictable.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

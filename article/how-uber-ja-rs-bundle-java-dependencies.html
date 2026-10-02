@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Uber-JARs Bundle Java Dependencies - java</title>
+    <meta name="description" content="An Uber-JAR, also known as a fat JAR, is a single Java Archive file that packages an application's compiled bytecode alongside all of its external libraries and runtime dependencies. This article explains the architectural mechanics behind Uber-JAR packa">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-uber-ja-rs-bundle-java-dependencies">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Uber-JARs Bundle Java Dependencies - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-uber-ja-rs-bundle-java-dependencies" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="An Uber-JAR, also known as a fat JAR, is a single Java Archive file that packages an application's compiled bytecode alongside all of its external libraries and runtime dependencies. This article explains the architectural mechanics behind Uber-JAR packa" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-uber-jars-bundle-java-dependencies">How Uber-JARs Bundle
+Java Dependencies</h1>
+<p>An Uber-JAR, also known as a fat JAR, is a single Java Archive file
+that packages an application's compiled bytecode alongside all of its
+external libraries and runtime dependencies. This article explains the
+architectural mechanics behind Uber-JAR packaging, detailing how build
+tools extract and merge binary assets, resolve resource collisions,
+configure manifest files for standalone execution, and implement
+alternative class-loading strategies.</p>
+<h3 id="the-mechanics-of-jar-flattening">The Mechanics of JAR
+Flattening</h3>
+<p>In standard Java development, a typical compilation produces a JAR
+containing only the application's compiled classes, requiring external
+dependencies to be placed on the system classpath at runtime via the
+<code>-cp</code> or <code>-classpath</code> flag. An Uber-JAR
+circumvents this classpath configuration by "flattening"
+dependencies.</p>
+<p>During the build phase, packaging plugins (such as the Maven Shade
+Plugin or Gradle Shadow Plugin) perform the following steps:</p>
+<ol type="1">
+<li><strong>Extraction:</strong> The tool unzips every upstream
+dependency (<code>.jar</code> file) identified in the project's
+dependency tree, extracting all compiled <code>.class</code> files and
+resource files into a temporary staging area.</li>
+<li><strong>Aggregation:</strong> The application's own compiled classes
+are merged into the same directory structure.</li>
+<li><strong>Repackaging:</strong> The build tool zips all collected
+classes and resources into a single archive, maintaining the standard
+package structure (e.g., <code>com/example/app/Main.class</code> sits
+directly alongside third-party classes like
+<code>org/apache/commons/lang3/StringUtils.class</code>).</li>
+</ol>
+<h3 id="configuring-the-manifest-for-execution">Configuring the Manifest
+for Execution</h3>
+<p>For an Uber-JAR to be directly executable with the command
+<code>java -jar application.jar</code>, the archive must specify an
+entry point.</p>
+<p>Build tools achieve this by generating or modifying the
+<code>META-INF/MANIFEST.MF</code> file within the archive. The packager
+inserts the <code>Main-Class</code> attribute pointing to the fully
+qualified class name containing the application's
+<code>public static void main(String[] args)</code> method. Because all
+required dependencies reside in the root directory structure of the same
+archive, the JVM's default system class loader can resolve every
+reference without referencing external directories or environment
+variables.</p>
+<h3 id="resolving-file-collisions-and-relocation">Resolving File
+Collisions and Relocation</h3>
+<p>Merging multiple JARs into a flat hierarchy inevitably introduces
+conflicts when files share the same relative path. Build plugins use two
+primary mechanisms to manage these collisions:</p>
+<ul>
+<li><strong>Resource Transformers:</strong> Certain framework
+configuration files—such as Service Provider Interface files in
+<code>META-INF/services/</code> or Spring schema declarations—share
+identical paths across multiple libraries. Instead of overwriting them,
+the build tool uses append strategies to concatenate the contents into
+single files so all providers remain discoverable.</li>
+<li><strong>Class Shading (Relocation):</strong> When duplicate or
+incompatible versions of a class exist across different dependencies,
+packagers can "shade" them. Shading renames the package declarations of
+conflicting dependencies (e.g., rewriting <code>org.objectweb.asm</code>
+to <code>hidden.org.objectweb.asm</code>) and updates all corresponding
+bytecode references, eliminating namespace collisions and avoiding
+runtime <code>LinkageError</code> or <code>NoSuchMethodError</code>
+exceptions.</li>
+</ul>
+<h3 id="alternative-approach-nested-jars">Alternative Approach: Nested
+JARs</h3>
+<p>While traditional Uber-JARs flatten all dependencies into a single
+namespace, alternative architectures preserve dependency integrity. For
+instance, Spring Boot utilizes an executable archive that keeps
+dependency JARs intact inside a <code>BOOT-INF/lib/</code>
+directory.</p>
+<p>Standard Java runtime specifications do not permit loading classes
+directly from nested JAR archives inside a standard JAR. To overcome
+this limitation, Spring Boot injects a custom class loader
+(<code>LaunchedURLClassLoader</code>) and sets the manifest's
+<code>Main-Class</code> to an internal launcher (such as
+<code>org.springframework.boot.loader.JarLauncher</code>). When
+executed, the launcher initializes the custom class loader, which can
+inspect and read classes directly from the nested JARs, avoiding
+flattening conflicts entirely while maintaining the convenience of a
+single deployable file.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

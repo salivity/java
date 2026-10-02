@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How PreparedStatement Prevents SQL Injection in Java - java</title>
+    <meta name="description" content="SQL injection remains one of the most critical security vulnerabilities in database-driven Java applications, occurring when untrusted user input is directly concatenated into SQL queries. Java’s PreparedStatement interface, part of the standard Java D">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-prepared-statement-prevents-sql-injection-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How PreparedStatement Prevents SQL Injection in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-prepared-statement-prevents-sql-injection-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="SQL injection remains one of the most critical security vulnerabilities in database-driven Java applications, occurring when untrusted user input is directly concatenated into SQL queries. Java’s PreparedStatement interface, part of the standard Java D" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-preparedstatement-prevents-sql-injection-in-java">How
+PreparedStatement Prevents SQL Injection in Java</h1>
+<p>SQL injection remains one of the most critical security
+vulnerabilities in database-driven Java applications, occurring when
+untrusted user input is directly concatenated into SQL queries. Java’s
+<code>PreparedStatement</code> interface, part of the standard Java
+Database Connectivity (JDBC) API, neutralizes this threat by
+fundamentally changing how queries are compiled and executed. This
+article explains the exact technical mechanisms through which
+<code>PreparedStatement</code> enforces the separation of SQL logic from
+data, ensuring that malicious user inputs are treated strictly as
+literal values rather than executable code.</p>
+<h3 id="separation-of-code-and-data">Separation of Code and Data</h3>
+<p>Traditional dynamic SQL execution via standard <code>Statement</code>
+objects evaluates user input as part of the SQL command itself. When an
+application concatenates strings, an attacker can input characters such
+as single quotes (<code>'</code>), comment markers (<code>--</code>), or
+boolean expressions (<code>OR 1=1</code>) to alter the query's syntax
+tree.</p>
+<p><code>PreparedStatement</code> eliminates this vulnerability by
+separating the query structure from the input parameters. When a
+parameterized query is constructed:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> sql <span class="op">=</span> <span class="st">&quot;SELECT * FROM users WHERE username = ? AND password = ?&quot;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">PreparedStatement</span> pstmt <span class="op">=</span> connection<span class="op">.</span><span class="fu">prepareStatement</span><span class="op">(</span>sql<span class="op">);</span></span></code></pre></div>
+<p>The database compiles the query template containing placeholders
+(<code>?</code>) before any user data is supplied. The database engine
+parses, validates, and builds an execution plan for this specific
+command template. Because the query tree is already compiled, user
+inputs passed later cannot alter the logical structure of the query.</p>
+<h3 id="parameter-binding-and-type-safety">Parameter Binding and Type
+Safety</h3>
+<p>Once the query skeleton is compiled, the application binds the actual
+parameters using typed setter methods, such as <code>setString()</code>,
+<code>setInt()</code>, or <code>setDate()</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>pstmt<span class="op">.</span><span class="fu">setString</span><span class="op">(</span><span class="dv">1</span><span class="op">,</span> userInputUsername<span class="op">);</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>pstmt<span class="op">.</span><span class="fu">setString</span><span class="op">(</span><span class="dv">2</span><span class="op">,</span> userInputPassword<span class="op">);</span></span></code></pre></div>
+<p>During this stage, the JDBC driver and the database engine treat the
+supplied parameters strictly as literal values. If an attacker inputs
+<code>' OR '1'='1</code>, the database does not interpret the single
+quotes as delimiters for SQL syntax. Instead, it searches for a user
+whose literal username matches the entire sequence
+<code>' OR '1'='1</code>.</p>
+<p>Depending on the underlying database protocol, the parameters are
+either sent via a separate binary protocol directly to the database
+engine or safely escaped by the JDBC driver so that metacharacters lose
+their operational meaning within the SQL grammar.</p>
+<h3 id="pre-compilation-and-query-tree-integrity">Pre-Compilation and
+Query Tree Integrity</h3>
+<p>In a standard <code>Statement</code>, query compilation happens after
+the user input has already been merged into the string. This late-stage
+compilation gives malicious inputs the ability to introduce new SQL
+keywords, clauses, and operators.</p>
+<p>With <code>PreparedStatement</code>, query compilation is decoupled
+from parameter evaluation:</p>
+<ol type="1">
+<li><strong>Compilation Phase:</strong> The SQL command is parsed and
+the Abstract Syntax Tree (AST) is finalized. Placeholders are marked as
+static data slots.</li>
+<li><strong>Binding Phase:</strong> The application assigns values to
+the designated slots.</li>
+<li><strong>Execution Phase:</strong> The database executes the
+predetermined plan, inserting the parameter values directly into the
+execution context.</li>
+</ol>
+<p>Because the query structure cannot be re-parsed during the binding or
+execution phases, an attacker cannot introduce commands like
+<code>DROP TABLE</code>, <code>UNION SELECT</code>, or authentication
+bypasses.</p>
+<h3 id="key-considerations-for-secure-implementation">Key Considerations
+for Secure Implementation</h3>
+<p>While <code>PreparedStatement</code> is highly effective, it only
+provides protection when used properly:</p>
+<ul>
+<li><strong>Avoid Concatenation:</strong> Using string concatenation to
+build a <code>PreparedStatement</code> defeats its purpose. The query
+string passed to <code>connection.prepareStatement()</code> must be a
+static or parameterized template, not a concatenated string of user
+inputs.</li>
+<li><strong>Dynamic Identifiers:</strong> Placeholders (<code>?</code>)
+can only represent data values. They cannot be used for dynamic table
+names, column names, or sort orders
+(<code>ASC</code>/<code>DESC</code>). If structural elements must be
+dynamic, they must be validated against an explicit whitelist of allowed
+values before being added to the query.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How ConcurrentHashMap Achieves Thread Safety in Java - java</title>
+    <meta name="description" content="Java’s ConcurrentHashMap delivers thread-safe operations with high throughput by eliminating the need to lock the entire data structure during reads and writes. Instead of using a single global lock like Hashtable or Collections.synchronizedMap, it rel">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-concurrent-hash-map-achieves-thread-safety-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How ConcurrentHashMap Achieves Thread Safety in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-concurrent-hash-map-achieves-thread-safety-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java’s ConcurrentHashMap delivers thread-safe operations with high throughput by eliminating the need to lock the entire data structure during reads and writes. Instead of using a single global lock like Hashtable or Collections.synchronizedMap, it rel" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-concurrenthashmap-achieves-thread-safety-in-java">How
+ConcurrentHashMap Achieves Thread Safety in Java</h1>
+<p>Java’s <code>ConcurrentHashMap</code> delivers thread-safe operations
+with high throughput by eliminating the need to lock the entire data
+structure during reads and writes. Instead of using a single global lock
+like <code>Hashtable</code> or <code>Collections.synchronizedMap</code>,
+it relies on fine-grained concurrency control. Historically implemented
+via lock striping (segments), modern Java versions (Java 8 and later)
+achieve this performance through a combination of non-blocking
+Compare-And-Swap (CAS) operations, bucket-level synchronization, and
+volatile memory semantics.</p>
+<h2 id="the-shift-from-segmented-locking-to-bucket-level-locking">The
+Shift from Segmented Locking to Bucket-Level Locking</h2>
+<p>In Java 7, <code>ConcurrentHashMap</code> used an internal array of
+segments, where each segment acted as an independent
+<code>ReentrantLock</code>. A write operation only locked the specific
+segment containing the target key, typically allowing up to 16
+concurrent writes by default.</p>
+<p>Starting in Java 8, the segment approach was replaced with a flat
+array of bins (buckets) identical in layout to a standard
+<code>HashMap</code>. Thread safety is now managed at the individual bin
+level, reducing lock contention even further. If two threads write to
+different bins, they execute simultaneously without blocking one
+another.</p>
+<h2 id="lock-free-writes-with-compare-and-swap-cas">Lock-Free Writes
+with Compare-And-Swap (CAS)</h2>
+<p>When an insertion occurs, the map checks if the target array index is
+empty:</p>
+<ol type="1">
+<li><strong>Empty Bin Detection</strong>: If the hash index contains no
+existing nodes (<code>null</code>), no lock is acquired.</li>
+<li><strong>Atomic Insertion</strong>: The thread uses low-level CAS
+operations (via <code>Unsafe</code> or <code>VarHandle</code>) to
+atomically set the new node at that index.</li>
+<li><strong>Collision Handling</strong>: If the CAS operation succeeds,
+the insertion completes without ever acquiring a monitor lock. If the
+CAS fails because another thread inserted a node simultaneously, the
+thread retries the operation within a loop.</li>
+</ol>
+<h2 id="synchronized-bucket-heads-for-collisions">Synchronized Bucket
+Heads for Collisions</h2>
+<p>When a hash collision occurs and the target bucket already contains
+one or more nodes (either as a linked list or a Red-Black Tree), CAS
+alone is insufficient. In this scenario, the map uses standard Java
+<code>synchronized</code> blocks, but locks <strong>only the first node
+(head)</strong> of that specific bucket.</p>
+<ul>
+<li><strong>Targeted Locking</strong>: Locking the head node prevents
+other threads from modifying only that specific bucket chain or
+tree.</li>
+<li><strong>Independent Access</strong>: All other buckets remain
+unlocked, allowing other threads to read or write to different parts of
+the map concurrently.</li>
+<li><strong>Low Overhead</strong>: Because modern JVMs optimize
+uncontended and lightly contended <code>synchronized</code> monitors via
+biased locking and adaptive spinning, the synchronization overhead is
+minimal.</li>
+</ul>
+<h2 id="lock-free-reads-via-volatile-visibility">Lock-Free Reads via
+Volatile Visibility</h2>
+<p>Read operations using <code>get()</code> are entirely non-blocking
+and acquire no locks whatsoever. This is accomplished using volatile
+memory semantics:</p>
+<ul>
+<li>The node table reference itself is volatile.</li>
+<li>The <code>val</code> (value) and <code>next</code> pointers within
+each <code>Node</code> are declared <code>volatile</code>.</li>
+</ul>
+<p>When a thread modifies a value or appends a node, the changes are
+instantly visible to reading threads across CPU caches. Readers traverse
+the linked list or tree concurrently with active writes, safely reading
+the state without stalling.</p>
+<h2 id="concurrent-resizing">Concurrent Resizing</h2>
+<p>Resizing a standard hash table is an expensive operation that
+normally requires full locking. <code>ConcurrentHashMap</code> avoids
+this through cooperative, multi-threaded resizing:</p>
+<ul>
+<li>When the table needs to expand, the initiating thread allocates a
+new array twice the size and sets up a migration state.</li>
+<li>The map introduces a special <code>ForwardingNode</code> at the head
+of bins that have already been migrated.</li>
+<li>If another thread attempts to write to a bin that has a
+<code>ForwardingNode</code>, it does not block; instead, it actively
+assists the resizing process by transferring other buckets to the new
+table.</li>
+<li>Reading threads encountering a <code>ForwardingNode</code>
+seamlessly redirect their search to the new table without waiting.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

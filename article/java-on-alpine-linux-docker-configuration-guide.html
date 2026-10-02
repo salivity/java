@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java on Alpine Linux: Docker Configuration Guide - java</title>
+    <meta name="description" content="Alpine Linux is widely favored for containerized applications due to its minimal footprint and security-oriented design, but running the Java Runtime Environment (JRE) on it introduces unique challenges because Alpine uses musl libc instead of standard g">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-on-alpine-linux-docker-configuration-guide">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java on Alpine Linux: Docker Configuration Guide - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-on-alpine-linux-docker-configuration-guide" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Alpine Linux is widely favored for containerized applications due to its minimal footprint and security-oriented design, but running the Java Runtime Environment (JRE) on it introduces unique challenges because Alpine uses musl libc instead of standard g" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-on-alpine-linux-docker-configuration-guide">Java on Alpine
+Linux: Docker Configuration Guide</h1>
+<p>Alpine Linux is widely favored for containerized applications due to
+its minimal footprint and security-oriented design, but running the Java
+Runtime Environment (JRE) on it introduces unique challenges because
+Alpine uses <code>musl libc</code> instead of standard
+<code>glibc</code>. This guide outlines how developers configure Alpine
+Linux base images to run Java, detailing package installation via
+Alpine's native package manager, utilizing specialized multi-platform
+OpenJDK distributions, and employing multi-stage Docker builds with
+<code>jlink</code> to produce minimal, production-ready images.</p>
+<h3 id="installing-java-via-the-alpine-package-manager">Installing Java
+via the Alpine Package Manager</h3>
+<p>The most straightforward method to run Java on Alpine is through its
+native package manager, <code>apk</code>. Alpine provides pre-compiled
+OpenJDK packages built directly against <code>musl libc</code>.</p>
+<p>To configure an Alpine image using this approach, use the following
+<code>Dockerfile</code> pattern:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> alpine:3.19</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Install OpenJDK headless JRE to minimize image size</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">apk</span> update <span class="kw">&amp;&amp;</span> <span class="dt">\</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="ex">apk</span> add <span class="at">--no-cache</span> openjdk17-jre-headless</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Configure Java environment variables</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> JAVA_HOME=/usr/lib/jvm/java-17-openjdk</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> PATH=<span class="st">&quot;$JAVA_HOME/bin:$PATH&quot;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">CMD</span> [<span class="st">&quot;java&quot;</span>, <span class="st">&quot;-version&quot;</span>]</span></code></pre></div>
+<p>Using the <code>-headless</code> package variant avoids downloading
+graphical libraries (such as X11 or AWT dependencies), keeping the final
+image lean.</p>
+<h3 id="using-pre-configured-alpine-based-java-images">Using
+Pre-Configured Alpine-Based Java Images</h3>
+<p>Rather than building directly on pure <code>alpine</code>, official
+Java providers distribute certified builds compiled specifically for
+Alpine Linux. These images resolve low-level compatibility issues,
+include optimal JVM flag defaults, and provide tested CA
+certificates.</p>
+<p>Common vendor images include:</p>
+<ul>
+<li><strong>Eclipse Temurin:</strong>
+<code>eclipse-temurin:17-jre-alpine</code></li>
+<li><strong>Amazon Corretto:</strong>
+<code>amazoncorretto:17-alpine</code></li>
+<li><strong>BellSoft Liberica:</strong>
+<code>bellsoft/liberica-openjdk-alpine:17</code> (BellSoft actively
+maintains Alpine/musl support in OpenJDK under the Portola project)</li>
+</ul>
+<p>Example <code>Dockerfile</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> eclipse-temurin:17-jre-alpine</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> target/application.jar app.jar</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Run as a non-root user for security</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">addgroup</span> <span class="at">-S</span> appgroup <span class="kw">&amp;&amp;</span> <span class="ex">adduser</span> <span class="at">-S</span> appuser <span class="at">-G</span> appgroup</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">USER</span> appuser</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">ENTRYPOINT</span> [<span class="st">&quot;java&quot;</span>, <span class="st">&quot;-jar&quot;</span>, <span class="st">&quot;app.jar&quot;</span>]</span></code></pre></div>
+<h3 id="creating-custom-runtimes-with-jlink">Creating Custom Runtimes
+with <code>jlink</code></h3>
+<p>To achieve the smallest possible container footprint, developers
+combine a full Alpine OpenJDK image with the Java Linker tool
+(<code>jlink</code>) in a multi-stage Docker build. This strips away
+unused Java modules, generating a tailored runtime.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Stage 1: Build the custom minimal runtime</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> eclipse-temurin:17-jdk-alpine <span class="kw">AS</span> builder</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="va">$JAVA_HOME</span><span class="ex">/bin/jlink</span> <span class="dt">\</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">--add-modules</span> java.base,java.logging,java.sql <span class="dt">\</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--strip-debug</span> <span class="dt">\</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">--no-man-pages</span> <span class="dt">\</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">--no-header-files</span> <span class="dt">\</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">--compress</span><span class="op">=</span>2 <span class="dt">\</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">--output</span> /custom-runtime</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Stage 2: Create the minimal production image</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> alpine:3.19</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> JAVA_HOME=/opt/java/runtime</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> PATH=<span class="st">&quot;$JAVA_HOME/bin:$PATH&quot;</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy runtime from builder</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=builder</span> /custom-runtime /opt/java/runtime</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> target/application.jar app.jar</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a><span class="kw">CMD</span> [<span class="st">&quot;java&quot;</span>, <span class="st">&quot;-jar&quot;</span>, <span class="st">&quot;app.jar&quot;</span>]</span></code></pre></div>
+<h3 id="handling-musl-vs-glibc-compatibility">Handling <code>musl</code>
+vs. <code>glibc</code> Compatibility</h3>
+<p>Standard Java binaries distributed as <code>.tar.gz</code> packages
+(such as official Oracle builds) require <code>glibc</code>. Attempting
+to execute a standard <code>glibc</code> Java binary directly on an
+Alpine image results in <code>file not found</code> errors caused by
+missing dynamic linkers.</p>
+<p>If a proprietary third-party Java distribution lacking native
+<code>musl</code> support must be used, compatibility can be achieved by
+installing <code>gcompat</code> or manually embedding <code>glibc</code>
+binaries:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">apk</span> add <span class="at">--no-cache</span> gcompat</span></code></pre></div>
+<p>While <code>gcompat</code> resolves simple binary dependencies,
+native <code>musl</code>-compiled OpenJDK distributions remain the
+standard recommendation for production stability and performance.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

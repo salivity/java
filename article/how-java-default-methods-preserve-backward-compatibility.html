@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Default Methods Preserve Backward Compatibility - java</title>
+    <meta name="description" content="Java 8 introduced default methods to allow interfaces to evolve without breaking backward compatibility for existing implementations. Prior to this feature, adding a new method to an interface forced every implementing class to provide an implementation">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-default-methods-preserve-backward-compatibility">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Default Methods Preserve Backward Compatibility - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-default-methods-preserve-backward-compatibility" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java 8 introduced default methods to allow interfaces to evolve without breaking backward compatibility for existing implementations. Prior to this feature, adding a new method to an interface forced every implementing class to provide an implementation" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-default-methods-preserve-backward-compatibility">How
+Java Default Methods Preserve Backward Compatibility</h1>
+<p>Java 8 introduced default methods to allow interfaces to evolve
+without breaking backward compatibility for existing implementations.
+Prior to this feature, adding a new method to an interface forced every
+implementing class to provide an implementation or fail at compile time.
+This article explores the core mechanisms—namely bytecode-level method
+resolution, binary compatibility, and deterministic conflict resolution
+rules—that enable Java default methods to seamlessly support legacy
+code.</p>
+<h3 id="the-backward-compatibility-problem">The Backward Compatibility
+Problem</h3>
+<p>Before Java 8, interfaces were strictly contracts containing abstract
+method signatures. If a widely used interface such as
+<code>java.util.Collection</code> needed a new capability (like the
+<code>stream()</code> method), adding an abstract method would break
+binary and source compatibility for millions of third-party libraries
+implementing that interface. Existing compiled code would throw
+<code>AbstractMethodError</code> at runtime, and source code would fail
+to compile without manual modifications.</p>
+<h3 id="virtual-extension-and-binary-compatibility">Virtual Extension
+and Binary Compatibility</h3>
+<p>The primary mechanism that preserves legacy code is binary
+compatibility enforced at the JVM level. When an interface method is
+declared with the <code>default</code> keyword, the compiler injects a
+concrete method body into the compiled interface class file.</p>
+<p>At the bytecode level:</p>
+<ul>
+<li>When a class implements an interface but does not override a default
+method, the JVM does not require the class file to contain an
+implementation.</li>
+<li>The JVM uses the <code>invokeinterface</code> instruction to resolve
+method calls dynamically at runtime.</li>
+<li>If the implementing class (or its superclasses) does not define the
+method, the JVM traverses the interface hierarchy and resolves the call
+to the default implementation provided by the interface.</li>
+</ul>
+<p>Because the resolution happens at runtime, existing classes compiled
+against an older version of an interface continue to run without
+recompilation.</p>
+<h3 id="deterministic-conflict-resolution-rules">Deterministic Conflict
+Resolution Rules</h3>
+<p>To prevent ambiguity when classes inherit multiple default methods or
+clash with superclass methods, Java enforces three strict precedence
+rules:</p>
+<ol type="1">
+<li><strong>Classes Win over Interfaces:</strong> A method declaration
+in a class or a superclass takes precedence over any default method
+defined in an interface. If a legacy superclass already defined a
+concrete method with a matching signature, that method executes,
+ensuring class hierarchy stability.</li>
+<li><strong>Most Specific Sub-interface Wins:</strong> If no class
+implementation exists, the method from the most specific interface is
+selected. For example, if interface <code>B</code> extends interface
+<code>A</code>, and both provide a default method, the implementation in
+<code>B</code> is used.</li>
+<li><strong>Explicit Disambiguation for Unrelated Defaults:</strong> If
+two unrelated interfaces provide the same default method signature and
+neither is a sub-interface of the other, the compiler flags a conflict.
+The developer must explicitly override the method in the implementing
+class and specify which default method to call using
+<code>InterfaceName.super.methodName()</code>.</li>
+</ol>
+<p>Through runtime method dispatch and deterministic precedence rules,
+Java ensures that existing code runs unaffected while allowing modern
+APIs to expand functionality safely.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

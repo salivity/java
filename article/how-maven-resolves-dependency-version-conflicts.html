@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Maven Resolves Dependency Version Conflicts - java</title>
+    <meta name="description" content="In modern Java development, managing transitive dependencies can quickly become problematic when multiple libraries require conflicting versions of the same artifact. This article explains how Apache Maven resolves these dependency conflicts using its co">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-maven-resolves-dependency-version-conflicts">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Maven Resolves Dependency Version Conflicts - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-maven-resolves-dependency-version-conflicts" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In modern Java development, managing transitive dependencies can quickly become problematic when multiple libraries require conflicting versions of the same artifact. This article explains how Apache Maven resolves these dependency conflicts using its co" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-maven-resolves-dependency-version-conflicts">How Maven
+Resolves Dependency Version Conflicts</h1>
+<p>In modern Java development, managing transitive dependencies can
+quickly become problematic when multiple libraries require conflicting
+versions of the same artifact. This article explains how Apache Maven
+resolves these dependency conflicts using its core "nearest-wins"
+mediation strategy, details the tie-breaking rules based on declaration
+order, and outlines the precise mechanisms—specifically direct
+overrides, dependency management, and exclusions—that developers can use
+to enforce predictable builds.</p>
+<h2 id="the-core-rule-nearest-wins-dependency-depth">The Core Rule:
+"Nearest Wins" (Dependency Depth)</h2>
+<p>Maven’s primary mechanism for resolving version conflicts is
+<strong>Dependency Mediation</strong>. Under this rule, Maven selects
+the version of a dependency that is closest to your project root in the
+dependency tree.</p>
+<p>Consider this dependency hierarchy:</p>
+<ul>
+<li><strong>Your Project</strong>
+<ul>
+<li>Depends on <strong>Library A</strong> (Depth 1)
+<ul>
+<li>Library A depends on <strong>Shared-Lib 1.0</strong> (Depth 2)</li>
+</ul></li>
+<li>Depends on <strong>Library B</strong> (Depth 1)
+<ul>
+<li>Library B depends on <strong>Library C</strong> (Depth 2)
+<ul>
+<li>Library C depends on <strong>Shared-Lib 2.0</strong> (Depth 3)</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<p>In this scenario, Maven selects <strong>Shared-Lib 1.0</strong>.
+Because it sits at Depth 2 via Library A, it is "nearer" to your root
+project than Shared-Lib 2.0, which sits at Depth 3. Maven does not
+compare release dates or semantic version numbers; it relies strictly on
+structural depth.</p>
+<h2 id="tie-breaking-first-declared-wins">Tie-Breaking: First Declared
+Wins</h2>
+<p>When two conflicting versions appear at the exact same depth in the
+dependency tree, Maven uses the <strong>First Declared</strong>
+rule.</p>
+<p>Consider this case:</p>
+<ul>
+<li><strong>Your Project</strong>
+<ul>
+<li>Depends on <strong>Library X</strong> (Depth 1)
+<ul>
+<li>Library X depends on <strong>Common-Util 1.5</strong> (Depth 2)</li>
+</ul></li>
+<li>Depends on <strong>Library Y</strong> (Depth 1)
+<ul>
+<li>Library Y depends on <strong>Common-Util 2.0</strong> (Depth 2)</li>
+</ul></li>
+</ul></li>
+</ul>
+<p>Both versions of <code>Common-Util</code> are at Depth 2. Maven
+resolves this by checking the order in your project's
+<code>pom.xml</code>. If <code>&lt;dependency&gt;</code> for Library X
+appears before Library Y, Maven chooses <strong>Common-Util
+1.5</strong>. Swapping their order in the POM file will cause Maven to
+choose <strong>Common-Util 2.0</strong>.</p>
+<h2 id="direct-dependencies-always-take-precedence">Direct Dependencies
+Always Take Precedence</h2>
+<p>A direct dependency explicitly declared in your project's
+<code>pom.xml</code> resides at Depth 1. Because Depth 1 is closer to
+your project than any transitive dependency (Depth 2 or greater), a
+direct declaration will always override any transitive versions,
+regardless of what other libraries request.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode xml"><code class="sourceCode xml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">dependencies</span>&gt;</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">&lt;!-- Force this specific version project-wide --&gt;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">dependency</span>&gt;</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">groupId</span>&gt;com.example&lt;/<span class="kw">groupId</span>&gt;</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">artifactId</span>&gt;shared-lib&lt;/<span class="kw">artifactId</span>&gt;</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">version</span>&gt;2.5.0&lt;/<span class="kw">version</span>&gt;</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    &lt;/<span class="kw">dependency</span>&gt;</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">dependencies</span>&gt;</span></code></pre></div>
+<h2 id="overriding-resolution-with-dependencymanagement">Overriding
+Resolution with <code>&lt;dependencyManagement&gt;</code></h2>
+<p>In multi-module projects or enterprise applications, relying on depth
+or direct declarations can become brittle. The
+<code>&lt;dependencyManagement&gt;</code> block provides centralized
+version control.</p>
+<p>When an artifact is specified inside
+<code>&lt;dependencyManagement&gt;</code>, Maven forces that specific
+version to be used whenever the artifact is encountered anywhere in the
+dependency tree—whether direct or transitive—unless explicitly
+overridden in a child module.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode xml"><code class="sourceCode xml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">dependencyManagement</span>&gt;</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">dependencies</span>&gt;</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">dependency</span>&gt;</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">groupId</span>&gt;org.slf4j&lt;/<span class="kw">groupId</span>&gt;</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">artifactId</span>&gt;slf4j-api&lt;/<span class="kw">artifactId</span>&gt;</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">version</span>&gt;2.0.9&lt;/<span class="kw">version</span>&gt;</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        &lt;/<span class="kw">dependency</span>&gt;</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    &lt;/<span class="kw">dependencies</span>&gt;</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">dependencyManagement</span>&gt;</span></code></pre></div>
+<p>This bypasses the nearest-wins rule entirely for
+<code>slf4j-api</code>, ensuring version 2.0.9 is selected across all
+modules and transitive imports.</p>
+<h2 id="explicit-exclusion-of-transitive-dependencies">Explicit
+Exclusion of Transitive Dependencies</h2>
+<p>If a library brings in an incompatible or buggy transitive
+dependency, you can prune that specific branch of the dependency tree
+using <code>&lt;exclusions&gt;</code>.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode xml"><code class="sourceCode xml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">dependency</span>&gt;</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">groupId</span>&gt;com.example&lt;/<span class="kw">groupId</span>&gt;</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">artifactId</span>&gt;legacy-library&lt;/<span class="kw">artifactId</span>&gt;</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">version</span>&gt;1.0.0&lt;/<span class="kw">version</span>&gt;</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">exclusions</span>&gt;</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">exclusion</span>&gt;</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">groupId</span>&gt;commons-logging&lt;/<span class="kw">groupId</span>&gt;</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">artifactId</span>&gt;commons-logging&lt;/<span class="kw">artifactId</span>&gt;</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        &lt;/<span class="kw">exclusion</span>&gt;</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    &lt;/<span class="kw">exclusions</span>&gt;</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">dependency</span>&gt;</span></code></pre></div>
+<p>By excluding the artifact, you remove that path from the depth
+calculation, allowing Maven to resolve another version from a different
+branch or fall back to a direct declaration.</p>
+<h2 id="diagnosing-conflicts">Diagnosing Conflicts</h2>
+<p>To view how Maven is resolving dependencies and identify where
+conflicts arise, run the following command in your terminal:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">mvn</span> dependency:tree</span></code></pre></div>
+<p>To see which specific versions were omitted or replaced due to
+conflict resolution, add the verbose flag:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">mvn</span> dependency:tree <span class="at">-Dverbose</span></span></code></pre></div>
+<p>This output displays the entire graph, annotating omitted versions
+with comments such as <code>(omitted for conflict with ...)</code> or
+<code>(omitted for duplicate)</code>, allowing you to verify exactly
+which rule caused Maven to select a given artifact.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

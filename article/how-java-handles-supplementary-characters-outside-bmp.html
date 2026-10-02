@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Java Handles Supplementary Characters Outside BMP - java</title>
+    <meta name="description" content="Java represents supplementary characters—those defined outside the Unicode Basic Multilingual Plane (BMP) from U+10000 to U+10FFFF—by utilizing UTF-16 surrogate pairs. Because Java's primitive char type is fundamentally a 16-bit value originally desi">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-java-handles-supplementary-characters-outside-bmp">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Java Handles Supplementary Characters Outside BMP - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-java-handles-supplementary-characters-outside-bmp" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java represents supplementary characters—those defined outside the Unicode Basic Multilingual Plane (BMP) from U+10000 to U+10FFFF—by utilizing UTF-16 surrogate pairs. Because Java's primitive char type is fundamentally a 16-bit value originally desi" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-java-handles-supplementary-characters-outside-bmp">How Java
+Handles Supplementary Characters Outside BMP</h1>
+<p>Java represents supplementary characters—those defined outside the
+Unicode Basic Multilingual Plane (BMP) from U+10000 to U+10FFFF—by
+utilizing UTF-16 surrogate pairs. Because Java's primitive
+<code>char</code> type is fundamentally a 16-bit value originally
+designed for UCS-2, single <code>char</code> values cannot store
+supplementary code points directly. Instead, Java allocates two
+consecutive 16-bit <code>char</code> code units (a high surrogate and a
+low surrogate) to encode a single supplementary character, while
+leveraging 32-bit <code>int</code> values across its standard libraries
+to handle full Unicode code points natively.</p>
+<h2 id="the-evolution-from-ucs-2-to-utf-16">The Evolution from UCS-2 to
+UTF-16</h2>
+<p>When Java was initially created, Unicode was envisioned as a fixed
+16-bit encoding system capable of holding a maximum of 65,536 characters
+(U+0000 to U+FFFF), known as the Basic Multilingual Plane (BMP). Java
+tied its <code>char</code> primitive type and <code>String</code>
+internals directly to this 16-bit architecture.</p>
+<p>As Unicode expanded to accommodate historical scripts, mathematical
+notations, and emojis, the standard introduced supplementary planes
+extending up to code point U+10FFFF. To retain backward compatibility
+without altering the fundamental memory footprint of the primitive
+<code>char</code>, Java 5 transitioned from UCS-2 to UTF-16.</p>
+<h2 id="surrogate-pairs-explained">Surrogate Pairs Explained</h2>
+<p>Under UTF-16, characters within the BMP (U+0000 to U+FFFF) remain
+represented by a single 16-bit code unit. Any code point between U+10000
+and U+10FFFF is mathematically broken down into a surrogate pair
+consisting of two distinct 16-bit code units:</p>
+<ul>
+<li><strong>High Surrogate (Lead):</strong> A code unit in the range
+<code>\uD800</code> through <code>\uDBFF</code>.</li>
+<li><strong>Low Surrogate (Trail):</strong> A code unit in the range
+<code>\uDC00</code> through <code>\uDFFF</code>.</li>
+</ul>
+<p>The Unicode standard explicitly reserves the range U+D800 to U+DFFF
+solely for surrogate pairs, ensuring that these values never represent
+individual characters on their own.</p>
+<p>For example, the musical symbol G clef (𝄞), which has the code point
+U+1D11E, is represented in Java as a pair of two <code>char</code>
+values: <code>\uD834</code> (high surrogate) followed by
+<code>\uDD1E</code> (low surrogate).</p>
+<h2 id="code-units-vs-code-points-in-java">Code Units vs. Code Points in
+Java</h2>
+<p>Because a supplementary character requires two <code>char</code>
+values, standard operations on strings can yield unexpected results if
+code points are confused with code units:</p>
+<ul>
+<li><strong><code>String.length()</code></strong> returns the total
+number of 16-bit <code>char</code> code units in the sequence, not the
+actual number of visual characters. A string containing only the G clef
+symbol has a length of <code>2</code>.</li>
+<li><strong><code>String.charAt(int index)</code></strong> accesses
+individual 16-bit code units. Requesting index <code>0</code> or
+<code>1</code> on a supplementary character returns an isolated, invalid
+surrogate <code>char</code>.</li>
+</ul>
+<h2 id="working-with-supplementary-characters-using-int">Working with
+Supplementary Characters Using <code>int</code></h2>
+<p>To process full Unicode code points reliably, the Java API uses the
+32-bit signed primitive <code>int</code> to store any code point between
+U+0000 and U+10FFFF. The <code>java.lang.Character</code> and
+<code>java.lang.String</code> classes provide dedicated methods for this
+purpose:</p>
+<ul>
+<li><strong>Counting Characters:</strong>
+<code>String.codePointCount(int beginIndex, int endIndex)</code> returns
+the real number of Unicode code points within a substring.</li>
+<li><strong>Extracting Code Points:</strong>
+<code>String.codePointAt(int index)</code> returns the complete 32-bit
+<code>int</code> code point located at the specified code unit offset,
+automatically combining the surrogate pair if present.</li>
+<li><strong>Navigation:</strong>
+<code>String.offsetByCodePoints(int index, int codePointOffset)</code>
+calculates the correct code-unit index after shifting by a specific
+number of code points.</li>
+<li><strong>Validation:</strong>
+<code>Character.isSupplementaryCodePoint(int codePoint)</code> checks if
+the provided integer falls in the range of U+10000 to U+10FFFF.</li>
+<li><strong>Recomposition:</strong>
+<code>Character.toChars(int codePoint)</code> converts an
+<code>int</code> code point back into a <code>char[]</code> array
+containing either one or two code units.</li>
+</ul>
+<h2 id="iterating-over-supplementary-characters">Iterating Over
+Supplementary Characters</h2>
+<p>Iterating over strings containing supplementary characters requires
+code-point-aware traversal to prevent splitting surrogate pairs.</p>
+<p>Using traditional loops:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> text <span class="op">=</span> <span class="st">&quot;Hello 𝄞!&quot;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> text<span class="op">.</span><span class="fu">length</span><span class="op">();</span> <span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> codePoint <span class="op">=</span> text<span class="op">.</span><span class="fu">codePointAt</span><span class="op">(</span>i<span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Process codePoint here</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    i <span class="op">+=</span> <span class="bu">Character</span><span class="op">.</span><span class="fu">charCount</span><span class="op">(</span>codePoint<span class="op">);</span> <span class="co">// Advances by 1 for BMP, 2 for supplementary</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Using the Java Streams API:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>text<span class="op">.</span><span class="fu">codePoints</span><span class="op">().</span><span class="fu">forEach</span><span class="op">(</span>codePoint <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Process each 32-bit integer code point directly</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">});</span></span></code></pre></div>
+<p>Using these methods ensures that applications process supplementary
+Unicode characters accurately without corrupting surrogate pairs.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

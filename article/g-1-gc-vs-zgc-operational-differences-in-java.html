@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G1 GC vs ZGC: Operational Differences in Java - java</title>
+    <meta name="description" content="Java application performance heavily depends on garbage collection behavior, particularly when choosing between the Garbage-First (G1) collector and the Z Garbage Collector (ZGC). This article breaks down the operational differences between G1 and ZGC, f">
+    <link rel="canonical" href="https://salivity.github.io/java/article/g-1-gc-vs-zgc-operational-differences-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="G1 GC vs ZGC: Operational Differences in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/g-1-gc-vs-zgc-operational-differences-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Java application performance heavily depends on garbage collection behavior, particularly when choosing between the Garbage-First (G1) collector and the Z Garbage Collector (ZGC). This article breaks down the operational differences between G1 and ZGC, f" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="g1-gc-vs-zgc-operational-differences-in-java">G1 GC vs ZGC:
+Operational Differences in Java</h1>
+<p>Java application performance heavily depends on garbage collection
+behavior, particularly when choosing between the Garbage-First (G1)
+collector and the Z Garbage Collector (ZGC). This article breaks down
+the operational differences between G1 and ZGC, focusing on pause times,
+concurrency mechanisms, memory footprint, heap scaling, and generational
+design to help engineers choose the appropriate collector for their
+runtime workloads.</p>
+<h3 id="latency-and-pause-times">Latency and Pause Times</h3>
+<p>The primary operational difference between G1 and ZGC is how they
+manage Stop-The-World (STW) pauses:</p>
+<ul>
+<li><strong>G1 GC:</strong> Designed as a balance between throughput and
+latency, G1 allows users to set a target pause duration using
+<code>-XX:MaxGCPauseMillis</code> (defaulting to 200 ms). While it
+attempts to meet this soft goal, G1 still requires STW pauses for
+critical phases, including root scanning, remarking, and live-object
+evacuation. Pauses typically range from tens to hundreds of milliseconds
+and can scale with heap size and object mutation rates.</li>
+<li><strong>ZGC:</strong> Engineered specifically for ultra-low latency,
+ZGC restricts pause times to under one millisecond, regardless of
+whether the heap is 16 megabytes or 16 terabytes. Its pause times do not
+scale with heap size or the volume of live objects.</li>
+</ul>
+<h3 id="concurrency-and-evacuation">Concurrency and Evacuation</h3>
+<p>Memory compaction prevents fragmentation, but how memory is relocated
+differentiates these collectors:</p>
+<ul>
+<li><strong>G1 GC:</strong> Performs object evacuation inside an STW
+pause. While it marks objects concurrently with running application
+threads, it stops execution when moving surviving objects from one
+region to another to avoid race conditions.</li>
+<li><strong>ZGC:</strong> Performs virtually all work concurrently,
+including object relocation and pointer remapping. It achieves this
+using colored pointers (storing metadata bits inside the object
+reference itself) and load barriers (JIT-injected code that intercepts
+reference dereferences). When an application thread touches an object
+that has been moved or is slated for relocation, the load barrier
+dynamically updates the reference without stopping other threads.</li>
+</ul>
+<h3 id="generational-handling">Generational Handling</h3>
+<p>Handling short-lived versus long-lived objects dictates how
+efficiently a collector handles memory churn:</p>
+<ul>
+<li><strong>G1 GC:</strong> Inherently generational. G1 divides the heap
+into equal-sized virtual regions assigned dynamically as Eden, Survivor,
+or Tenured. It continuously collects Eden regions to exploit the weak
+generational hypothesis (most objects die young), maintaining high
+throughput for allocation-heavy applications.</li>
+<li><strong>ZGC:</strong> Originally introduced as a single-generation
+collector, which meant it had to scan the entire heap equally and could
+struggle with high allocation rates. Starting in Java 21, Generational
+ZGC (<code>-XX:+ZGenerational</code>) was introduced, splitting the heap
+into young and old generations while keeping pauses sub-millisecond,
+bridging the throughput gap with G1.</li>
+</ul>
+<h3 id="cpu-overhead-and-resource-consumption">CPU Overhead and Resource
+Consumption</h3>
+<p>Operating these collectors incurs different hardware trade-offs:</p>
+<ul>
+<li><strong>G1 GC:</strong> Requires less CPU overhead because it uses
+standard write barriers and pauses threads during compaction. It has a
+lower CPU footprint for the garbage collection threads themselves,
+making more compute cycles available for application throughput.</li>
+<li><strong>ZGC:</strong> Uses more compute cycles due to continuous
+background concurrent threads and the runtime overhead of load barriers
+on memory reads. While pause times remain negligible, total throughput
+may decrease by 5% to 15% compared to G1 depending on the workload and
+hardware profile.</li>
+</ul>
+<h3 id="operational-guidance">Operational Guidance</h3>
+<ul>
+<li>Choose <strong>G1 GC</strong> when maximum throughput is prioritized
+over absolute low latency, when CPU resources are constrained, or when
+latency spikes of 50 to 200 milliseconds are within acceptable service
+level agreements (SLAs).</li>
+<li>Choose <strong>ZGC</strong> when predictable, sub-millisecond
+response times are mandatory, when dealing with multi-gigabyte or
+terabyte-scale heaps, or when tail latencies (p99/p999) directly affect
+user experience or financial transactions.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

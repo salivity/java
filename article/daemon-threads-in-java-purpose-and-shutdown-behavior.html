@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daemon Threads in Java: Purpose and Shutdown Behavior - java</title>
+    <meta name="description" content="In Java, threads are categorized as either user threads or daemon threads, with daemon threads functioning as low-priority background service providers for primary application tasks. This article explores the fundamental purpose of daemon threads, how th">
+    <link rel="canonical" href="https://salivity.github.io/java/article/daemon-threads-in-java-purpose-and-shutdown-behavior">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Daemon Threads in Java: Purpose and Shutdown Behavior - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/daemon-threads-in-java-purpose-and-shutdown-behavior" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, threads are categorized as either user threads or daemon threads, with daemon threads functioning as low-priority background service providers for primary application tasks. This article explores the fundamental purpose of daemon threads, how th" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="daemon-threads-in-java-purpose-and-shutdown-behavior">Daemon
+Threads in Java: Purpose and Shutdown Behavior</h1>
+<p>In Java, threads are categorized as either user threads or daemon
+threads, with daemon threads functioning as low-priority background
+service providers for primary application tasks. This article explores
+the fundamental purpose of daemon threads, how they are configured in
+Java code, and the definitive role they play in governing the shutdown
+lifecycle of the Java Virtual Machine (JVM).</p>
+<h3 id="the-purpose-of-daemon-threads">The Purpose of Daemon
+Threads</h3>
+<p>The primary role of a daemon thread is to perform background
+operations that support user threads. They are intended for tasks that
+only need to run as long as the main application is active. Typical
+examples of daemon threads include:</p>
+<ul>
+<li><strong>Garbage Collection:</strong> The JVM’s internal memory
+management runs as a daemon thread.</li>
+<li><strong>Housekeeping and Monitoring:</strong> Profilers, heartbeats,
+background metrics collectors, and cache-eviction mechanisms.</li>
+<li><strong>Idle Connection Cleaners:</strong> Background workers that
+poll and reap stale network or database connections.</li>
+</ul>
+<p>Because these tasks exist solely to serve application-level code,
+they become irrelevant once the main work of the application is
+complete.</p>
+<h3 id="how-daemon-threads-influence-java-process-shutdown">How Daemon
+Threads Influence Java Process Shutdown</h3>
+<p>The JVM determines its runtime lifecycle based on the presence of
+active user threads:</p>
+<ol type="1">
+<li><strong>The JVM Stays Alive for User Threads:</strong> As long as at
+least one non-daemon (user) thread is running, the JVM remains
+active.</li>
+<li><strong>The JVM Exits When Only Daemon Threads Remain:</strong> When
+the last user thread finishes its execution—whether by completing its
+<code>run()</code> method or throwing an unhandled exception—the JVM
+immediately triggers its shutdown sequence. It does not wait for daemon
+threads to complete their work.</li>
+<li><strong>Abrupt Termination:</strong> When the JVM shuts down due to
+the absence of user threads, running daemon threads are abruptly
+abandoned.</li>
+</ol>
+<p>Because daemon threads terminate instantly upon JVM exit,
+<code>finally</code> blocks within daemon threads are not guaranteed to
+execute, and resources such as file handles, network streams, or open
+buffers might not be properly flushed or closed.</p>
+<h3 id="creating-and-configuring-a-daemon-thread">Creating and
+Configuring a Daemon Thread</h3>
+<p>By default, any new thread inherits the daemon status of the thread
+that created it. To mark a thread explicitly as a daemon, use the
+<code>setDaemon(boolean on)</code> method provided by the
+<code>java.lang.Thread</code> class.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Thread</span> backgroundService <span class="op">=</span> <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="op">(</span><span class="kw">true</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Continuous background processing</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">});</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Configure the thread as a daemon</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>backgroundService<span class="op">.</span><span class="fu">setDaemon</span><span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">// Start the thread</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>backgroundService<span class="op">.</span><span class="fu">start</span><span class="op">();</span></span></code></pre></div>
+<p>The <code>setDaemon(true)</code> method must be called before
+invoking <code>start()</code>. If <code>setDaemon()</code> is called on
+an already active thread, the JVM throws an
+<code>IllegalThreadStateException</code>.</p>
+<h3 id="best-practices">Best Practices</h3>
+<ul>
+<li><strong>Avoid I/O Operations in Daemon Threads:</strong> Never use
+daemon threads for critical I/O tasks, database transactions, or
+operations that require clean state persistence, as an unexpected
+shutdown can cause data corruption.</li>
+<li><strong>Prefer User Threads for Critical Tasks:</strong> Any work
+that must finish cleanly should be assigned to standard user threads or
+managed via graceful shutdown hooks and thread pool lifecycles (such as
+<code>ExecutorService.shutdown()</code>).</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

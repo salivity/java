@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How ForkJoinPool Uses Work Stealing in Java - java</title>
+    <meta name="description" content="The ForkJoinPool in Java is a specialized implementation of the ExecutorService designed to maximize multi-core CPU utilization by recursively breaking large tasks into smaller subtasks. At the heart of its performance is the work-stealing algorithm, whi">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-fork-join-pool-uses-work-stealing-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How ForkJoinPool Uses Work Stealing in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-fork-join-pool-uses-work-stealing-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The ForkJoinPool in Java is a specialized implementation of the ExecutorService designed to maximize multi-core CPU utilization by recursively breaking large tasks into smaller subtasks. At the heart of its performance is the work-stealing algorithm, whi" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-forkjoinpool-uses-work-stealing-in-java">How ForkJoinPool
+Uses Work Stealing in Java</h1>
+<p>The <code>ForkJoinPool</code> in Java is a specialized implementation
+of the <code>ExecutorService</code> designed to maximize multi-core CPU
+utilization by recursively breaking large tasks into smaller subtasks.
+At the heart of its performance is the work-stealing algorithm, which
+prevents thread starvation by allowing idle worker threads to
+proactively steal pending tasks from busy threads. This article explains
+how <code>ForkJoinPool</code> manages per-thread task queues, the
+mechanics of dual-ended task extraction, how it minimizes thread
+contention, and why this architecture is essential for high-throughput,
+compute-intensive applications.</p>
+<h3 id="the-divide-and-conquer-model">The Divide-and-Conquer Model</h3>
+<p>The <code>ForkJoinPool</code> is built around the divide-and-conquer
+design pattern implemented through the <code>ForkJoinTask</code>
+abstractions, typically <code>RecursiveAction</code> (for tasks that
+return no result) or <code>RecursiveTask</code> (for tasks that return a
+result).</p>
+<p>When a task is submitted, it checks if the workload is small enough
+to execute sequentially. If the task exceeds a defined threshold, it
+calls <code>fork()</code> to split itself into two or more subtasks. The
+<code>fork()</code> method pushes the new subtask asynchronously to the
+current thread's internal work queue. Later, <code>join()</code> is
+invoked to await the completion of the subtask and merge its
+results.</p>
+<h3 id="per-thread-deques">Per-Thread Deques</h3>
+<p>Unlike traditional thread pools that rely on a single, shared,
+blocking queue for all tasks, <code>ForkJoinPool</code> assigns a
+dedicated double-ended queue (<code>WorkQueue</code>, implemented as a
+deque) to every worker thread.</p>
+<p>External submissions (tasks submitted from outside the pool) land in
+shared submission queues. However, all subsequent subtasks generated via
+<code>fork()</code> stay local to the worker thread that generated them.
+This isolation removes the global lock contention commonly found in
+traditional thread pool architectures.</p>
+<h3 id="lifo-for-owners-fifo-for-thieves">LIFO for Owners, FIFO for
+Thieves</h3>
+<p>The primary optimization of the work-stealing algorithm lies in how
+the owner thread and other threads access a worker's deque:</p>
+<ul>
+<li><strong>The Owner Operates in LIFO (Last-In, First-Out)
+Order:</strong> The worker thread pushes new tasks to the head of its
+own deque and pops tasks to execute from the head. This LIFO approach
+enhances CPU cache locality, because the most recently created subtask
+typically operates on data that still resides in the CPU cache.
+Furthermore, these are the smallest, most recursive pieces of work.</li>
+<li><strong>Thieves Operate in FIFO (First-In, First-Out)
+Order:</strong> When a worker thread runs out of tasks in its own deque,
+it transitions into a "thief." It randomly scans the deques of other
+worker threads and steals a task from the tail. Because the tail
+contains older tasks—often the larger, less-divided branches of the task
+tree—the thief obtains a substantial unit of work. This minimizes the
+frequency with which the thief needs to steal again.</li>
+</ul>
+<h3 id="reducing-contention-via-cas-operations">Reducing Contention via
+CAS Operations</h3>
+<p>Accessing opposite ends of the deque allows the owner and the thief
+to operate simultaneously without locking the entire queue. The owner
+modifies the head pointer, while the thief accesses the tail
+pointer.</p>
+<p>To handle edge cases—such as when only one task remains in the deque
+and both the owner and a thief attempt to retrieve it—the framework
+relies on atomic Compare-And-Swap (CAS) operations. If a race condition
+occurs, CAS guarantees that only one thread succeeds in acquiring the
+task, while the other fails gracefully and looks elsewhere, avoiding
+heavy operating system thread synchronization.</p>
+<h3 id="handling-blocking-operations-with-managedblocker">Handling
+Blocking Operations with ManagedBlocker</h3>
+<p>A potential pitfall of a fixed-size <code>ForkJoinPool</code> is
+thread starvation caused by blocking operations, such as I/O or waiting
+for locks. Because worker threads are tuned to match the number of
+available CPU cores, a blocked thread reduces the pool’s processing
+capacity.</p>
+<p>To mitigate this, <code>ForkJoinPool</code> provides the
+<code>ForkJoinPool.ManagedBlocker</code> interface. When a task requires
+a blocking call, it can register with a <code>ManagedBlocker</code>. The
+pool detects that a worker is about to block and dynamically spawns a
+temporary worker thread to ensure the target parallelism level is
+maintained until the blocked thread resumes.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

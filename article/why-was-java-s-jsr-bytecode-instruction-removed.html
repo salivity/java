@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Was Java's JSR Bytecode Instruction Removed? - java</title>
+    <meta name="description" content="The jsr (Jump Subroutine) instruction, along with its counterpart ret, was removed from modern Java class file specifications primarily because it complicated bytecode verification and became obsolete with modern compiler optimizations. Originally design">
+    <link rel="canonical" href="https://salivity.github.io/java/article/why-was-java-s-jsr-bytecode-instruction-removed">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Was Java's JSR Bytecode Instruction Removed? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/why-was-java-s-jsr-bytecode-instruction-removed" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The jsr (Jump Subroutine) instruction, along with its counterpart ret, was removed from modern Java class file specifications primarily because it complicated bytecode verification and became obsolete with modern compiler optimizations. Originally design" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-was-javas-jsr-bytecode-instruction-removed">Why Was Java's
+JSR Bytecode Instruction Removed?</h1>
+<p>The <code>jsr</code> (Jump Subroutine) instruction, along with its
+counterpart <code>ret</code>, was removed from modern Java class file
+specifications primarily because it complicated bytecode verification
+and became obsolete with modern compiler optimizations. Originally
+designed to implement <code>finally</code> blocks without duplicating
+bytecode, <code>jsr</code> allowed intra-method subroutines with dynamic
+return addresses. However, when Java 6 introduced the linear-time Type
+Checking Verifier (JSR 202) utilizing <code>StackMapTable</code>
+attributes, representing the state transitions of <code>jsr</code>
+proved overly complex. As a result, compilers switched to inlining
+<code>finally</code> blocks directly, leading to the prohibition of
+<code>jsr</code> in modern class file formats starting with version 50.0
+(Java 6) and strictly enforced in version 51.0 (Java 7).</p>
+<h3 id="the-original-purpose-of-jsr">The Original Purpose of
+<code>jsr</code></h3>
+<p>In early versions of Java, the compiler used <code>jsr</code> and
+<code>ret</code> to handle <code>try-finally</code> blocks efficiently.
+When a <code>try</code> block completed—either normally, through a
+<code>return</code> or <code>break</code>, or via an unhandled
+exception—execution jumped to the <code>finally</code> code using
+<code>jsr</code>.</p>
+<p>The <code>jsr</code> instruction pushed the return address (the next
+instruction's address) onto the operand stack, and the subroutine ended
+with a <code>ret</code> instruction that returned execution back to that
+address. This design prevented bytecode bloat by reusing the single
+compiled instance of the <code>finally</code> block across multiple exit
+paths.</p>
+<h3 id="the-verification-nightmare">The Verification Nightmare</h3>
+<p>The Java Virtual Machine (JVM) enforces type safety and security at
+runtime using a bytecode verifier. Under the original Type Inference
+Verifier (prior to Java 6), the JVM performed data-flow analysis to
+simulate execution paths and infer operand stack states and local
+variable types.</p>
+<p>Subroutines introduced significant complexity into this process:</p>
+<ol type="1">
+<li><strong>Polymorphic Return Paths:</strong> Because multiple
+<code>jsr</code> instructions could call the same subroutine, the return
+address held in a local variable was dynamic. The verifier had to track
+all possible return sites to ensure execution returned to the correct
+caller.</li>
+<li><strong>Variable State Merging:</strong> A subroutine might modify
+some local variables while leaving others untouched. Merging these
+states back at the return site required tracking which variables were
+read or modified within the subroutine, leading to complex and slow
+data-flow algorithms that could scale poorly in nested or deeply
+branched code.</li>
+</ol>
+<h3 id="the-introduction-of-the-type-checking-verifier-jsr-202">The
+Introduction of the Type Checking Verifier (JSR 202)</h3>
+<p>To improve JVM startup performance and simplify runtime security,
+Java 6 introduced a new verifier defined by JSR 202. Instead of
+inferring types dynamically through iterative data-flow analysis, the
+compiler computes the stack and local variable types at compile time and
+embeds them into the class file as a <code>StackMapTable</code>
+attribute. The JVM then validates these types in a single linear
+pass.</p>
+<p>Modeling the polymorphic execution paths of <code>jsr</code> and
+<code>ret</code> in a static <code>StackMapTable</code> was structurally
+incompatible with the design of linear-time type checking. Extending the
+stack map format to support subroutine return addresses and variable
+preservation masks would have defeated the goal of a simple, robust
+verifier.</p>
+<h3 id="the-transition-to-inlining">The Transition to Inlining</h3>
+<p>Java compilers discovered that inlining <code>finally</code> blocks
+was a vastly superior alternative. Instead of jumping to a single
+subroutine, the compiler simply duplicates the <code>finally</code>
+bytecode at every possible exit point:</p>
+<ul>
+<li>Directly before each normal exit or <code>return</code>
+statement.</li>
+<li>Inside an exception handler catch-all block that re-throws the
+exception after execution.</li>
+</ul>
+<p>Although inlining slightly increases class file size, modern JVM
+Just-In-Time (JIT) compilers optimize linear code much more effectively.
+Inlining removes the overhead of managing return addresses, enables
+deeper JIT optimizations, and allows the bytecode to be verified
+cleanly.</p>
+<h3 id="specification-deprecation-and-removal">Specification Deprecation
+and Removal</h3>
+<p>Because modern compilers no longer generated <code>jsr</code>, the
+Java Virtual Machine Specification officially restricted the
+instruction. For class files with version number 50.0 (Java 6) or
+higher, <code>StackMapTable</code> attributes became standard, and
+<code>jsr</code> or <code>ret</code> instructions were prohibited in
+class files using the new verification scheme. By Java 7 (class file
+version 51.0), the Type Checking Verifier became mandatory, fully ending
+the use of <code>jsr</code> in contemporary Java development.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

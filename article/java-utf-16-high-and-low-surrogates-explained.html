@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java UTF-16 High and Low Surrogates Explained - java</title>
+    <meta name="description" content="In Java, strings are encoded internally using UTF-16, which represents characters using 16-bit code units (char). While this is sufficient for common characters, it cannot represent the entire Unicode space with a single char. To accommodate supplementar">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-utf-16-high-and-low-surrogates-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java UTF-16 High and Low Surrogates Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-utf-16-high-and-low-surrogates-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, strings are encoded internally using UTF-16, which represents characters using 16-bit code units (char). While this is sufficient for common characters, it cannot represent the entire Unicode space with a single char. To accommodate supplementar" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-utf-16-high-and-low-surrogates-explained">Java UTF-16 High
+and Low Surrogates Explained</h1>
+<p>In Java, strings are encoded internally using UTF-16, which
+represents characters using 16-bit code units (<code>char</code>). While
+this is sufficient for common characters, it cannot represent the entire
+Unicode space with a single <code>char</code>. To accommodate
+supplementary characters—such as emojis and rare historical
+scripts—UTF-16 utilizes pairs of special 16-bit values known as
+surrogate pairs. This article explains the definitions of high and low
+surrogate characters, their technical ranges, and how Java handles
+them.</p>
+<h3 id="unicode-code-points-and-the-basic-multilingual-plane">Unicode
+Code Points and the Basic Multilingual Plane</h3>
+<p>Unicode assigns every distinct character a numerical value called a
+code point, spanning from <code>U+0000</code> to <code>U+10FFFF</code>.
+This range is split into 17 planes:</p>
+<ul>
+<li><strong>Basic Multilingual Plane (BMP):</strong> Covers
+<code>U+0000</code> to <code>U+FFFF</code>. These characters fit inside
+a single 16-bit Java <code>char</code>.</li>
+<li><strong>Supplementary Planes:</strong> Cover <code>U+10000</code> to
+<code>U+10FFFF</code>. These characters exceed 16 bits and require
+special handling in UTF-16.</li>
+</ul>
+<h3 id="what-are-high-and-low-surrogates">What Are High and Low
+Surrogates?</h3>
+<p>Because a Java <code>char</code> is fixed at 16 bits, it cannot store
+values greater than <code>0xFFFF</code>. UTF-16 resolves this by
+reserving a specific block of 2,048 code points in the BMP solely for
+encoding supplementary characters. This block is divided into two
+halves:</p>
+<ol type="1">
+<li><strong>High Surrogates (Leading Surrogates):</strong>
+<ul>
+<li>Range: <code>\uD800</code> through <code>\uDBFF</code> (1,024
+values).</li>
+<li>Appears first in a surrogate pair.</li>
+</ul></li>
+<li><strong>Low Surrogates (Trailing Surrogates):</strong>
+<ul>
+<li>Range: <code>\uDC00</code> through <code>\uDFFF</code> (1,024
+values).</li>
+<li>Appears second in a surrogate pair.</li>
+</ul></li>
+</ol>
+<p>Neither a high surrogate nor a low surrogate represents a standalone
+character. When combined, a high surrogate and a low surrogate form a
+<strong>surrogate pair</strong>, which mathematically maps to a single
+supplementary Unicode code point:</p>
+<p><span class="math display">\[\text{Code Point} = 0x10000 +
+((\text{High} - 0xD800) \times 0x400) + (\text{Low} -
+0xDC00)\]</span></p>
+<h3 id="behavior-in-java">Behavior in Java</h3>
+<p>In Java, methods like <code>String.length()</code> count UTF-16 code
+units (<code>char</code> primitives), not actual Unicode characters
+(code points). Consequently, any supplementary character occupies two
+<code>char</code> locations.</p>
+<p>For example, the musical symbol G-clef (<code>𝄞</code>,
+<code>U+1D11E</code>) is represented by the surrogate pair
+<code>\uD834\uDD1E</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">String</span> clef <span class="op">=</span> <span class="st">&quot;</span><span class="sc">\uD834\uDD1E</span><span class="st">&quot;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>clef<span class="op">.</span><span class="fu">length</span><span class="op">());</span> <span class="co">// Outputs: 2</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span>clef<span class="op">.</span><span class="fu">codePointCount</span><span class="op">(</span><span class="dv">0</span><span class="op">,</span> clef<span class="op">.</span><span class="fu">length</span><span class="op">()));</span> <span class="co">// Outputs: 1</span></span></code></pre></div>
+<h3 id="essential-java-methods-for-surrogates">Essential Java Methods
+for Surrogates</h3>
+<p>The <code>java.lang.Character</code> class provides utility methods
+to detect and work with surrogate pairs:</p>
+<ul>
+<li><code>Character.isHighSurrogate(char ch)</code>: Returns
+<code>true</code> if <code>ch</code> is between <code>\uD800</code> and
+<code>\uDBFF</code>.</li>
+<li><code>Character.isLowSurrogate(char ch)</code>: Returns
+<code>true</code> if <code>ch</code> is between <code>\uDC00</code> and
+<code>\uDFFF</code>.</li>
+<li><code>Character.isSurrogatePair(char high, char low)</code>:
+Verifies if the two <code>char</code> values form a valid sequence.</li>
+<li><code>Character.toCodePoint(char high, char low)</code>: Converts a
+valid surrogate pair into its 32-bit Unicode code point integer.</li>
+</ul>
+<p>To safely process characters without splitting surrogate pairs, use
+code-point-aware APIs such as <code>String.codePoints()</code> or
+<code>Character.codePointAt(CharSequence seq, int index)</code> instead
+of iterating through strings by raw <code>char</code> index.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

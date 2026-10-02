@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compile-Time vs Runtime Constants in Java Bytecode - java</title>
+    <meta name="description" content="This article explores the technical and structural differences between compile-time and runtime constants in Java, focusing on how the Java Virtual Machine (JVM) and the javac compiler handle them at the bytecode level. While both concepts involve the fi">
+    <link rel="canonical" href="https://salivity.github.io/java/article/compile-time-vs-runtime-constants-in-java-bytecode">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Compile-Time vs Runtime Constants in Java Bytecode - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/compile-time-vs-runtime-constants-in-java-bytecode" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the technical and structural differences between compile-time and runtime constants in Java, focusing on how the Java Virtual Machine (JVM) and the javac compiler handle them at the bytecode level. While both concepts involve the fi" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="compile-time-vs-runtime-constants-in-java-bytecode">Compile-Time
+vs Runtime Constants in Java Bytecode</h1>
+<p>This article explores the technical and structural differences
+between compile-time and runtime constants in Java, focusing on how the
+Java Virtual Machine (JVM) and the <code>javac</code> compiler handle
+them at the bytecode level. While both concepts involve the
+<code>final</code> keyword, they diverge drastically in compilation
+mechanics, constant pool storage, execution performance, and
+class-dependency coupling.</p>
+<h3 id="defining-the-constants">Defining the Constants</h3>
+<p>A <strong>compile-time constant</strong> is a
+<code>static final</code> field of a primitive type or
+<code>java.lang.String</code> initialized with a constant expression
+(such as literals, basic arithmetic, or string concatenation of
+literals). The compiler can fully compute the value during the
+compilation phase.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Constants <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">final</span> <span class="dt">int</span> MAX_USERS <span class="op">=</span> <span class="dv">100</span><span class="op">;</span> <span class="co">// Compile-time constant</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">final</span> <span class="bu">String</span> PREFIX <span class="op">=</span> <span class="st">&quot;ID_&quot;</span><span class="op">;</span> <span class="co">// Compile-time constant</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>A <strong>runtime constant</strong> is also marked
+<code>final</code>, but its value cannot be known until the program
+actually executes. It is initialized using an expression evaluated at
+runtime, such as a method invocation, object instantiation, or system
+property lookup.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> RuntimeConstants <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">final</span> <span class="dt">long</span> START_TIME <span class="op">=</span> <span class="bu">System</span><span class="op">.</span><span class="fu">currentTimeMillis</span><span class="op">();</span> <span class="co">// Runtime constant</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">final</span> <span class="bu">Integer</span> LIMIT <span class="op">=</span> <span class="bu">Integer</span><span class="op">.</span><span class="fu">valueOf</span><span class="op">(</span><span class="dv">50</span><span class="op">);</span> <span class="co">// Runtime constant</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="bytecode-representation-of-compile-time-constants">Bytecode
+Representation of Compile-Time Constants</h3>
+<p>When code references a compile-time constant, the Java compiler
+executes an optimization known as <strong>constant inlining</strong> (or
+macro expansion). The compiler completely removes the symbolic reference
+to the original field and embeds the literal value directly into the
+consumer class's bytecode.</p>
+<p>For primitives, the compiler uses operand-pushing instructions:</p>
+<ul>
+<li>Small integers use <code>iconst_&lt;i&gt;</code>,
+<code>bipush</code>, or <code>sipush</code>.</li>
+<li>Floating-point numbers, larger integers, and <code>String</code>
+literals are pushed onto the operand stack using the <code>ldc</code>
+(load constant) instruction, loading directly from the consuming class's
+own runtime constant pool (<code>#cp_info</code>).</li>
+</ul>
+<p><strong>Example Bytecode:</strong> If a class calls
+<code>int x = Constants.MAX_USERS;</code>, the generated bytecode in the
+calling class does not access <code>Constants</code>. Instead, it
+emits:</p>
+<pre class="bytecode"><code>bipush 100
+istore_1</code></pre>
+<p>Because the value <code>100</code> is hardcoded into the consumer's
+<code>.class</code> file, the calling class does not even trigger class
+loading or initialization of <code>Constants</code> at runtime.</p>
+<h3 id="bytecode-representation-of-runtime-constants">Bytecode
+Representation of Runtime Constants</h3>
+<p>Runtime constants cannot be inlined because their values do not exist
+when the <code>.class</code> file is generated. The initialization
+occurs during the execution of the class initializer method
+(<code>&lt;clinit&gt;</code>) or the instance constructor
+(<code>&lt;init&gt;</code>).</p>
+<p>When another class references a runtime constant, the compiler
+retains a symbolic reference to the field in the constant pool. At
+runtime, the JVM uses the <code>getstatic</code> (or
+<code>getfield</code> for instance constants) instruction to resolve and
+fetch the value from memory.</p>
+<p><strong>Example Bytecode:</strong> If a class calls
+<code>long t = RuntimeConstants.START_TIME;</code>, the generated
+bytecode emits:</p>
+<pre class="bytecode"><code>getstatic #2 // Field RuntimeConstants.START_TIME:J
+lstore_1</code></pre>
+<p>The JVM must resolve the <code>Fieldref</code> entry <code>#2</code>,
+load and initialize <code>RuntimeConstants</code> if not already loaded,
+and read the memory location of the static field.</p>
+<h3 id="key-differences-summary">Key Differences Summary</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Compile-Time Constants</th>
+<th style="text-align: left;">Runtime Constants</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Bytecode
+Instructions</strong></td>
+<td style="text-align: left;"><code>iconst</code>, <code>bipush</code>,
+<code>sipush</code>, <code>ldc</code></td>
+<td style="text-align: left;"><code>getstatic</code>,
+<code>getfield</code>, <code>invokestatic</code> (in
+<code>&lt;clinit&gt;</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Inlining</strong></td>
+<td style="text-align: left;">Yes, inlined directly into consumer
+bytecode</td>
+<td style="text-align: left;">No, resolved dynamically via field
+references</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Class Initialization</strong></td>
+<td style="text-align: left;">Does not trigger declaring class
+initialization</td>
+<td style="text-align: left;">Triggers declaring class initialization on
+first access</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Binary Compatibility</strong></td>
+<td style="text-align: left;">Poor; modifying the value requires
+recompiling all consumer classes</td>
+<td style="text-align: left;">Strong; changing the value requires
+recompiling only the declaring class</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Constant Value
+Attribute</strong></td>
+<td style="text-align: left;">Present in the field's
+<code>ConstantValue</code> attribute in <code>.class</code>
+metadata</td>
+<td style="text-align: left;">Absent; assigned dynamically during
+execution</td>
+</tr>
+</tbody>
+</table></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

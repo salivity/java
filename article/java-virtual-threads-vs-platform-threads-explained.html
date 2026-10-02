@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Virtual Threads vs Platform Threads Explained - java</title>
+    <meta name="description" content="This article explores Java virtual threads, a groundbreaking feature introduced via Project Loom and standardized in Java 21. It examines how these lightweight, JVM-managed entities fundamentally change high-throughput concurrent programming by contrasti">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-virtual-threads-vs-platform-threads-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Virtual Threads vs Platform Threads Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-virtual-threads-vs-platform-threads-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores Java virtual threads, a groundbreaking feature introduced via Project Loom and standardized in Java 21. It examines how these lightweight, JVM-managed entities fundamentally change high-throughput concurrent programming by contrasti" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-virtual-threads-vs-platform-threads-explained">Java Virtual
+Threads vs Platform Threads Explained</h1>
+<p>This article explores Java virtual threads, a groundbreaking feature
+introduced via Project Loom and standardized in Java 21. It examines how
+these lightweight, JVM-managed entities fundamentally change
+high-throughput concurrent programming by contrasting them with
+traditional platform threads in terms of resource consumption,
+scheduling, blocking behavior, and scalability.</p>
+<h2 id="what-are-java-virtual-threads">What Are Java Virtual
+Threads?</h2>
+<p>Java virtual threads are lightweight implementations of the
+<code>java.lang.Thread</code> class managed directly by the Java Virtual
+Machine (JVM) rather than the underlying operating system (OS).
+Introduced formally in Java 21 under Project Loom, their primary goal is
+to preserve the simple, synchronous "thread-per-request" programming
+model while achieving the massive scalability typically associated with
+asynchronous or reactive programming paradigms.</p>
+<p>Unlike traditional threads, virtual threads do not maintain a
+permanent one-to-one mapping with operating system threads. Instead, the
+JVM creates, runs, and suspends millions of virtual threads
+concurrently, utilizing a small pool of native carrier threads to
+execute them.</p>
+<h2 id="what-are-platform-threads">What Are Platform Threads?</h2>
+<p>Platform threads are traditional Java threads that wrap directly
+around underlying OS kernel threads. In this model, every instance of
+<code>java.lang.Thread</code> corresponds to an OS-level thread.</p>
+<p>Because the OS handles scheduling, context switching, and resource
+allocation, platform threads carry significant overhead. The operating
+system allocates a fixed-size stack (typically 1 MB) to each platform
+thread upon creation, severely limiting how many concurrent threads an
+application can maintain without exhausting memory or CPU capacity.</p>
+<h2
+id="key-differences-between-virtual-threads-and-platform-threads">Key
+Differences Between Virtual Threads and Platform Threads</h2>
+<h3 id="1-memory-footprint-and-scalability">1. Memory Footprint and
+Scalability</h3>
+<ul>
+<li><strong>Platform Threads:</strong> Require a dedicated, fixed stack
+memory allocation (often 1 MB). Consequently, a server typically caps
+out at a few thousand platform threads before encountering
+<code>OutOfMemoryError</code> issues.</li>
+<li><strong>Virtual Threads:</strong> Possess shallow, dynamic call
+stacks stored in Java heap memory, initially consuming only a few
+hundred bytes. Because their footprint is so small, an application can
+easily run millions of virtual threads simultaneously without
+crashing.</li>
+</ul>
+<h3 id="2-thread-management-and-scheduling">2. Thread Management and
+Scheduling</h3>
+<ul>
+<li><strong>Platform Threads:</strong> Managed and scheduled exclusively
+by the OS kernel using preemptive scheduling algorithms. Context
+switching involves kernel-mode transitions, which are
+CPU-expensive.</li>
+<li><strong>Virtual Threads:</strong> Managed entirely by the JVM using
+an internal <code>ForkJoinPool</code> scheduler that implements an M:N
+scheduling model. Multiple virtual threads (<span
+class="math inline">\(M\)</span>) run across a smaller pool of carrier
+platform threads (<span class="math inline">\(N\)</span>). Context
+switching occurs purely in user space, making it orders of magnitude
+faster.</li>
+</ul>
+<h3 id="3-non-blocking-io-handling">3. Non-Blocking I/O Handling</h3>
+<ul>
+<li><strong>Platform Threads:</strong> When a thread blocks on an I/O
+operation (such as database queries, socket reads, or file operations),
+the underlying OS thread is locked and sits idle, wasting hardware
+resources.</li>
+<li><strong>Virtual Threads:</strong> When a virtual thread performs a
+blocking I/O operation, the JVM automatically "unmounts" it from its
+carrier platform thread. The carrier thread becomes free to execute
+another virtual thread. Once the I/O operation finishes, the JVM
+"mounts" the virtual thread back onto an available carrier thread to
+resume execution.</li>
+</ul>
+<h3 id="4-lifecycle-and-pooling">4. Lifecycle and Pooling</h3>
+<ul>
+<li><strong>Platform Threads:</strong> Because creation and destruction
+are expensive, platform threads are typically pooled (e.g., using
+<code>ThreadPoolExecutor</code>) to be reused across different
+tasks.</li>
+<li><strong>Virtual Threads:</strong> Because creation is virtually
+cost-free, virtual threads should never be pooled. They are designed to
+be short-lived, disposable entities created per-task and discarded
+immediately after task completion.</li>
+</ul>
+<h2 id="summary">Summary</h2>
+<p>Virtual threads solve the scalability bottleneck of the classic
+thread-per-request model without forcing developers to adopt complex
+non-blocking asynchronous APIs. By shifting thread management from the
+operating system kernel to the JVM runtime, Java enables
+high-throughput, I/O-heavy applications to run efficiently using simple,
+readable, synchronous code.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Context Class Loader and Service Provider Lookup - java</title>
+    <meta name="description" content="In Java, standard class loading follows a hierarchical delegation model where parent loaders cannot see classes defined by child loaders. This article explains the Thread Context Class Loader (TCCL), why the standard delegation mechanism fails during run">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-context-class-loader-and-service-provider-lookup">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Context Class Loader and Service Provider Lookup - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-context-class-loader-and-service-provider-lookup" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, standard class loading follows a hierarchical delegation model where parent loaders cannot see classes defined by child loaders. This article explains the Thread Context Class Loader (TCCL), why the standard delegation mechanism fails during run" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-context-class-loader-and-service-provider-lookup">Java
+Context Class Loader and Service Provider Lookup</h1>
+<p>In Java, standard class loading follows a hierarchical delegation
+model where parent loaders cannot see classes defined by child loaders.
+This article explains the Thread Context Class Loader (TCCL), why the
+standard delegation mechanism fails during runtime service provider
+lookups—such as JDBC or JAXP—and how the TCCL solves this architectural
+limitation by allowing core platform libraries to load application-level
+service implementations dynamically.</p>
+<h2 id="the-standard-java-class-loading-model">The Standard Java Class
+Loading Model</h2>
+<p>Java uses a hierarchical, delegation-based class loading model
+consisting of three primary layers:</p>
+<ol type="1">
+<li><strong>Bootstrap ClassLoader:</strong> Loads core Java runtime
+classes from the JDK (e.g., classes in <code>java.lang</code>,
+<code>java.util</code>).</li>
+<li><strong>Platform ClassLoader</strong> (formerly Extension
+ClassLoader): Loads platform-specific extensions.</li>
+<li><strong>Application ClassLoader</strong> (System ClassLoader): Loads
+classes found on the application classpath or module path.</li>
+</ol>
+<p>When a class loader is requested to load a class, it delegates the
+search to its parent loader before searching itself. Visibility is
+strictly unidirectional: child loaders can see classes loaded by parent
+loaders, but parent loaders cannot see classes loaded by child
+loaders.</p>
+<h2 id="the-spi-problem-broken-visibility">The SPI Problem: Broken
+Visibility</h2>
+<p>The standard delegation model encounters a critical failure with
+Service Provider Interfaces (SPI). In SPI patterns, the Java core
+runtime defines an abstract interface, but third-party vendors or
+applications supply the actual implementation.</p>
+<p>A classic example is the Java Database Connectivity (JDBC) API:</p>
+<ul>
+<li>The core interfaces, such as <code>java.sql.Driver</code> and
+<code>java.sql.DriverManager</code>, reside in the standard library and
+are loaded by the Bootstrap or Platform ClassLoader.</li>
+<li>The specific database driver implementations (such as PostgreSQL or
+MySQL drivers) are packaged in external JAR files located on the
+application classpath and loaded by the Application ClassLoader.</li>
+</ul>
+<p>When <code>DriverManager</code> attempts to locate and instantiate an
+implementation of <code>java.sql.Driver</code>, relying on its own class
+loader fails. Because <code>DriverManager</code> was loaded by a parent
+loader, it cannot access classes on the application classpath managed by
+a child loader. Attempting a standard <code>Class.forName()</code>
+lookup from within core code results in a
+<code>ClassNotFoundException</code>.</p>
+<h2 id="what-is-the-context-class-loader">What Is the Context Class
+Loader?</h2>
+<p>To resolve this limitation without dismantling the security and
+integrity of the delegation hierarchy, Java 1.2 introduced the
+<strong>Thread Context Class Loader (TCCL)</strong>.</p>
+<p>Every Java thread carries a reference to a context class loader,
+accessible via:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">ClassLoader</span> cl <span class="op">=</span> <span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">getContextClassLoader</span><span class="op">();</span></span></code></pre></div>
+<p>When a new thread is spawned, it inherits its context class loader
+from its parent thread. In standard application environments, the main
+thread's TCCL is set to the Application ClassLoader. In container
+environments (such as Tomcat, WildFly, or OSGi), the container sets the
+TCCL to the specific web application or bundle class loader prior to
+dispatching work to that thread.</p>
+<h2 id="how-tccl-resolves-service-provider-lookup">How TCCL Resolves
+Service Provider Lookup</h2>
+<p>The TCCL acts as an intentional inversion of class loader delegation.
+Instead of a core class using its own defining loader, it explicitly
+retrieves the class loader associated with the executing thread to load
+third-party resources.</p>
+<p>The resolution mechanism works as follows:</p>
+<ol type="1">
+<li><strong>Service Registration:</strong> The application includes a
+dependency that provides an implementation of an interface, registering
+it via <code>META-INF/services/fully.qualified.InterfaceName</code> or
+through a <code>module-info.java</code> declaration.</li>
+<li><strong>Execution Context:</strong> The calling thread initiates an
+operation, retaining the Application ClassLoader as its context class
+loader.</li>
+<li><strong>Dynamic Lookup:</strong> The core framework (such as
+<code>java.util.ServiceLoader</code> or <code>DriverManager</code>)
+inspects the current thread using
+<code>Thread.currentThread().getContextClassLoader()</code>.</li>
+<li><strong>Instantiating the Implementation:</strong> The framework
+uses the retrieved context class loader to locate the provider
+configuration files in <code>META-INF/services/</code> and instantiate
+the provider class.</li>
+</ol>
+<p>For example, when
+<code>java.util.ServiceLoader.load(Driver.class)</code> is invoked
+inside standard Java libraries, its implementation internally defaults
+to using the calling thread's context class loader:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">static</span> <span class="op">&lt;</span>S<span class="op">&gt;</span> <span class="bu">ServiceLoader</span><span class="op">&lt;</span>S<span class="op">&gt;</span> <span class="fu">load</span><span class="op">(</span><span class="bu">Class</span><span class="op">&lt;</span>S<span class="op">&gt;</span> service<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">ClassLoader</span> cl <span class="op">=</span> <span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">getContextClassLoader</span><span class="op">();</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="kw">new</span> <span class="bu">ServiceLoader</span><span class="op">&lt;&gt;(</span>Reflection<span class="op">.</span><span class="fu">getCallerClass</span><span class="op">(),</span> service<span class="op">,</span> cl<span class="op">);</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Because the TCCL points to the Application ClassLoader, the core JDK
+code successfully loads and instantiates the vendor-provided driver
+without violating the structural parent-child hierarchy of the class
+loader system.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

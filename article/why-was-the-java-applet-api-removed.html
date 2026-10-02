@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Was the Java Applet API Removed? - java</title>
+    <meta name="description" content="The Java Applet API, introduced in 1995 to bring interactive and dynamic content to the early World Wide Web, was officially deprecated in Java SE 9 and marked for removal in Java SE 17. The decision to permanently drop the Applet API from the Java platf">
+    <link rel="canonical" href="https://salivity.github.io/java/article/why-was-the-java-applet-api-removed">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Was the Java Applet API Removed? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/why-was-the-java-applet-api-removed" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Applet API, introduced in 1995 to bring interactive and dynamic content to the early World Wide Web, was officially deprecated in Java SE 9 and marked for removal in Java SE 17. The decision to permanently drop the Applet API from the Java platf" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-was-the-java-applet-api-removed">Why Was the Java Applet API
+Removed?</h1>
+<p>The Java Applet API, introduced in 1995 to bring interactive and
+dynamic content to the early World Wide Web, was officially deprecated
+in Java SE 9 and marked for removal in Java SE 17. The decision to
+permanently drop the Applet API from the Java platform was driven by the
+industry-wide discontinuation of browser plugin architectures, severe
+and recurring security vulnerabilities, the emergence of modern web
+technologies like HTML5, and a strategic shift in how Java applications
+are deployed.</p>
+<h3 id="demise-of-browser-plugin-support-npapi">Demise of Browser Plugin
+Support (NPAPI)</h3>
+<p>The primary catalyst for removing applets was that modern web
+browsers stopped supporting them. Java applets relied on the Netscape
+Plugin Application Programming Interface (NPAPI) to run inside web
+browsers. Over the course of the 2010s, major browser vendors
+systematically eliminated support for NPAPI due to performance,
+stability, and security issues:</p>
+<ul>
+<li>Google Chrome dropped NPAPI support in 2015.</li>
+<li>Mozilla Firefox phased it out in 2017.</li>
+<li>Microsoft Edge launched without plugin support entirely.</li>
+<li>Apple Safari dropped support for NPAPI-based plugins shortly
+thereafter.</li>
+</ul>
+<p>Without underlying browser support, running an applet directly within
+a web page became impossible for mainstream internet users, rendering
+the API functionally obsolete.</p>
+<h3 id="persistent-security-vulnerabilities">Persistent Security
+Vulnerabilities</h3>
+<p>Java applets executed untrusted client-side code directly from the
+web, relying on the Java security sandbox to prevent malicious actions
+on the user's host machine. Over time, attackers repeatedly found ways
+to break out of this sandbox through privilege escalation and zero-day
+vulnerabilities.</p>
+<p>The frequency of high-profile security breaches associated with the
+Java browser plugin placed a severe maintenance burden on Oracle. It
+required constant, urgent patching and earned the Java runtime an
+unfavorable security reputation among systems administrators and end
+users. Disabling the browser plugin—and eventually removing the Applet
+API entirely—was the most effective path to eliminating this persistent
+attack surface.</p>
+<h3 id="the-rise-of-modern-web-standards">The Rise of Modern Web
+Standards</h3>
+<p>When Java applets debuted, web browsers could only display static
+text, basic layouts, and simple images. Applets filled a technical gap
+by providing animations, sound, graphical user interfaces, and complex
+computations.</p>
+<p>Over time, open web standards matured to match and exceed applet
+capabilities natively:</p>
+<ul>
+<li><strong>HTML5 and CSS3</strong> introduced native audio, video,
+vector graphics (SVG), and complex styling without third-party
+plugins.</li>
+<li><strong>JavaScript</strong> gained immense performance improvements
+via modern just-in-time (JIT) engines.</li>
+<li><strong>Canvas and WebGL</strong> enabled high-performance 2D and 3D
+graphics inside the browser.</li>
+<li><strong>WebAssembly (Wasm)</strong> provided a pathway to execute
+high-performance compiled code directly in modern browsers
+securely.</li>
+</ul>
+<p>These native standards eliminated the functional justification for
+third-party browser plugins like Java Applets, Adobe Flash, and
+Microsoft Silverlight.</p>
+<h3
+id="maintenance-burden-and-the-shift-to-standalone-packaging">Maintenance
+Burden and the Shift to Standalone Packaging</h3>
+<p>Retaining the Applet API in the Java Development Kit (JDK) added
+unnecessary complexity to the ongoing modernization of the platform.
+Through initiatives like the Java Platform Module System (Project Jigsaw
+in Java 9), Java's maintainers aimed to streamline the JDK and strip out
+outdated or unmaintained modules.</p>
+<p>To support developers who still required client-side Java
+applications, Oracle shifted its focus toward standalone desktop
+application packaging. Tools such as <code>jlink</code> and
+<code>jpackage</code> allow developers to bundle a customized Java
+Runtime Environment directly with desktop applications (such as JavaFX
+or Swing applications), completely bypassing the security liabilities
+and constraints of running inside a web browser.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

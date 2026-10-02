@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matcher.find vs Matcher.matches in Java Regex - java</title>
+    <meta name="description" content="In Java regular expression parsing, the java.util.regex.Matcher class provides two primary methods for evaluating strings against patterns: matches() and find(). This article explains the core differences between them, detailing how matches() requires th">
+    <link rel="canonical" href="https://salivity.github.io/java/article/matcher-find-vs-matcher-matches-in-java-regex">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Matcher.find vs Matcher.matches in Java Regex - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/matcher-find-vs-matcher-matches-in-java-regex" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java regular expression parsing, the java.util.regex.Matcher class provides two primary methods for evaluating strings against patterns: matches() and find(). This article explains the core differences between them, detailing how matches() requires th" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="matcherfind-vs-matchermatches-in-java-regex">Matcher.find vs
+Matcher.matches in Java Regex</h1>
+<p>In Java regular expression parsing, the
+<code>java.util.regex.Matcher</code> class provides two primary methods
+for evaluating strings against patterns: <code>matches()</code> and
+<code>find()</code>. This article explains the core differences between
+them, detailing how <code>matches()</code> requires the entire input
+string to conform to a regular expression, whereas <code>find()</code>
+searches for smaller matching subsequences within the text.
+Understanding how these methods handle boundaries, internal pointers,
+and search logic is essential for selecting the correct tool for
+validation versus extraction tasks.</p>
+<h2 id="scope-of-the-match">Scope of the Match</h2>
+<p>The fundamental difference between the two methods lies in how much
+of the target sequence must satisfy the pattern:</p>
+<ul>
+<li><strong><code>Matcher.matches()</code></strong>: Attempts to match
+the <strong>entire</strong> input sequence against the pattern. It
+implicitly anchors the evaluation to the beginning and the end of the
+text. Even if a valid pattern exists somewhere inside the string,
+<code>matches()</code> returns <code>false</code> if there are unmatched
+leading or trailing characters.</li>
+<li><strong><code>Matcher.find()</code></strong>: Attempts to find the
+<strong>next subsequence</strong> of the input sequence that matches the
+pattern. It does not require the full string to conform. It scans
+through the text to locate matches anywhere they appear.</li>
+</ul>
+<h2 id="internal-state-and-iteration">Internal State and Iteration</h2>
+<p>Another major distinction is how each method interacts with the
+<code>Matcher</code> object's internal cursor:</p>
+<ul>
+<li><strong><code>matches()</code> is non-iterative</strong>: It
+evaluates the whole string starting from the beginning. While it resets
+the matcher's state, it is designed for a single pass/fail
+determination.</li>
+<li><strong><code>find()</code> is stateful and iterative</strong>: Each
+invocation of <code>find()</code> starts scanning from the end of the
+previous match. This enables developers to use <code>find()</code>
+inside a <code>while</code> loop to extract multiple occurrences across
+a body of text. You can optionally supply an integer index to
+<code>find(int start)</code> to reset the search to a specific
+position.</li>
+</ul>
+<h2 id="code-comparison">Code Comparison</h2>
+<p>The following example demonstrates how both methods behave given the
+exact same pattern and input:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">regex</span><span class="op">.</span><span class="im">Matcher</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">java</span><span class="op">.</span><span class="im">util</span><span class="op">.</span><span class="im">regex</span><span class="op">.</span><span class="im">Pattern</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> RegexComparison <span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span><span class="op">(</span><span class="bu">String</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="bu">String</span> input <span class="op">=</span> <span class="st">&quot;Order ID: 45892 completed.&quot;</span><span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Pattern</span> digitPattern <span class="op">=</span> <span class="bu">Pattern</span><span class="op">.</span><span class="fu">compile</span><span class="op">(</span><span class="st">&quot;</span><span class="sc">\\</span><span class="st">d+&quot;</span><span class="op">);</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Matcher</span> matcher <span class="op">=</span> digitPattern<span class="op">.</span><span class="fu">matcher</span><span class="op">(</span>input<span class="op">);</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="co">// matches() evaluates the whole string</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">boolean</span> fullMatch <span class="op">=</span> matcher<span class="op">.</span><span class="fu">matches</span><span class="op">();</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;matches(): &quot;</span> <span class="op">+</span> fullMatch<span class="op">);</span> <span class="co">// Output: false</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="co">// find() searches for occurrences inside the string</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">boolean</span> partialMatch <span class="op">=</span> matcher<span class="op">.</span><span class="fu">find</span><span class="op">();</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;find(): &quot;</span> <span class="op">+</span> partialMatch<span class="op">);</span>   <span class="co">// Output: true</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>partialMatch<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>            <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Found token: &quot;</span> <span class="op">+</span> matcher<span class="op">.</span><span class="fu">group</span><span class="op">());</span> <span class="co">// Output: 45892</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this example, <code>matcher.matches()</code> returns
+<code>false</code> because the input contains letters and punctuation
+around the digits. Conversely, <code>matcher.find()</code> returns
+<code>true</code> because it locates the digit sequence within the
+broader text.</p>
+<h2 id="choosing-the-right-method">Choosing the Right Method</h2>
+<p>Use <strong><code>matches()</code></strong> when:</p>
+<ul>
+<li>Performing strict data validation (e.g., verifying that a user input
+is entirely composed of alphanumeric characters, a valid email format,
+or a standard phone number).</li>
+<li>Ensuring there is no unexpected text surrounding the intended
+input.</li>
+</ul>
+<p>Use <strong><code>find()</code></strong> when:</p>
+<ul>
+<li>Searching for occurrences of a pattern within unstructured text,
+logs, or documents.</li>
+<li>Extracting specific tokens, such as dates, numbers, or tags, using
+capturing groups in a <code>while (matcher.find())</code> loop.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

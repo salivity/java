@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Exception Table: Mapping Bytecode to Handlers - java</title>
+    <meta name="description" content="In the Java Virtual Machine (JVM), exception handling does not rely on runtime branching instructions embedded directly within the normal execution path. Instead, the Java compiler records structural metadata within the class file known as the exception">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-exception-table-mapping-bytecode-to-handlers">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Exception Table: Mapping Bytecode to Handlers - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-exception-table-mapping-bytecode-to-handlers" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In the Java Virtual Machine (JVM), exception handling does not rely on runtime branching instructions embedded directly within the normal execution path. Instead, the Java compiler records structural metadata within the class file known as the exception" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-exception-table-mapping-bytecode-to-handlers">Java
+Exception Table: Mapping Bytecode to Handlers</h1>
+<p>In the Java Virtual Machine (JVM), exception handling does not rely
+on runtime branching instructions embedded directly within the normal
+execution path. Instead, the Java compiler records structural metadata
+within the class file known as the exception table. This table
+explicitly maps ranges of bytecode instruction offsets representing
+protected <code>try</code> blocks to the entry point offsets of their
+corresponding <code>catch</code> or <code>finally</code> blocks. This
+article breaks down the structure of the JVM exception table, how the
+runtime engine searches this table when an exception occurs, and how
+bytecode offsets determine execution flow.</p>
+<h3 id="structure-of-the-exception-table">Structure of the Exception
+Table</h3>
+<p>When a method containing <code>try-catch</code> or
+<code>try-finally</code> blocks is compiled, the compiler attaches an
+exception table to the method's <code>Code</code> attribute. The
+exception table is an array of entries, where each entry consists of
+four 16-bit fields:</p>
+<ul>
+<li><strong><code>start_pc</code></strong>: The inclusive starting
+offset in the method's bytecode array representing the beginning of the
+monitored range (the <code>try</code> block).</li>
+<li><strong><code>end_pc</code></strong>: The exclusive ending offset in
+the method's bytecode array where the monitored range terminates.</li>
+<li><strong><code>handler_pc</code></strong>: The bytecode offset
+designating the first instruction of the catch block that handles the
+specified exception.</li>
+<li><strong><code>catch_type</code></strong>: An index into the runtime
+constant pool pointing to a <code>CONSTANT_Class_info</code> structure
+that identifies the exception class. If the value is <code>0</code>, the
+entry catches all exceptions, which is used to implement
+<code>finally</code> blocks and synchronized blocks.</li>
+</ul>
+<h3 id="the-offset-mapping-and-lookup-mechanism">The Offset Mapping and
+Lookup Mechanism</h3>
+<p>When an exception is thrown—either via the <code>athrow</code>
+bytecode instruction or through a native VM error—the execution engine
+initiates a dispatch process:</p>
+<ol type="1">
+<li><strong>Retrieve Current Offset</strong>: The JVM identifies the
+current program counter (PC), which corresponds to the exact bytecode
+offset of the instruction that triggered the exception.</li>
+<li><strong>Sequential Range Verification</strong>: The JVM iterates
+through the exception table entries in top-to-bottom order. For each
+entry, it evaluates whether the current PC falls within the entry's
+defined interval: <span class="math display">\[\text{start\_pc} \le
+\text{current\_pc} &lt; \text{end\_pc}\]</span></li>
+<li><strong>Type Evaluation</strong>: If the PC falls within the
+boundaries, the JVM resolves the <code>catch_type</code>:
+<ul>
+<li>If <code>catch_type</code> is non-zero, the JVM checks whether the
+thrown exception's class is an instance of the class referenced by
+<code>catch_type</code> (either the exact class or a subclass).</li>
+<li>If <code>catch_type</code> is zero, the entry matches any exception
+unconditionally.</li>
+</ul></li>
+<li><strong>Transfer of Control</strong>: Upon identifying the first
+entry that satisfies both the range and type conditions, the JVM clears
+the method’s operand stack, pushes the reference to the thrown exception
+object onto the empty stack, updates the program counter to the value of
+<code>handler_pc</code>, and resumes execution at that handler
+instruction.</li>
+</ol>
+<h3 id="order-and-precedence">Order and Precedence</h3>
+<p>The order of entries in the exception table is critical. The Java
+compiler writes entries to the table in the exact order that
+<code>catch</code> blocks are defined in the source code.</p>
+<p>Because the JVM searches the table linearly and selects the
+<em>first</em> matching entry:</p>
+<ul>
+<li>Subclasses must precede superclasses in the table (and in source
+code) to ensure more specific handlers execute before broader ones.</li>
+<li>In nested <code>try-catch</code> structures, the innermost protected
+ranges appear earlier in the table than outer enclosing ranges, ensuring
+that inner handlers take precedence.</li>
+</ul>
+<h3 id="unhandled-exceptions-and-stack-unwinding">Unhandled Exceptions
+and Stack Unwinding</h3>
+<p>If the JVM iterates through the entire exception table of the current
+method without finding a matching <code>[start_pc, end_pc)</code>
+interval and compatible <code>catch_type</code>, the search within that
+method terminates. The JVM pops the current frame from the call stack,
+restoring the caller frame.</p>
+<p>The JVM then reads the caller's program counter—the offset of the
+<code>invoke*</code> instruction that called the failed method—and
+initiates the same exception table lookup procedure within the caller's
+method code. This process repeats recursively until a match is found or
+the thread's call stack is exhausted.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

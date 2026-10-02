@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concurrent Mark-Sweep vs G1 Garbage Collector - java</title>
+    <meta name="description" content="This article explores the Concurrent Mark-Sweep (CMS) garbage collector, its operational mechanics, and the technical limitations that led to its deprecation in favor of the Garbage-First (G1) collector in modern Java. CMS was designed for low-latency ap">
+    <link rel="canonical" href="https://salivity.github.io/java/article/concurrent-mark-sweep-vs-g-1-garbage-collector">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Concurrent Mark-Sweep vs G1 Garbage Collector - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/concurrent-mark-sweep-vs-g-1-garbage-collector" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the Concurrent Mark-Sweep (CMS) garbage collector, its operational mechanics, and the technical limitations that led to its deprecation in favor of the Garbage-First (G1) collector in modern Java. CMS was designed for low-latency ap" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="concurrent-mark-sweep-vs-g1-garbage-collector">Concurrent
+Mark-Sweep vs G1 Garbage Collector</h1>
+<p>This article explores the Concurrent Mark-Sweep (CMS) garbage
+collector, its operational mechanics, and the technical limitations that
+led to its deprecation in favor of the Garbage-First (G1) collector in
+modern Java. CMS was designed for low-latency applications by performing
+garbage collection concurrently with application threads, but inherent
+architectural flaws—most notably memory fragmentation and unpredictable
+full garbage collection pauses—ultimately made it unsuitable for modern,
+large-heap enterprise environments. The G1 collector resolved these
+issues through a region-based, compacting approach with predictable
+pause-time targets.</p>
+<h3 id="what-is-concurrent-mark-sweep-cms">What is Concurrent Mark-Sweep
+(CMS)?</h3>
+<p>The Concurrent Mark-Sweep collector was introduced to minimize
+Stop-The-World (STW) pauses in Java applications. Designed primarily for
+the old (tenured) generation, CMS executes the majority of its tracing
+and sweeping work concurrently with the application's active
+threads.</p>
+<p>A CMS cycle consists of several phases:</p>
+<ul>
+<li><strong>Initial Mark (STW):</strong> Pauses application threads
+briefly to mark objects directly reachable from GC roots.</li>
+<li><strong>Concurrent Mark:</strong> Traverses the object graph
+concurrently while application threads continue running.</li>
+<li><strong>Concurrent Preclean:</strong> Prepares for the next pause by
+accounting for references modified during the concurrent mark
+phase.</li>
+<li><strong>Remark (STW):</strong> A final brief pause to catch any
+remaining reference updates that occurred during the concurrent
+phases.</li>
+<li><strong>Concurrent Sweep:</strong> Reclaims memory occupied by dead
+objects concurrently without halting the application.</li>
+<li><strong>Concurrent Reset:</strong> Prepares CMS internal data
+structures for the next cycle.</li>
+</ul>
+<h3 id="why-cms-was-deprecated-and-phased-out">Why CMS Was Deprecated
+and Phased Out</h3>
+<p>Despite providing lower latency than earlier throughput-focused
+collectors like Parallel GC, CMS suffered from critical architectural
+limitations that caused it to be deprecated in Java 9 and fully removed
+in Java 14:</p>
+<ol type="1">
+<li><strong>Memory Fragmentation:</strong> CMS does not compact memory
+during its sweep phase. Instead, it maintains a "free list" of available
+memory slots. Over time, the heap becomes fragmented. When an object
+cannot fit into any available contiguous memory block, CMS triggers a
+"Concurrent Mode Failure." This forced the JVM to fall back to a
+single-threaded, non-concurrent Full GC that halted the application for
+extended periods.</li>
+<li><strong>Floating Garbage:</strong> Because application threads run
+concurrently during the sweep phase, newly unreachable objects created
+during this time cannot be collected in the current cycle. This
+"floating garbage" requires extra heap headroom, increasing memory
+overhead.</li>
+<li><strong>High CPU Utilization:</strong> Running garbage collection
+threads concurrently with application workloads competes directly for
+processing power, which can degrade application throughput on systems
+with limited CPU cores.</li>
+<li><strong>Poor Scalability with Large Heaps:</strong> As modern
+application heaps expanded from gigabytes to tens or hundreds of
+gigabytes, managing free lists and dealing with fragmentation became
+increasingly inefficient.</li>
+</ol>
+<h3 id="why-g1-collector-replaced-cms">Why G1 Collector Replaced
+CMS</h3>
+<p>The Garbage-First (G1) collector was introduced as the default
+collector in Java 9 to directly address the shortcomings of CMS.</p>
+<ul>
+<li><strong>Region-Based Memory Layout:</strong> Unlike CMS, which uses
+large, contiguous physical memory spaces for young and old generations,
+G1 divides the heap into thousands of equal-sized independent regions.
+Regions are dynamically assigned young, old, or humongous roles.</li>
+<li><strong>Built-in Compaction:</strong> G1 avoids fragmentation
+entirely through a copy-and-compact approach. It copies live objects
+from multiple source regions into a single target region, leaving behind
+contiguous free memory.</li>
+<li><strong>Predictable Pause-Time Goals:</strong> Users can specify a
+target pause duration using <code>-XX:MaxGCPauseMillis</code>. G1 uses
+historical metrics to select and collect the specific set of regions
+containing the highest density of dead objects (the "garbage first")
+that can be processed within that time limit.</li>
+<li><strong>Seamless Scalability:</strong> Because G1 processes memory
+incrementally region-by-region rather than operating on the entire old
+generation at once, it scales efficiently across multi-gigabyte heaps
+without the catastrophic multi-second pauses typical of CMS
+failures.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

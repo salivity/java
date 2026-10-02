@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>META-INF/services in Java Service Discovery - java</title>
+    <meta name="description" content="This article explores the foundational role of the META-INF/services directory in traditional Java service discovery. It covers how Java's Service Provider Interface (SPI) mechanism uses this directory to decouple interface definitions from runtime imple">
+    <link rel="canonical" href="https://salivity.github.io/java/article/meta-inf-services-in-java-service-discovery">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="META-INF/services in Java Service Discovery - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/meta-inf-services-in-java-service-discovery" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the foundational role of the META-INF/services directory in traditional Java service discovery. It covers how Java's Service Provider Interface (SPI) mechanism uses this directory to decouple interface definitions from runtime imple" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="meta-infservices-in-java-service-discovery">META-INF/services in
+Java Service Discovery</h1>
+<p>This article explores the foundational role of the
+<code>META-INF/services</code> directory in traditional Java service
+discovery. It covers how Java's Service Provider Interface (SPI)
+mechanism uses this directory to decouple interface definitions from
+runtime implementations, details the structure and discovery process
+powered by <code>java.util.ServiceLoader</code>, and explains why this
+pattern is critical for creating pluggable, extensible application
+architectures.</p>
+<h2 id="the-role-of-meta-infservices">The Role of META-INF/services</h2>
+<p>In traditional Java applications, the <code>META-INF/services</code>
+directory acts as the discovery registry for the Service Provider
+Interface (SPI) framework. Introduced in Java 6 through the
+<code>java.util.ServiceLoader</code> class, this directory allows
+third-party libraries or separate modules to register concrete
+implementations of an interface without hardcoding them into the
+consuming application.</p>
+<p>By placing configuration files within <code>META-INF/services</code>,
+a JAR file declares the capabilities it exposes, enabling runtime
+discovery and dependency injection without tight compile-time
+coupling.</p>
+<h2 id="naming-conventions-and-file-structure">Naming Conventions and
+File Structure</h2>
+<p>The mechanism relies on a strict convention over configuration
+pattern. To register a service provider, the provider JAR must follow
+two structural rules:</p>
+<ol type="1">
+<li><p><strong>File Name</strong>: The file located inside
+<code>META-INF/services</code> must be named exactly after the fully
+qualified binary name of the service interface or abstract class. For
+example, if the interface is <code>com.example.LoggerService</code>, the
+file path must be:</p>
+<pre class="text"><code>META-INF/services/com.example.LoggerService</code></pre></li>
+<li><p><strong>File Contents</strong>: The file contains the fully
+qualified binary names of concrete classes implementing that interface,
+with one implementation per line. It must be encoded in UTF-8. Lines
+starting with <code>#</code> are treated as comments, and surrounding
+whitespace is ignored.</p></li>
+</ol>
+<pre class="text"><code># Implementation provided by the logging vendor
+com.example.impl.ConsoleLogger
+com.example.impl.FileLogger</code></pre>
+<h2 id="how-serviceloader-locates-implementations">How ServiceLoader
+Locates Implementations</h2>
+<p>The discovery process is driven at runtime by the
+<code>java.util.ServiceLoader</code> class. When a consumer requests an
+implementation, the execution flow operates as follows:</p>
+<ol type="1">
+<li><strong>Invocation</strong>: The application calls
+<code>ServiceLoader.load(LoggerService.class)</code>.</li>
+<li><strong>Classpath Scanning</strong>: The <code>ServiceLoader</code>
+uses the calling thread's context ClassLoader to scan all JAR files and
+directories present on the classpath.</li>
+<li><strong>Resource Lookup</strong>: It searches for resources matching
+the path
+<code>META-INF/services/&lt;fully-qualified-service-name&gt;</code>.</li>
+<li><strong>Instantiation</strong>: As the application iterates through
+the <code>ServiceLoader</code>, it reads the class names listed in the
+matched files and lazily loads and instantiates each class using
+reflection. Every provider class must have a public, no-argument
+constructor to allow instantiation.</li>
+</ol>
+<h2 id="key-benefits-in-application-design">Key Benefits in Application
+Design</h2>
+<p>The <code>META-INF/services</code> architecture provides several
+architectural advantages:</p>
+<ul>
+<li><strong>Loose Coupling</strong>: The application depends entirely on
+an abstraction (an interface) rather than concrete classes. The core
+code compiles and runs without any knowledge of which provider will
+satisfy the contract at runtime.</li>
+<li><strong>Extensibility and Pluggability</strong>: Adding a new
+feature, database driver (such as JDBC), or serialization strategy
+requires only dropping a new JAR containing the proper
+<code>META-INF/services</code> configuration into the application's
+classpath.</li>
+<li><strong>Standardization</strong>: It provides a native, standardized
+mechanism for plugin architectures in the Java ecosystem, eliminating
+the need for custom discovery code or external dependency injection
+frameworks for simple modularity.</li>
+</ul>
+<p>While modern Java introduced the Java Platform Module System (JPMS)
+in Java 9—which uses <code>provides ... with ...</code> declarations in
+<code>module-info.java</code>—the <code>META-INF/services</code>
+directory remains the universal mechanism for service discovery across
+traditional classpath-based Java applications and libraries.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

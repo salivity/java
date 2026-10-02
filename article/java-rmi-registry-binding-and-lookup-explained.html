@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java RMI Registry: Binding and Lookup Explained - java</title>
+    <meta name="description" content="The Java Remote Method Invocation (RMI) registry acts as a centralized directory service that facilitates communication between distributed Java applications. In a distributed environment, client applications need a reliable way to find and interact with">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-rmi-registry-binding-and-lookup-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java RMI Registry: Binding and Lookup Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-rmi-registry-binding-and-lookup-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Remote Method Invocation (RMI) registry acts as a centralized directory service that facilitates communication between distributed Java applications. In a distributed environment, client applications need a reliable way to find and interact with" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-rmi-registry-binding-and-lookup-explained">Java RMI
+Registry: Binding and Lookup Explained</h1>
+<p>The Java Remote Method Invocation (RMI) registry acts as a
+centralized directory service that facilitates communication between
+distributed Java applications. In a distributed environment, client
+applications need a reliable way to find and interact with services
+running on remote servers. The RMI registry bridges this gap by
+providing a naming service where servers can register, or "bind," their
+remote objects under unique, human-readable names, and clients can
+search for, or "lookup," those objects to obtain the remote references
+necessary to execute method calls across the network.</p>
+<h3 id="what-is-the-rmi-registry">What is the RMI Registry?</h3>
+<p>The RMI registry is a lightweight naming service implemented via the
+<code>java.rmi.registry.Registry</code> interface. It typically runs as
+a standalone process using the <code>rmiregistry</code> utility or
+programmatically created within a Java application via
+<code>LocateRegistry.createRegistry()</code>. By default, the registry
+listens on TCP port 1099. Rather than holding the actual business logic
+or full instances of remote objects, the registry primarily stores
+stubs—client-side proxy objects containing network addresses and
+communication identifiers necessary to contact the actual server
+object.</p>
+<h3 id="the-role-in-object-binding-server-side">The Role in Object
+Binding (Server Side)</h3>
+<p>On the server side, the RMI registry acts as an announcement board.
+When a remote object is instantiated, it cannot receive calls until it
+is accessible to the network and registered.</p>
+<ol type="1">
+<li><strong>Object Export:</strong> The server creates an instance of a
+class that implements a remote interface (which extends
+<code>java.rmi.Remote</code>). By extending
+<code>UnicastRemoteObject</code> or explicitly calling
+<code>UnicastRemoteObject.exportObject()</code>, the runtime generates a
+remote stub that knows how to connect back to the actual server
+implementation.</li>
+<li><strong>Binding to the Registry:</strong> The server contacts the
+local RMI registry using <code>LocateRegistry.getRegistry()</code> and
+invokes one of two key methods:
+<ul>
+<li><code>bind(String name, Remote obj)</code>: Binds the specified
+string identifier to the remote object's stub. If an object is already
+registered with that name, an <code>AlreadyBoundException</code> is
+thrown.</li>
+<li><code>rebind(String name, Remote obj)</code>: Replaces any existing
+binding for that name with the new stub, preventing conflicts.</li>
+</ul></li>
+</ol>
+<p>For security reasons, standard RMI implementations only allow
+<code>bind</code>, <code>rebind</code>, and <code>unbind</code>
+operations to originate from the same host where the registry is
+running. This prevents unauthorized third parties from overwriting or
+unregistering services over the network.</p>
+<h3 id="the-role-in-object-lookup-client-side">The Role in Object Lookup
+(Client Side)</h3>
+<p>On the client side, the RMI registry functions as an address
+locator:</p>
+<ol type="1">
+<li><strong>Locating the Registry:</strong> The client must know the
+hostname (or IP address) and port number of the server hosting the RMI
+registry. It references the registry using
+<code>LocateRegistry.getRegistry(host, port)</code>.</li>
+<li><strong>Performing the Lookup:</strong> The client calls the
+<code>lookup(String name)</code> method, passing the unique string
+identifier associated with the desired service.</li>
+<li><strong>Receiving the Stub:</strong> If a match is found, the
+registry serializes and returns the remote stub to the client. If the
+name does not exist, a <code>NotBoundException</code> is thrown.</li>
+<li><strong>Casting and Invocation:</strong> The client casts the
+returned <code>Remote</code> reference to the shared business interface.
+Subsequent method calls on this stub bypass the registry entirely,
+communicating directly with the remote object on the server using
+underlying network protocols.</li>
+</ol>
+<h3 id="key-architectural-benefits">Key Architectural Benefits</h3>
+<ul>
+<li><strong>Decoupling Network Details:</strong> Clients do not need
+hardcoded network addresses or ports for individual services; they only
+need the registry address and the service name.</li>
+<li><strong>Dynamic References:</strong> If a server instance changes
+its internal port or network configuration, it simply updates its stub
+in the registry via <code>rebind()</code>, allowing clients to retrieve
+current network references seamlessly.</li>
+<li><strong>Minimal Overhead:</strong> Because the registry only handles
+the initial naming discovery and handoff of the proxy stub, it does not
+become a bottleneck for the actual business logic data exchange between
+client and server.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

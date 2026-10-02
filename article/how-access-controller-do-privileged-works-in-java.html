@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How AccessController.doPrivileged Works in Java - java</title>
+    <meta name="description" content="In classic Java runtimes governed by the SecurityManager architecture, AccessController.doPrivileged allows trusted code to execute security-sensitive operations on behalf of less-privileged callers without granting those callers broad permissions. Under">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-access-controller-do-privileged-works-in-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How AccessController.doPrivileged Works in Java - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-access-controller-do-privileged-works-in-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In classic Java runtimes governed by the SecurityManager architecture, AccessController.doPrivileged allows trusted code to execute security-sensitive operations on behalf of less-privileged callers without granting those callers broad permissions. Under" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-accesscontrollerdoprivileged-works-in-java">How
+AccessController.doPrivileged Works in Java</h1>
+<p>In classic Java runtimes governed by the <code>SecurityManager</code>
+architecture, <code>AccessController.doPrivileged</code> allows trusted
+code to execute security-sensitive operations on behalf of
+less-privileged callers without granting those callers broad
+permissions. Under standard security checks, Java requires every caller
+in the current execution call stack to possess the necessary permissions
+for a restricted task. Wrapping an action inside
+<code>doPrivileged</code> instructs the security runtime to truncate its
+stack-walking verification, enabling trusted libraries to access
+restricted resources—such as reading local files, opening network
+sockets, or inspecting system properties—even when invoked by untrusted
+code.</p>
+<h3 id="the-default-stack-walking-mechanism">The Default Stack-Walking
+Mechanism</h3>
+<p>To understand <code>doPrivileged</code>, it is necessary to examine
+how Java evaluates permissions by default. Whenever a security-sensitive
+API is called, the runtime invokes
+<code>SecurityManager.checkPermission</code>, which delegates the
+evaluation to <code>AccessController.checkPermission</code>.</p>
+<p>The <code>AccessController</code> inspects the current thread's
+execution stack frame by frame, moving from the most recent caller back
+to the initial entry point (the bottom of the stack). Each frame belongs
+to a <code>ProtectionDomain</code>, which encapsulates the permissions
+granted to that particular class based on its code source and the active
+security policy. For the operation to succeed, <strong>every</strong>
+<code>ProtectionDomain</code> in the call stack must possess the
+requested permission. If even a single caller lacks the permission, the
+runtime aborts the execution by throwing an
+<code>AccessControlException</code>.</p>
+<p>For example, if an untrusted user script calls a trusted framework
+library method that reads a configuration file from the filesystem,
+standard stack walking fails because the untrusted script frame does not
+possess <code>FilePermission</code>.</p>
+<h3 id="how-doprivileged-modifies-execution">How
+<code>doPrivileged</code> Modifies Execution</h3>
+<p>The <code>AccessController.doPrivileged</code> method overrides the
+default stack-walking process by marking a boundary on the execution
+stack.</p>
+<p>When code invokes:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">AccessController</span><span class="op">.</span><span class="fu">doPrivileged</span><span class="op">(</span><span class="kw">new</span> <span class="bu">PrivilegedAction</span><span class="op">&lt;</span><span class="bu">Void</span><span class="op">&gt;()</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="bu">Void</span> <span class="fu">run</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Security-sensitive operation</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">null</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">});</span></span></code></pre></div>
+<p>The runtime acts as follows during permission checks:</p>
+<ol type="1">
+<li><strong>Stack Traversal</strong>: The <code>AccessController</code>
+begins walking backward from the point where the protected resource was
+requested.</li>
+<li><strong>Privilege Assertion</strong>: It checks each caller until it
+reaches the stack frame containing the <code>doPrivileged</code>
+invocation.</li>
+<li><strong>Truncation</strong>: If the <code>ProtectionDomain</code> of
+the class that invoked <code>doPrivileged</code> possesses the required
+permission, the stack walk terminates immediately. Any callers earlier
+in the call stack (below <code>doPrivileged</code>) are ignored.</li>
+</ol>
+<p>This mechanism does not grant arbitrary permissions to unprivileged
+code; rather, it allows code that already has the required permissions
+to declare that it is taking full responsibility for the sensitive
+operation and shielding its callers from scrutiny.</p>
+<h3 id="variations-of-doprivileged">Variations of
+<code>doPrivileged</code></h3>
+<p>Java provides overloaded variants of <code>doPrivileged</code> to
+handle different operational requirements:</p>
+<ul>
+<li><strong>Handling Checked Exceptions</strong>: The standard
+<code>PrivilegedAction</code> interface only permits unchecked
+exceptions. For code that throws checked exceptions, developers use
+<code>PrivilegedExceptionAction</code> with
+<code>AccessController.doPrivileged(PrivilegedExceptionAction&lt;T&gt;)</code>,
+which wraps any checked exception inside a
+<code>PrivilegedActionException</code>.</li>
+<li><strong>Restricting Context</strong>: Standard
+<code>doPrivileged</code> uses all permissions granted to the calling
+class. To prevent accidental over-privilege, an overload accepts an
+<code>AccessControlContext</code>:
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">AccessController</span><span class="op">.</span><span class="fu">doPrivileged</span><span class="op">(</span>action<span class="op">,</span> context<span class="op">);</span></span></code></pre></div>
+This restricts the privileged execution to the intersection of the
+caller's permissions and the specified context, preventing privilege
+escalation vulnerabilities.</li>
+</ul>
+<h3 id="security-implications">Security Implications</h3>
+<p>Because <code>doPrivileged</code> bypasses standard permission checks
+for preceding stack frames, improper usage can introduce severe security
+flaws, commonly known as the "confused deputy" problem. If a privileged
+class accepts input (such as file paths or hostnames) directly from an
+untrusted caller and processes it inside a <code>doPrivileged</code>
+block without strict validation, the untrusted caller can manipulate the
+privileged library into performing unauthorized actions on its behalf.
+Secure implementations must rigorously validate all inputs before
+executing code within a privileged block.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

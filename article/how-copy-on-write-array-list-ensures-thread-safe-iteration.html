@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How CopyOnWriteArrayList Ensures Thread-Safe Iteration - java</title>
+    <meta name="description" content="The CopyOnWriteArrayList class in Java achieves thread-safe iteration without explicit synchronization locks by utilizing an immutable snapshot mechanism. When an iterator is instantiated, it binds directly to the underlying array as it exists at that ex">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-copy-on-write-array-list-ensures-thread-safe-iteration">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How CopyOnWriteArrayList Ensures Thread-Safe Iteration - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-copy-on-write-array-list-ensures-thread-safe-iteration" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The CopyOnWriteArrayList class in Java achieves thread-safe iteration without explicit synchronization locks by utilizing an immutable snapshot mechanism. When an iterator is instantiated, it binds directly to the underlying array as it exists at that ex" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-copyonwritearraylist-ensures-thread-safe-iteration">How
+CopyOnWriteArrayList Ensures Thread-Safe Iteration</h1>
+<p>The <code>CopyOnWriteArrayList</code> class in Java achieves
+thread-safe iteration without explicit synchronization locks by
+utilizing an immutable snapshot mechanism. When an iterator is
+instantiated, it binds directly to the underlying array as it exists at
+that exact millisecond. Any subsequent write operations, such as adding
+or removing elements, create a fresh copy of the array rather than
+modifying the existing one, allowing active iterators to traverse the
+original, untouched array safely without encountering
+<code>ConcurrentModificationException</code>.</p>
+<h3 id="the-snapshot-mechanism">The Snapshot Mechanism</h3>
+<p>At the core of <code>CopyOnWriteArrayList</code> is a single
+reference to an internal array declared as <code>volatile</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span> <span class="kw">transient</span> <span class="kw">volatile</span> <span class="bu">Object</span><span class="op">[]</span> array<span class="op">;</span></span></code></pre></div>
+<p>When a thread invokes <code>iterator()</code>, the list provides an
+iterator holding a direct reference to this internal array at that
+specific moment. This captured array reference acts as a static
+"snapshot" of the data.</p>
+<p>Because the reference points to a fixed-size, unmodifiable view of
+elements, the iterator can step through the indices from start to finish
+without needing to acquire locks or check for concurrent modifications.
+The state of the snapshot never changes during the lifecycle of that
+iterator.</p>
+<h3 id="the-copy-on-write-strategy-for-mutations">The Copy-on-Write
+Strategy for Mutations</h3>
+<p>Thread safety during write operations is decoupled from the read and
+iteration paths. When a thread performs a mutation (such as
+<code>add()</code>, <code>set()</code>, or <code>remove()</code>):</p>
+<ol type="1">
+<li>The modifying thread acquires an internal lock (typically via a
+<code>ReentrantLock</code> or synchronized block) to prevent conflicting
+concurrent writes.</li>
+<li>The current array is cloned into a new array with an adjusted size
+or modified elements.</li>
+<li>The mutation is applied directly to the new array copy.</li>
+<li>The <code>volatile</code> internal array reference is updated to
+point to the newly created array.</li>
+<li>The lock is released.</li>
+</ol>
+<p>Because of the <code>volatile</code> modifier, any subsequent calls
+to <code>iterator()</code> or <code>get()</code> will immediately see
+the updated array. However, any iterator created <em>prior</em> to the
+reference update continues traversing the original array. The original
+array remains completely unaffected by the write operation and is
+eventually reclaimed by the garbage collector once all iterators
+referencing it complete execution.</p>
+<h3 id="consequences-and-trade-offs-of-lock-free-iteration">Consequences
+and Trade-Offs of Lock-Free Iteration</h3>
+<p>This design yields distinct functional characteristics:</p>
+<ul>
+<li><strong>Immunity to
+<code>ConcurrentModificationException</code>:</strong> Since the
+underlying array used by an active iterator is never modified in place,
+iteration is guaranteed to complete cleanly.</li>
+<li><strong>Fail-Safe Iteration:</strong> Iterators provide weakly
+consistent views. They reflect the state of the list when the iterator
+was created and do not reflect subsequent modifications made by other
+threads.</li>
+<li><strong>Unsupported Iterator Mutations:</strong> Methods like
+<code>remove()</code>, <code>set()</code>, and <code>add()</code> on the
+iterator instance throw <code>UnsupportedOperationException</code>
+because modifying the snapshot would violate the design principle.</li>
+<li><strong>Performance Profile:</strong> Reads and iterations have zero
+locking overhead, making them exceptionally fast. However, writes incur
+high memory allocation and CPU costs due to array duplication, making
+<code>CopyOnWriteArrayList</code> suitable primarily for collections
+where read operations dramatically outnumber write operations.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

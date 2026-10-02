@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Is the JCP and How Do JSRs Evolve Java? - java</title>
+    <meta name="description" content="The Java Community Process (JCP) is the formal mechanism that governs the evolution of the Java platform, ensuring it develops transparently and collaboratively. Through formal proposals known as Java Specification Requests (JSRs), industry leaders, open">
+    <link rel="canonical" href="https://salivity.github.io/java/article/what-is-the-jcp-and-how-do-js-rs-evolve-java">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What Is the JCP and How Do JSRs Evolve Java? - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/what-is-the-jcp-and-how-do-js-rs-evolve-java" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Community Process (JCP) is the formal mechanism that governs the evolution of the Java platform, ensuring it develops transparently and collaboratively. Through formal proposals known as Java Specification Requests (JSRs), industry leaders, open" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="what-is-the-jcp-and-how-do-jsrs-evolve-java">What Is the JCP and
+How Do JSRs Evolve Java?</h1>
+<p>The Java Community Process (JCP) is the formal mechanism that governs
+the evolution of the Java platform, ensuring it develops transparently
+and collaboratively. Through formal proposals known as Java
+Specification Requests (JSRs), industry leaders, open-source developers,
+and individual contributors propose, refine, and standardize new
+language features, APIs, and runtime capabilities. This article explores
+how the JCP operates, the lifecycle of a JSR, and the role these
+mechanisms play in maintaining stability and backward compatibility
+across the Java ecosystem.</p>
+<h2 id="understanding-the-java-community-process-jcp">Understanding the
+Java Community Process (JCP)</h2>
+<p>Established in 1998, the JCP is an open organization of international
+Java developers and licensees. Its primary objective is to develop and
+update technical specifications for Java technologies. Instead of
+leaving Java's future to a single corporate entity, the JCP allows the
+broader community—including companies like Oracle, IBM, Red Hat, and
+independent Java User Groups (JUGs)—to steer the platform's
+architectural roadmap.</p>
+<p>The JCP is governed by an elected Executive Committee (EC), which
+represents major stakeholders across the industry. The EC oversees JSR
+progress, approves new specifications, and ensures adherence to the
+organization's governance rules.</p>
+<h2 id="the-role-of-java-specification-requests-jsrs">The Role of Java
+Specification Requests (JSRs)</h2>
+<p>A Java Specification Request is the formal document that initiates
+the process of adding a new specification or modifying an existing one
+within the Java ecosystem. JSRs can cover a broad spectrum of technical
+concerns, including core Java SE platform updates, enterprise Java
+specifications (historically Java EE, now maintained separately as
+Jakarta EE), and targeted application programming interfaces (APIs).</p>
+<p>Prominent examples of influential JSRs include:</p>
+<ul>
+<li><strong>JSR 310:</strong> Date and Time API (introduced in Java SE
+8)</li>
+<li><strong>JSR 338:</strong> Java Persistence API (JPA 2.1)</li>
+<li><strong>JSR 380:</strong> Bean Validation 2.0</li>
+</ul>
+<h2 id="the-lifecycle-of-a-jsr">The Lifecycle of a JSR</h2>
+<p>A JSR progresses through defined stages to ensure quality, backward
+compatibility, and community consensus:</p>
+<ol type="1">
+<li><strong>Initiation:</strong> Any JCP member can submit a proposal
+describing the technical problem and proposed solution. The Executive
+Committee votes to approve the proposal.</li>
+<li><strong>Drafting and Expert Group Formation:</strong> Once approved,
+an Expert Group is formed, led by a Specification Lead. This group
+produces an Early Draft Review for community feedback.</li>
+<li><strong>Public Review:</strong> The wider Java community inspects
+the proposed specification and submits commentary, allowing the Expert
+Group to refine the design.</li>
+<li><strong>Reference Implementation and TCK:</strong> Before a JSR can
+be finalized, the working group must deliver two critical deliverables:
+<ul>
+<li><strong>Reference Implementation (RI):</strong> A fully functional
+software implementation demonstrating that the specification can be
+built in practice.</li>
+<li><strong>Technology Compatibility Kit (TCK):</strong> A comprehensive
+test suite that validates whether any independent implementation
+conforms fully to the written specification.</li>
+</ul></li>
+<li><strong>Final Ballot:</strong> The Executive Committee votes on the
+final draft, RI, and TCK. Upon passing, the specification is officially
+adopted into the Java standard.</li>
+</ol>
+<h2 id="how-jsrs-maintain-platform-stability">How JSRs Maintain Platform
+Stability</h2>
+<p>The dual requirement of a Reference Implementation and a Technology
+Compatibility Kit is what sets JSRs apart from ad-hoc software patches.
+The TCK guarantees that any vendor's implementation of a Java
+specification—whether it is Oracle OpenJDK, Eclipse Temurin, or Amazon
+Corretto—behaves consistently. This process protects developers from
+vendor lock-in and prevents fragmentation across operating systems.</p>
+<h2 id="the-modern-jcp-and-openjdk">The Modern JCP and OpenJDK</h2>
+<p>In the modern Java development cycle, features evolve rapidly within
+the OpenJDK project via JDK Enhancement Proposals (JEPs). However, the
+JCP remains the final authority for the standard. For every major
+release of Java SE (such as Java 17, 21, or future Long-Term Support
+releases), an overarching "Umbrella JSR" is submitted to the JCP. This
+Umbrella JSR aggregates all the accepted JEPs and changes for that
+release, submits them to the Executive Committee for approval, and
+provides the formal specification that defines the Java SE standard.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

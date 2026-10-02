@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Causes of Java ClassLoader Leaks on Redeployment - java</title>
+    <meta name="description" content="In long-running Java application servers, redeploying an application without restarting the JVM frequently triggers OutOfMemoryError: Metaspace (or PermGen in older Java versions). This issue arises because the container cannot garbage collect the applic">
+    <link rel="canonical" href="https://salivity.github.io/java/article/causes-of-java-class-loader-leaks-on-redeployment">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Causes of Java ClassLoader Leaks on Redeployment - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/causes-of-java-class-loader-leaks-on-redeployment" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In long-running Java application servers, redeploying an application without restarting the JVM frequently triggers OutOfMemoryError: Metaspace (or PermGen in older Java versions). This issue arises because the container cannot garbage collect the applic" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="causes-of-java-classloader-leaks-on-redeployment">Causes of Java
+ClassLoader Leaks on Redeployment</h1>
+<p>In long-running Java application servers, redeploying an application
+without restarting the JVM frequently triggers
+<code>OutOfMemoryError: Metaspace</code> (or <code>PermGen</code> in
+older Java versions). This issue arises because the container cannot
+garbage collect the application’s <code>ClassLoader</code> due to
+lingering strong references held by longer-lived system or container
+threads, static registries, and framework caches. This article examines
+the mechanics behind class loader memory leaks during redeployment and
+details the specific code patterns and JVM interactions that cause
+them.</p>
+<h2 id="the-mechanism-of-classloader-garbage-collection">The Mechanism
+of ClassLoader Garbage Collection</h2>
+<p>Java application servers like Apache Tomcat, Jetty, and WildFly
+utilize a hierarchical class loading architecture. The server creates an
+isolated child class loader (often named <code>WebAppClassLoader</code>)
+for each deployed application.</p>
+<p>Garbage collection of an application's loaded classes requires the
+collection of its <code>WebAppClassLoader</code>. However, class
+unloadability is governed by strict JVM rules:</p>
+<ul>
+<li>Every Java object holds a reference to its
+<code>java.lang.Class</code>.</li>
+<li>Every <code>java.lang.Class</code> holds a reference to its defining
+<code>java.lang.ClassLoader</code>.</li>
+<li>Every <code>java.lang.ClassLoader</code> maintains a collection of
+all <code>java.lang.Class</code> instances it has loaded.</li>
+</ul>
+<p>Because of this circular dependency, if even a single object, class,
+or thread from the application remains reachable by a class loader
+higher up in the hierarchy (such as the <code>SystemClassLoader</code>
+or a shared container loader), the entire
+<code>WebAppClassLoader</code>, along with all application classes and
+static data, remains rooted in memory.</p>
+<h2 id="primary-causes-of-classloader-leaks">Primary Causes of
+ClassLoader Leaks</h2>
+<h3 id="1-uncleaned-threadlocal-variables">1. Uncleaned ThreadLocal
+Variables</h3>
+<p>The most common cause of class loader leaks involves
+<code>ThreadLocal</code> storage used in conjunction with container
+thread pools. Application servers maintain worker threads that live
+throughout the entire lifecycle of the JVM.</p>
+<p>When an application assigns a value to a <code>ThreadLocal</code> and
+fails to call <code>ThreadLocal.remove()</code> before the thread
+returns to the pool:</p>
+<ul>
+<li>The thread continues to hold a reference to the
+<code>ThreadLocalMap</code>.</li>
+<li>If the <code>ThreadLocal</code> key, value, or the thread itself
+references a class loaded by the application, the entire
+<code>WebAppClassLoader</code> becomes pinned.</li>
+<li>Even if the key is collected via its weak reference, the value
+remains strongly reachable until that specific thread runs another task
+that happens to overwrite or clear the map entry.</li>
+</ul>
+<h3 id="2-lingering-threads-and-tasks">2. Lingering Threads and
+Tasks</h3>
+<p>If an application starts background threads—using
+<code>java.lang.Thread</code>, <code>Timer</code>, or an
+<code>ExecutorService</code>—and does not explicitly terminate them
+during application shutdown:</p>
+<ul>
+<li>The running thread remains an active GC root.</li>
+<li>The thread's context class loader
+(<code>Thread.getContextClassLoader()</code>) or the thread’s
+<code>Runnable</code> implementation points directly back to application
+classes.</li>
+<li>Common culprits include unstopped scheduling frameworks (like
+Quartz) or asynchronous background workers created inside third-party
+libraries.</li>
+</ul>
+<h3 id="3-static-jvm-registries-and-singletons">3. Static JVM Registries
+and Singletons</h3>
+<p>When an application registers components into JVM-level singletons or
+standard library registries, those registrations live in the scope of
+the bootstrap or system class loader. Without explicit deregistration on
+shutdown, these registries hold application references indefinitely.</p>
+<ul>
+<li><strong>JDBC Drivers:</strong> Prior to JDBC 4.0, drivers registered
+via <code>DriverManager.registerDriver()</code> retained strong
+references in the static <code>java.sql.DriverManager</code> class.</li>
+<li><strong>Shutdown Hooks:</strong> Registering a hook via
+<code>Runtime.getRuntime().addShutdownHook()</code> keeps the
+<code>Thread</code> instance in a static list in
+<code>java.lang.ApplicationShutdownHooks</code> until the JVM
+exits.</li>
+<li><strong>JMX MBeans:</strong> Registering an MBean with the container
+or JVM platform <code>MBeanServer</code> retains references to the
+application class unless unregistered during context shutdown.</li>
+<li><strong>JavaBeans Introspector:</strong> The
+<code>java.beans.Introspector</code> caches bean metadata globally.
+Without calling <code>Introspector.flushCaches()</code>, cached metadata
+retains references to application classes.</li>
+</ul>
+<h3 id="4-logging-frameworks">4. Logging Frameworks</h3>
+<p>Logging frameworks often store configuration and appenders in static
+structures. If a logging implementation (such as Log4j or Logback) is
+loaded at the server or system level, but uses appenders, filters, or
+context selectors defined within the application archive, the
+higher-level logger keeps strong references to the application-level
+classes.</p>
+<h3 id="5-xml-and-serialization-caching">5. XML and Serialization
+Caching</h3>
+<p>The standard Java runtime caches certain factories and parsers for
+performance. Components like <code>DocumentBuilderFactory</code>,
+<code>SAXParserFactory</code>, and <code>JAXBContext</code> can retain
+references to the implementation classes discovered via the thread
+context class loader. If the runtime caches a provider loaded by the
+application, the JVM-level cache prevents the class loader from
+unloading.</p>
+<h2 id="detecting-and-preventing-leaks">Detecting and Preventing
+Leaks</h2>
+<p>To prevent class loader leaks, application developers must ensure all
+resources initialized by the application are explicitly cleaned up using
+lifecycle hooks, such as
+<code>ServletContextListener.contextDestroyed()</code> in servlet-based
+applications:</p>
+<ul>
+<li>Always invoke <code>remove()</code> on <code>ThreadLocal</code>
+variables in a <code>finally</code> block.</li>
+<li>Shut down all managed thread pools and timers.</li>
+<li>Deregister JDBC drivers and JMX MBeans manually during context
+destruction.</li>
+<li>Clear JVM-wide caches for introspectors and XML parsers.</li>
+</ul>
+<p>If a leak occurs, it can be diagnosed by capturing a heap dump after
+redeployment and using memory analysis tools like Eclipse Memory
+Analyzer (MAT). Tracing the shortest path from the uncollected
+<code>WebAppClassLoader</code> to any GC root will reveal the exact
+reference chain keeping the deployment alive in memory.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

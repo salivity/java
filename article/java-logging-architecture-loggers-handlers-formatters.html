@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Logging Architecture: Loggers, Handlers, Formatters - java</title>
+    <meta name="description" content="The Java Logging API (java.util.logging) relies on a decoupled architecture that cleanly separates message capture, output routing, and text presentation. Instead of forcing a single component to manage the entire lifecycle of a log message, the framewor">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-logging-architecture-loggers-handlers-formatters">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Logging Architecture: Loggers, Handlers, Formatters - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-logging-architecture-loggers-handlers-formatters" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Logging API (java.util.logging) relies on a decoupled architecture that cleanly separates message capture, output routing, and text presentation. Instead of forcing a single component to manage the entire lifecycle of a log message, the framewor" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-logging-architecture-loggers-handlers-formatters">Java
+Logging Architecture: Loggers, Handlers, Formatters</h1>
+<p>The Java Logging API (<code>java.util.logging</code>) relies on a
+decoupled architecture that cleanly separates message capture, output
+routing, and text presentation. Instead of forcing a single component to
+manage the entire lifecycle of a log message, the framework assigns
+distinct responsibilities to three core entities: Loggers, Handlers, and
+Formatters. Loggers capture events and determine whether they should be
+processed; Handlers receive those events and transmit them to specific
+targets; and Formatters convert the event data into a finalized,
+readable string format.</p>
+<h2 id="the-architectural-workflow">The Architectural Workflow</h2>
+<p>When an application generates a log message, the components interact
+in a sequential pipeline:</p>
+<ol type="1">
+<li><strong>Application Code</strong> calls a method on a
+<strong>Logger</strong>.</li>
+<li>The <strong>Logger</strong> creates a <code>LogRecord</code> object
+and checks whether the severity level passes its threshold.</li>
+<li>If approved, the <strong>Logger</strong> passes the
+<code>LogRecord</code> to one or more configured
+<strong>Handlers</strong>.</li>
+<li>The <strong>Handler</strong> uses an assigned
+<strong>Formatter</strong> to translate the <code>LogRecord</code> into
+text.</li>
+<li>The <strong>Handler</strong> publishes the formatted output to its
+designated destination (such as a console, file, or network
+socket).</li>
+</ol>
+<hr />
+<h2 id="loggers-capture-and-filtering">Loggers: Capture and
+Filtering</h2>
+<p>The <code>Logger</code> acts as the primary interface between the
+application code and the logging subsystem. Developers interact directly
+with Loggers to emit diagnostic information.</p>
+<h3 id="primary-responsibilities">Primary Responsibilities:</h3>
+<ul>
+<li><strong>Message Ingestion:</strong> Loggers provide methods such as
+<code>info()</code>, <code>warning()</code>, <code>severe()</code>, and
+parameterized <code>log()</code> calls to receive data from the
+application.</li>
+<li><strong>Level Filtering:</strong> Every Logger has an assigned
+<code>Level</code> (e.g., <code>INFO</code>, <code>FINE</code>,
+<code>SEVERE</code>). If an incoming message's level is below the
+Logger’s configured threshold, the message is discarded immediately to
+minimize performance overhead.</li>
+<li><strong>Hierarchical Organization:</strong> Loggers are organized in
+a dot-separated naming hierarchy (e.g.,
+<code>com.example.service</code>). Child loggers inherit logging levels
+and Handlers from their ancestors by default, allowing centralized
+configuration.</li>
+<li><strong>Dispatching:</strong> Once a message passes the level check,
+the Logger packages the metadata (timestamp, class name, thread ID,
+message parameters) into a <code>LogRecord</code> object and passes it
+to all attached Handlers.</li>
+</ul>
+<hr />
+<h2 id="handlers-routing-and-delivery">Handlers: Routing and
+Delivery</h2>
+<p>A <code>Handler</code> is responsible for taking a
+<code>LogRecord</code> and exporting it to an external output target. A
+single Logger can route records to multiple Handlers simultaneously.</p>
+<h3 id="primary-responsibilities-1">Primary Responsibilities:</h3>
+<ul>
+<li><strong>Destination Management:</strong> Handlers define
+<em>where</em> the log event is delivered. Standard implementations
+include:
+<ul>
+<li><code>ConsoleHandler</code>: Writes messages to
+<code>System.err</code>.</li>
+<li><code>FileHandler</code>: Writes messages to rotating flat files or
+XML files on disk.</li>
+<li><code>SocketHandler</code>: Sends log records over a TCP network
+connection to a remote listener.</li>
+</ul></li>
+<li><strong>Secondary Filtering:</strong> Handlers maintain their own
+independent <code>Level</code> settings and optional <code>Filter</code>
+instances. Even if a Logger allows a <code>FINE</code> message through,
+a <code>ConsoleHandler</code> set to <code>INFO</code> will ignore it,
+while a <code>FileHandler</code> set to <code>FINE</code> will record
+it.</li>
+<li><strong>Formatter Delegation:</strong> Before writing to an I/O
+stream, the Handler invokes its assigned Formatter to transform the raw
+<code>LogRecord</code> into bytes or characters.</li>
+<li><strong>Resource Lifecycle:</strong> Handlers manage the underlying
+I/O resources, including flushing buffers and closing streams upon
+application shutdown.</li>
+</ul>
+<hr />
+<h2 id="formatters-translation-and-presentation">Formatters: Translation
+and Presentation</h2>
+<p>The <code>Formatter</code> defines <em>how</em> a log entry appears.
+It possesses no awareness of how messages are collected or where they
+will be sent; its sole duty is string transformation.</p>
+<h3 id="primary-responsibilities-2">Primary Responsibilities:</h3>
+<ul>
+<li><strong>Serialization:</strong> A Formatter accepts a
+<code>LogRecord</code> and returns a formatted <code>String</code>.</li>
+<li><strong>Standardization:</strong> It standardizes the layout of
+metadata, arranging timestamps, thread identifiers, logger names, log
+levels, and stack traces according to a specified template.</li>
+<li><strong>Output Styles:</strong> Java provides built-in formatters
+such as:
+<ul>
+<li><code>SimpleFormatter</code>: Generates brief, human-readable text
+output.</li>
+<li><code>XMLFormatter</code>: Serializes the <code>LogRecord</code>
+into structured XML for machine parsing.</li>
+</ul></li>
+<li><strong>Customization:</strong> Developers can extend the
+<code>Formatter</code> class to implement custom layouts, such as
+structured JSON formats for centralized log aggregation platforms.</li>
+</ul>
+<hr />
+<h2 id="summary-of-separation-of-concerns">Summary of Separation of
+Concerns</h2>
+<ul>
+<li><strong>Logger:</strong> Decides <strong>if</strong> an event is
+worth logging and packages the context.</li>
+<li><strong>Handler:</strong> Decides <strong>where</strong> the event
+is delivered and manages the I/O destination.</li>
+<li><strong>Formatter:</strong> Decides <strong>how</strong> the event
+looks when transformed into text.</li>
+</ul>
+<p>By decoupling these three components, Java allows developers to
+modify destinations and layouts across an entire application via
+configuration files without altering existing business logic.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

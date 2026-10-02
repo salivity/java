@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java StringBuilder vs StringBuffer Performance - java</title>
+    <meta name="description" content="In Java, both StringBuilder and StringBuffer provide mutable sequences of characters to eliminate the memory overhead associated with immutable String concatenation. While both classes share virtually identical APIs and internal buffer-resizing algorithm">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-string-builder-vs-string-buffer-performance">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java StringBuilder vs StringBuffer Performance - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-string-builder-vs-string-buffer-performance" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Java, both StringBuilder and StringBuffer provide mutable sequences of characters to eliminate the memory overhead associated with immutable String concatenation. While both classes share virtually identical APIs and internal buffer-resizing algorithm" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-stringbuilder-vs-stringbuffer-performance">Java
+StringBuilder vs StringBuffer Performance</h1>
+<p>In Java, both <code>StringBuilder</code> and
+<code>StringBuffer</code> provide mutable sequences of characters to
+eliminate the memory overhead associated with immutable
+<code>String</code> concatenation. While both classes share virtually
+identical APIs and internal buffer-resizing algorithms, their core
+trade-off centers on synchronization versus execution speed.
+<code>StringBuffer</code> is thread-safe due to method-level
+synchronization, which introduces locking overhead, whereas
+<code>StringBuilder</code> is unsynchronized, making it significantly
+faster in single-threaded contexts. This article breaks down the exact
+performance trade-offs, internal mechanics, and practical implications
+of choosing between the two.</p>
+<h3 id="synchronization-overhead">Synchronization Overhead</h3>
+<p>The fundamental technical difference between the two classes is
+concurrency control. Most public mutating methods in
+<code>StringBuffer</code>—including <code>append()</code>,
+<code>insert()</code>, and <code>delete()</code>—are declared with the
+<code>synchronized</code> keyword. Every method call requires acquiring
+an intrinsic monitor lock on the object instance and subsequently
+releasing it.</p>
+<p>Even in single-threaded execution, this synchronization incurs a CPU
+penalty. While modern Java Virtual Machines (JVMs) attempt optimizations
+such as lock elision via escape analysis, these optimizations are not
+guaranteed. Furthermore, with biased locking disabled by default in
+modern OpenJDK releases (Java 15 and later), the operational cost of
+uncontended synchronization has increased. <code>StringBuilder</code>
+completely omits synchronization, executing without monitor overhead,
+thread state checks, or memory barrier enforcement.</p>
+<h3 id="throughput-and-execution-speed">Throughput and Execution
+Speed</h3>
+<p>In raw throughput benchmarks, <code>StringBuilder</code> routinely
+outperforms <code>StringBuffer</code>. Because string manipulation
+frequently occurs in tight loops or data-intensive pipelines, the
+cumulative cost of method synchronization becomes apparent:</p>
+<ul>
+<li><strong>Single-Threaded Operations:</strong> Under intensive
+concatenation workloads, <code>StringBuilder</code> can be anywhere from
+1.5x to over 3x faster than <code>StringBuffer</code>, depending on the
+JVM version, JIT compiler optimizations, and the frequency of method
+calls.</li>
+<li><strong>JIT Inlining:</strong> The absence of synchronization
+wrappers makes <code>StringBuilder</code> methods easier for the
+Just-In-Time (JIT) compiler to inline, enabling further downstream
+optimizations like loop vectorization.</li>
+</ul>
+<h3 id="memory-allocation-and-buffer-expansion">Memory Allocation and
+Buffer Expansion</h3>
+<p>From a memory consumption standpoint, <code>StringBuilder</code> and
+<code>StringBuffer</code> are identical. Both classes inherit from
+<code>AbstractStringBuilder</code> and share the exact same capacity
+management model:</p>
+<ul>
+<li>Both maintain an internal array (a <code>char[]</code> array prior
+to Java 9, or a compacted <code>byte[]</code> array in modern Java
+implementations).</li>
+<li>Both start with a default initial capacity of 16 characters (or
+<code>str.length() + 16</code> if initialized with an existing
+string).</li>
+<li>When capacity is exceeded, both classes expand using the same growth
+strategy: doubling the previous capacity plus two
+(<code>(oldCapacity * 2) + 2</code>), followed by an array copy via
+<code>System.arraycopy()</code>.</li>
+</ul>
+<p>Because their memory layouts and garbage collection profiles are
+identical, memory consumption is not a differentiator—only execution
+latency distinguishes them.</p>
+<h3 id="thread-safety-trade-offs-in-practice">Thread Safety Trade-Offs
+in Practice</h3>
+<p>While <code>StringBuffer</code> guarantees thread safety at the
+method level, this safety is often misunderstood. Individual
+synchronized calls prevent the internal array from becoming corrupted,
+but they do not automatically make compound operations atomic.</p>
+<p>For instance, checking the length of a <code>StringBuffer</code> and
+then performing an append based on that length across multiple threads
+still requires external synchronization to prevent race conditions.
+Because external synchronization renders internal method synchronization
+redundant, <code>StringBuffer</code> rarely provides true architectural
+thread safety in complex concurrent applications.</p>
+<h3 id="practical-selection-criteria">Practical Selection Criteria</h3>
+<p>Given the performance metrics and concurrency dynamics:</p>
+<ul>
+<li><strong>Use <code>StringBuilder</code> by default:</strong> For
+local variables, method-scoped concatenation, loop processing, and any
+scenario confined to a single thread. The Java compiler automatically
+translates standard <code>+</code> string concatenations into
+<code>StringBuilder</code> (or <code>invokedynamic</code> equivalents)
+for this reason.</li>
+<li><strong>Use <code>StringBuffer</code> only for legacy
+compatibility:</strong> <code>StringBuffer</code> was introduced in Java
+1.0, whereas <code>StringBuilder</code> arrived in Java 5. The primary
+reason to use <code>StringBuffer</code> today is interoperability with
+legacy APIs that explicitly require a <code>StringBuffer</code>
+parameter.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

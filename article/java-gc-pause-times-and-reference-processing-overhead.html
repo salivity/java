@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java GC Pause Times and Reference Processing Overhead - java</title>
+    <meta name="description" content="Reference processing in Java manages non-strong references—namely Soft, Weak, Phantom, and Final references—during garbage collection (GC) cycles. While these references enable crucial functionality like memory-sensitive caching, canonical mappings,">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-gc-pause-times-and-reference-processing-overhead">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java GC Pause Times and Reference Processing Overhead - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-gc-pause-times-and-reference-processing-overhead" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Reference processing in Java manages non-strong references—namely Soft, Weak, Phantom, and Final references—during garbage collection (GC) cycles. While these references enable crucial functionality like memory-sensitive caching, canonical mappings," />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-gc-pause-times-and-reference-processing-overhead">Java GC
+Pause Times and Reference Processing Overhead</h1>
+<p>Reference processing in Java manages non-strong references—namely
+Soft, Weak, Phantom, and Final references—during garbage collection (GC)
+cycles. While these references enable crucial functionality like
+memory-sensitive caching, canonical mappings, and native resource
+cleanup, their discovery and resolution introduce measurable latency
+into the GC lifecycle. In many high-throughput or low-latency
+applications, unoptimized reference processing becomes a hidden driver
+of extended Stop-The-World (STW) pause times.</p>
+<h3 id="the-mechanics-of-reference-processing">The Mechanics of
+Reference Processing</h3>
+<p>During the garbage collection process, the JVM must identify which
+objects are reachable and which are candidates for reclamation. Standard
+objects rely on strong references; once strong reachability is lost, the
+JVM evaluates special reference objects:</p>
+<ol type="1">
+<li><strong>Discovery:</strong> As the GC traverses the object graph
+(often during the marking phase), it identifies non-strongly reachable
+objects encapsulated by a <code>java.lang.ref.Reference</code> subclass.
+Instead of immediately collecting them, the GC adds them to an internal
+discovery list.</li>
+<li><strong>Processing:</strong> Before memory can be reclaimed, the GC
+must iterate over these discovered lists. It decides whether to clear
+the reference, keep the referent alive (in the case of
+<code>SoftReference</code> depending on heap pressure), or enqueue the
+reference into an associated <code>ReferenceQueue</code>.</li>
+</ol>
+<p>Reference processing typically occurs during a pause phase—such as
+the Remark phase in G1 or CMS, or within the STW phases of the Parallel
+collector.</p>
+<h3 id="why-reference-processing-increases-pause-duration">Why Reference
+Processing Increases Pause Duration</h3>
+<p>Reference processing impacts pause duration primarily due to
+execution bottlenecks and reference volume:</p>
+<ul>
+<li><strong>Sequential Execution Overhead:</strong> Historically, and by
+default in some older JVM configurations, reference processing runs on a
+single thread. When an application generates hundreds of thousands of
+weak or soft references, a single GC thread must traverse these linked
+lists sequentially while all application threads remain halted.</li>
+<li><strong>Volume of Managed References:</strong> Frameworks and
+libraries heavily employ <code>WeakHashMap</code>, thread locals,
+reflection caches, and proxy classes. When the total volume of active
+references scales into millions, the computational cost of examining
+referents, unlinking nodes, and appending them to pending lists
+increases pause times linearly or superlinearly.</li>
+<li><strong>Soft Reference Evaluation:</strong> Unlike weak references,
+which are cleared immediately when no strong paths exist, soft
+references require the JVM to evaluate heap occupancy against the clock
+metric (<code>-XX:SoftRefLRUPolicyMSPerMB</code>). This evaluation adds
+branching and calculation overhead to the pause window.</li>
+<li><strong>Finalization Delays:</strong> Objects implementing the
+deprecated <code>finalize()</code> method utilize
+<code>FinalReference</code>. These require special multi-phase tracking:
+ensuring the object is preserved, placed on the finalizer queue, and
+only reclaimed in a subsequent GC cycle. This complex handling extends
+the pause duration substantially compared to standard collection.</li>
+</ul>
+<h3 id="mitigating-reference-processing-latency">Mitigating Reference
+Processing Latency</h3>
+<p>To minimize the impact of reference processing on pause times,
+several JVM flags and design patterns can be applied:</p>
+<ul>
+<li><strong>Enable Parallel Reference Processing:</strong> Enabling
+<code>-XX:+ParallelRefProcEnabled</code> instructs the collector to use
+multiple worker threads during the reference processing phase rather
+than a single thread. In modern collectors like G1, this is enabled by
+default, but it remains a critical check for older runtimes or specific
+collector modes.</li>
+<li><strong>Limit Weak and Soft Caching:</strong> Soft references should
+not be used as a substitute for well-bounded in-memory caches. Dedicated
+caching libraries (such as Caffeine) that rely on explicit size-based or
+time-based eviction policies avoid flooding the JVM’s internal reference
+queues.</li>
+<li><strong>Diagnose Reference Metrics:</strong> Using unified GC
+logging (<code>-Xlog:gc*,gc+ref=debug:file=gc.log</code>) allows
+developers to view the exact time spent per reference type during each
+pause. If the log displays significant duration in <code>WeakRef</code>
+or <code>FinalRef</code> processing, it identifies which reference types
+need code-level refactoring.</li>
+<li><strong>Avoid Finalizers:</strong> Finalizers should be completely
+eliminated in favor of <code>AutoCloseable</code> patterns or Java 9+
+<code>java.lang.ref.Cleaner</code>, which provides lower overhead and
+avoids the multi-cycle retention penalties associated with standard
+finalization.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

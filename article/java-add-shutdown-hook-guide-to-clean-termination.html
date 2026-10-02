@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java addShutdownHook: Guide to Clean Termination - java</title>
+    <meta name="description" content="The Runtime.getRuntime().addShutdownHook method in Java provides a reliable mechanism for graceful application shutdown by allowing developers to register initialized, unstarted threads that the Java Virtual Machine (JVM) executes before terminating. Thi">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-add-shutdown-hook-guide-to-clean-termination">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java addShutdownHook: Guide to Clean Termination - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-add-shutdown-hook-guide-to-clean-termination" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Runtime.getRuntime().addShutdownHook method in Java provides a reliable mechanism for graceful application shutdown by allowing developers to register initialized, unstarted threads that the Java Virtual Machine (JVM) executes before terminating. Thi" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-addshutdownhook-guide-to-clean-termination">Java
+addShutdownHook: Guide to Clean Termination</h1>
+<p>The <code>Runtime.getRuntime().addShutdownHook</code> method in Java
+provides a reliable mechanism for graceful application shutdown by
+allowing developers to register initialized, unstarted threads that the
+Java Virtual Machine (JVM) executes before terminating. This article
+explains how the JVM initiates and manages these shutdown hooks, the
+scenarios in which they run, and the best practices required to ensure
+resources such as database connections, thread pools, and file handles
+are safely released.</p>
+<h3 id="how-the-shutdown-hook-works">How the Shutdown Hook Works</h3>
+<p>A shutdown hook is simply an unstarted <code>Thread</code> passed to
+the JVM runtime. When the JVM starts its shutdown sequence, it
+transitions into a "shutdown mode." During this phase, the JVM starts
+all registered shutdown hooks concurrently and allows them to run to
+completion before finally shutting down the process.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Runtime</span><span class="op">.</span><span class="fu">getRuntime</span><span class="op">().</span><span class="fu">addShutdownHook</span><span class="op">(</span><span class="kw">new</span> <span class="bu">Thread</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">println</span><span class="op">(</span><span class="st">&quot;Shutdown hook initiated. Cleaning up resources...&quot;</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Perform cleanup: close connections, flush buffers, release locks</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">}));</span></span></code></pre></div>
+<h3 id="when-shutdown-hooks-execute">When Shutdown Hooks Execute</h3>
+<p>The JVM invokes registered shutdown hooks under two distinct
+termination categories:</p>
+<ol type="1">
+<li><p><strong>Normal Termination:</strong></p>
+<ul>
+<li>The last non-daemon thread terminates.</li>
+<li><code>System.exit(int status)</code> or
+<code>Runtime.getRuntime().exit(int status)</code> is explicitly
+invoked.</li>
+</ul></li>
+<li><p><strong>Abrupt Termination via External Signals:</strong></p>
+<ul>
+<li>A user interrupts the program from the console (e.g., sending a
+<code>SIGINT</code> via <code>Ctrl+C</code>).</li>
+<li>The operating system sends a termination signal, such as
+<code>SIGTERM</code> (common during system reboots or container stops
+like <code>docker stop</code>).</li>
+<li>A user logs off or the operating system shuts down.</li>
+</ul></li>
+</ol>
+<h3 id="when-shutdown-hooks-do-not-execute">When Shutdown Hooks Do Not
+Execute</h3>
+<p>Shutdown hooks cannot guarantee execution in catastrophic failure
+states:</p>
+<ul>
+<li>If the process receives an uncatchable kill signal, such as
+<code>SIGKILL</code> (<code>kill -9</code>).</li>
+<li>If <code>Runtime.getRuntime().halt(int status)</code> is called,
+which forcibly halts the JVM immediately without running hooks.</li>
+<li>If a native crash occurs (e.g., segmentation fault in JNI code) or
+the underlying physical hardware experiences sudden power loss.</li>
+</ul>
+<h3 id="execution-characteristics">Execution Characteristics</h3>
+<ul>
+<li><strong>Concurrent Execution:</strong> If multiple hooks are
+registered, the JVM starts them all simultaneously in an unspecified
+order. Hooks should not depend on one another or assume an execution
+sequence.</li>
+<li><strong>Daemon and Non-Daemon Threads:</strong> Any application
+threads that were running when shutdown began continue to run
+concurrently with the shutdown hooks.</li>
+<li><strong>Security Checks:</strong> Registering or removing a shutdown
+hook requires permission if a <code>SecurityManager</code> is present
+(<code>RuntimePermission("shutdownHooks")</code>).</li>
+</ul>
+<h3 id="best-practices-for-clean-termination">Best Practices for Clean
+Termination</h3>
+<ol type="1">
+<li><strong>Keep Hooks Fast and Lightweight:</strong> During an OS
+shutdown or container orchestration event (e.g., Kubernetes pod
+termination), the process is given a limited grace period before
+receiving a forced <code>SIGKILL</code>. Lengthy operations can cause
+the process to be killed midway through cleanup.</li>
+<li><strong>Ensure Thread Safety:</strong> Because all hooks run
+concurrently alongside any remaining active threads, cleanup logic must
+be strictly thread-safe to avoid race conditions and deadlocks.</li>
+<li><strong>Never Call <code>System.exit()</code> Inside a
+Hook:</strong> Invoking <code>System.exit()</code> inside a shutdown
+hook will cause the JVM to halt or block indefinitely, preventing clean
+termination.</li>
+<li><strong>Avoid Heavy Locking:</strong> Minimize complex
+synchronization between components in a hook to lower the risk of
+deadlocks that could freeze the shutdown process.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

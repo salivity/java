@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asynchronous File Monitoring with Java WatchService - java</title>
+    <meta name="description" content="The Java NIO.2 WatchService API provides a scalable, thread-safe mechanism to detect file system changes asynchronously without relying on manual polling. This article explains how the API interfaces with native operating system notification systems, wal">
+    <link rel="canonical" href="https://salivity.github.io/java/article/asynchronous-file-monitoring-with-java-watch-service">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Asynchronous File Monitoring with Java WatchService - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/asynchronous-file-monitoring-with-java-watch-service" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java NIO.2 WatchService API provides a scalable, thread-safe mechanism to detect file system changes asynchronously without relying on manual polling. This article explains how the API interfaces with native operating system notification systems, wal" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="asynchronous-file-monitoring-with-java-watchservice">Asynchronous
+File Monitoring with Java WatchService</h1>
+<p>The Java NIO.2 <code>WatchService</code> API provides a scalable,
+thread-safe mechanism to detect file system changes asynchronously
+without relying on manual polling. This article explains how the API
+interfaces with native operating system notification systems, walks
+through the core components—<code>WatchService</code>,
+<code>Watchable</code>, and <code>WatchKey</code>—and demonstrates how
+to configure background threads to process file creation, modification,
+and deletion events efficiently.</p>
+<h2 id="core-architecture-of-watchservice">Core Architecture of
+WatchService</h2>
+<p>Introduced in Java 7 as part of the NIO.2 file system improvements
+(<code>java.nio.file</code>), the <code>WatchService</code> API replaces
+CPU-intensive polling loops with native event-driven notification
+mechanisms. Instead of constantly checking file timestamps, the JVM
+registers interest with the underlying operating system's file
+monitoring subsystem (such as <code>inotify</code> on Linux,
+<code>ReadDirectoryChangesW</code> on Windows, or
+<code>kqueue</code>/FSEvents on macOS).</p>
+<p>When an operation occurs within a monitored directory, the operating
+system alerts the JVM, which then queues the event within the Java
+application.</p>
+<h2 id="key-components">Key Components</h2>
+<p>The API relies on three primary interfaces:</p>
+<ol type="1">
+<li><strong><code>WatchService</code></strong>: The event-monitoring
+engine. It acts as the registry for monitored targets and the queue from
+which events are retrieved.</li>
+<li><strong><code>Watchable</code> (typically
+<code>Path</code>)</strong>: Any object that can be registered with a
+<code>WatchService</code>. In practice, this is almost always a
+directory <code>Path</code>.</li>
+<li><strong><code>WatchKey</code></strong>: The token representing the
+registration of a <code>Watchable</code> with a
+<code>WatchService</code>. When changes occur, events are queued into
+the corresponding <code>WatchKey</code>.</li>
+</ol>
+<h2 id="how-the-asynchronous-workflow-works">How the Asynchronous
+Workflow Works</h2>
+<p>The monitoring lifecycle operates across registration,
+polling/waiting, event consumption, and state resetting.</p>
+<h3 id="1-initializing-and-registering-paths">1. Initializing and
+Registering Paths</h3>
+<p>A <code>WatchService</code> instance is created via the default
+<code>FileSystem</code>. A directory path registers itself with the
+service along with the specific event types it wants to observe:</p>
+<ul>
+<li><code>StandardWatchEventKinds.ENTRY_CREATE</code></li>
+<li><code>StandardWatchEventKinds.ENTRY_MODIFY</code></li>
+<li><code>StandardWatchEventKinds.ENTRY_DELETE</code></li>
+<li><code>StandardWatchEventKinds.OVERFLOW</code> (indicates events were
+lost or discarded)</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>WatchService watchService <span class="op">=</span> FileSystems<span class="op">.</span><span class="fu">getDefault</span><span class="op">().</span><span class="fu">newWatchService</span><span class="op">();</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>Path directory <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="st">&quot;/path/to/monitor&quot;</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>directory<span class="op">.</span><span class="fu">register</span><span class="op">(</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    watchService<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    StandardWatchEventKinds<span class="op">.</span><span class="fu">ENTRY_CREATE</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    StandardWatchEventKinds<span class="op">.</span><span class="fu">ENTRY_DELETE</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    StandardWatchEventKinds<span class="op">.</span><span class="fu">ENTRY_MODIFY</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span></code></pre></div>
+<h3 id="2-processing-events-asynchronously">2. Processing Events
+Asynchronously</h3>
+<p>Because file system events happen independently of application flow,
+event processing is typically offloaded to a dedicated worker thread or
+an <code>ExecutorService</code>. The consumer thread interacts with the
+<code>WatchService</code> using one of three retrieval methods:</p>
+<ul>
+<li><strong><code>poll()</code></strong>: Non-blocking. Immediately
+returns the next available <code>WatchKey</code>, or <code>null</code>
+if no events have occurred.</li>
+<li><strong><code>poll(long timeout, TimeUnit unit)</code></strong>:
+Timed blocking. Waits for the specified duration before returning
+<code>null</code> if the queue remains empty.</li>
+<li><strong><code>take()</code></strong>: Indefinite blocking. Suspends
+the thread until an event occurs and a <code>WatchKey</code> becomes
+available.</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">ExecutorService</span> executor <span class="op">=</span> <span class="bu">Executors</span><span class="op">.</span><span class="fu">newSingleThreadExecutor</span><span class="op">();</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>executor<span class="op">.</span><span class="fu">submit</span><span class="op">(()</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> <span class="op">(!</span><span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">isInterrupted</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Blocks until an event is queued</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>            WatchKey key <span class="op">=</span> watchService<span class="op">.</span><span class="fu">take</span><span class="op">();</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> <span class="op">(</span>WatchEvent<span class="op">&lt;?&gt;</span> event <span class="op">:</span> key<span class="op">.</span><span class="fu">pollEvents</span><span class="op">())</span> <span class="op">{</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>                WatchEvent<span class="op">.</span><span class="fu">Kind</span><span class="op">&lt;?&gt;</span> kind <span class="op">=</span> event<span class="op">.</span><span class="fu">kind</span><span class="op">();</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>kind <span class="op">==</span> StandardWatchEventKinds<span class="op">.</span><span class="fu">OVERFLOW</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>                <span class="co">// The context provides the relative path of the file affected</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>                <span class="at">@SuppressWarnings</span><span class="op">(</span><span class="st">&quot;unchecked&quot;</span><span class="op">)</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>                WatchEvent<span class="op">&lt;</span>Path<span class="op">&gt;</span> pathEvent <span class="op">=</span> <span class="op">(</span>WatchEvent<span class="op">&lt;</span>Path<span class="op">&gt;)</span> event<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>                Path filename <span class="op">=</span> pathEvent<span class="op">.</span><span class="fu">context</span><span class="op">();</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>                <span class="bu">System</span><span class="op">.</span><span class="fu">out</span><span class="op">.</span><span class="fu">printf</span><span class="op">(</span><span class="st">&quot;Event: </span><span class="sc">%s</span><span class="st"> on File: </span><span class="sc">%s%n</span><span class="st">&quot;</span><span class="op">,</span> kind<span class="op">.</span><span class="fu">name</span><span class="op">(),</span> filename<span class="op">);</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Must reset the key to receive subsequent events</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>            <span class="dt">boolean</span> valid <span class="op">=</span> key<span class="op">.</span><span class="fu">reset</span><span class="op">();</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(!</span>valid<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>                <span class="co">// Directory is no longer accessible</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="bu">InterruptedException</span> e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>        <span class="bu">Thread</span><span class="op">.</span><span class="fu">currentThread</span><span class="op">().</span><span class="fu">interrupt</span><span class="op">();</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a><span class="op">});</span></span></code></pre></div>
+<h3 id="3-resetting-the-watchkey">3. Resetting the WatchKey</h3>
+<p>A critical aspect of the <code>WatchService</code> state machine is
+key reset semantics. When events occur on a registered directory, its
+<code>WatchKey</code> moves to a "signaled" state and is placed in the
+queue.</p>
+<p>While signaled, the key will not queue additional events. Once the
+consumer finishes reading the list via <code>key.pollEvents()</code>, it
+must invoke <code>key.reset()</code>. This call transitions the key back
+to the "ready" state. If <code>reset()</code> returns
+<code>false</code>, the directory is no longer accessible (e.g., it was
+deleted), and monitoring for that path should terminate.</p>
+<h2 id="important-operational-considerations">Important Operational
+Considerations</h2>
+<ul>
+<li><strong>Non-Recursive by Default</strong>: Registering a directory
+does not automatically monitor its child directories. To monitor
+subtrees, code must recursively walk the tree using
+<code>Files.walkFileTree()</code> and register each child directory
+individually, as well as handle dynamically created subdirectories at
+runtime.</li>
+<li><strong>Operating System Delays</strong>: While native
+implementations are performant, file operations are not atomic at the OS
+notification level. A file copy can trigger an <code>ENTRY_CREATE</code>
+followed by multiple <code>ENTRY_MODIFY</code> events as data chunks are
+written. Applications reading newly created files must verify the
+writing process has completed before attempting access.</li>
+<li><strong>Resource Cleanup</strong>: <code>WatchService</code>
+implements <code>AutoCloseable</code>. Closing the service unblocks any
+threads waiting in <code>take()</code> or <code>poll()</code> by
+throwing a <code>ClosedWatchServiceException</code>, facilitating clean
+application shutdowns.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

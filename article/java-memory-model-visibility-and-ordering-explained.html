@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Memory Model Visibility and Ordering Explained - java</title>
+    <meta name="description" content="The Java Memory Model (JMM) establishes the structural rules for how threads interact through memory, specifically addressing visibility and ordering of shared variables. In a multithreaded environment, modern hardware architectures utilize local CPU cac">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-memory-model-visibility-and-ordering-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Memory Model Visibility and Ordering Explained - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-memory-model-visibility-and-ordering-explained" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The Java Memory Model (JMM) establishes the structural rules for how threads interact through memory, specifically addressing visibility and ordering of shared variables. In a multithreaded environment, modern hardware architectures utilize local CPU cac" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-memory-model-visibility-and-ordering-explained">Java Memory
+Model Visibility and Ordering Explained</h1>
+<p>The Java Memory Model (JMM) establishes the structural rules for how
+threads interact through memory, specifically addressing visibility and
+ordering of shared variables. In a multithreaded environment, modern
+hardware architectures utilize local CPU caches, while compilers and
+processors perform instruction reordering to maximize performance. This
+article explains how the JMM mitigates resulting concurrency hazards
+using the "happens-before" guarantee, and outlines how language
+constructs such as <code>volatile</code>, <code>synchronized</code>, and
+<code>final</code> ensure predictable, thread-safe communication.</p>
+<h2 id="the-core-challenges-caches-and-reordering">The Core Challenges:
+Caches and Reordering</h2>
+<p>When a thread modifies a shared variable, two primary issues can
+occur:</p>
+<ol type="1">
+<li><strong>Visibility Issues:</strong> CPUs do not write directly to
+main memory immediately. Instead, they write to store buffers and local
+CPU caches (L1, L2, L3). As a result, a modification made by Thread A
+may reside in its local cache and remain invisible to Thread B reading
+from its own cache.</li>
+<li><strong>Ordering Issues:</strong> To optimize execution, compilers,
+just-in-time (JIT) runtimes, and processor architectures reorder
+instructions. While an instruction sequence guarantees correct behavior
+in a single thread (the "as-if-serial" semantics), reordering can result
+in inconsistent or partially initialized states when observed by a
+concurrent thread.</li>
+</ol>
+<h2 id="the-happens-before-relationship">The Happens-Before
+Relationship</h2>
+<p>The JMM resolves these problems through the
+<strong>happens-before</strong> principle. If action <span
+class="math inline">\(A\)</span> happens-before action <span
+class="math inline">\(B\)</span>, the memory effects of action <span
+class="math inline">\(A\)</span> are guaranteed to be visible to action
+<span class="math inline">\(B\)</span>, and action <span
+class="math inline">\(A\)</span> will appear to have executed before
+action <span class="math inline">\(B\)</span>.</p>
+<p>Without a happens-before relationship between a write and a read, the
+JVM offers no guarantee about when the read sees the write, or if it
+sees it at all.</p>
+<h3 id="key-happens-before-rules">Key Happens-Before Rules</h3>
+<ul>
+<li><strong>Program Order Rule:</strong> Within a single thread, each
+action happens-before any subsequent action in program order.</li>
+<li><strong>Monitor Lock Rule:</strong> An unlock action on a monitor
+(such as exiting a <code>synchronized</code> block) happens-before every
+subsequent lock acquisition on that same monitor.</li>
+<li><strong>Volatile Variable Rule:</strong> A write to a
+<code>volatile</code> field happens-before every subsequent read of that
+same field.</li>
+<li><strong>Thread Start Rule:</strong> A call to
+<code>Thread.start()</code> happens-before any action in the started
+thread.</li>
+<li><strong>Thread Termination Rule:</strong> Any action in a thread
+happens-before any other thread successfully detects that it has
+terminated, such as via <code>Thread.join()</code>.</li>
+<li><strong>Transitivity:</strong> If action <span
+class="math inline">\(A\)</span> happens-before <span
+class="math inline">\(B\)</span>, and <span
+class="math inline">\(B\)</span> happens-before <span
+class="math inline">\(C\)</span>, then <span
+class="math inline">\(A\)</span> happens-before <span
+class="math inline">\(C\)</span>.</li>
+</ul>
+<h2 id="achieving-visibility-and-ordering">Achieving Visibility and
+Ordering</h2>
+<p>The JMM provides several language features to enforce the
+happens-before relationship.</p>
+<h3 id="1-the-volatile-keyword">1. The <code>volatile</code>
+Keyword</h3>
+<p>Declaring a variable as <code>volatile</code> ensures two
+behaviors:</p>
+<ul>
+<li><strong>Visibility:</strong> Reads and writes bypass CPU registers
+and force reads directly from and writes to main memory (or
+invalidate/flush corresponding cache lines).</li>
+<li><strong>Ordering:</strong> The JVM inserts hardware-level memory
+barriers around the volatile variable. A volatile write prevents
+preceding reads and writes from being reordered after it, and a volatile
+read prevents subsequent reads and writes from being reordered before
+it.</li>
+</ul>
+<h3 id="2-synchronization-synchronized-and-locks">2. Synchronization
+(<code>synchronized</code> and Locks)</h3>
+<p>Acquiring and releasing locks provides full mutual exclusion and
+memory safety:</p>
+<ul>
+<li>When a thread enters a <code>synchronized</code> block, it
+invalidates its local working memory and refreshes data from main
+memory.</li>
+<li>When a thread exits a <code>synchronized</code> block, all local
+changes are flushed to main memory.</li>
+<li>Memory operations cannot cross the entry and exit boundaries of a
+synchronized block in a way that violates monitor-lock happens-before
+ordering.</li>
+</ul>
+<h3 id="3-the-final-keyword-and-safe-publication">3. The
+<code>final</code> Keyword and Safe Publication</h3>
+<p>The JMM defines special freeze semantics for fields marked
+<code>final</code>. When an object's reference is made visible to other
+threads, its <code>final</code> fields are guaranteed to be fully
+initialized and visible without explicit synchronization, provided the
+object reference does not "escape" before the constructor finishes
+executing.</p>
+<h2 id="summary">Summary</h2>
+<p>The Java Memory Model abstracts diverse hardware architectures into a
+unified set of formal rules. By defining visibility (cache
+synchronization) and ordering (instruction reordering constraints)
+through the happens-before relationship, the JMM allows developers to
+use primitives like <code>volatile</code>, <code>synchronized</code>,
+and <code>final</code> to build predictable, thread-safe concurrent
+systems.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

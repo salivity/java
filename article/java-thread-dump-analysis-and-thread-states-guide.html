@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Thread Dump Analysis and Thread States Guide - java</title>
+    <meta name="description" content="Thread dump analysis is a diagnostic technique used by software engineers to inspect the execution state of all active threads within a Java Virtual Machine (JVM) at a specific moment in time. This article explains the fundamentals of Java thread dump an">
+    <link rel="canonical" href="https://salivity.github.io/java/article/java-thread-dump-analysis-and-thread-states-guide">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java Thread Dump Analysis and Thread States Guide - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/java-thread-dump-analysis-and-thread-states-guide" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Thread dump analysis is a diagnostic technique used by software engineers to inspect the execution state of all active threads within a Java Virtual Machine (JVM) at a specific moment in time. This article explains the fundamentals of Java thread dump an" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="java-thread-dump-analysis-and-thread-states-guide">Java Thread
+Dump Analysis and Thread States Guide</h1>
+<p>Thread dump analysis is a diagnostic technique used by software
+engineers to inspect the execution state of all active threads within a
+Java Virtual Machine (JVM) at a specific moment in time. This article
+explains the fundamentals of Java thread dump analysis, how it helps
+identify performance bottlenecks such as deadlocks and CPU spikes, and
+details the primary thread states defined in the Java specification that
+appear across stack traces.</p>
+<h2 id="what-is-thread-dump-analysis">What is Thread Dump Analysis?</h2>
+<p>A Java thread dump is a snapshot of the execution state of all
+threads running within a JVM process. Each thread entry in the dump
+reveals critical diagnostic data, including:</p>
+<ul>
+<li><strong>Thread identity:</strong> Thread name, thread ID
+(<code>tid</code>), native OS thread ID (<code>nid</code>), and
+priority.</li>
+<li><strong>Thread state:</strong> The operational condition of the
+thread based on the <code>java.lang.Thread.State</code> enum.</li>
+<li><strong>Stack trace:</strong> The exact sequence of method calls,
+line numbers, and lock synchronizations the thread was executing when
+the snapshot was taken.</li>
+</ul>
+<p>Thread dump analysis involves examining one or multiple sequential
+thread dumps to diagnose runtime issues, such as application hangs,
+resource contention, deadlocks, and excessive CPU usage. Comparing
+multiple dumps taken a few seconds apart reveals whether threads are
+actively progressing or remaining permanently blocked on specific
+resources.</p>
+<h2 id="java-thread-states-identified-in-stack-traces">Java Thread
+States Identified in Stack Traces</h2>
+<p>The JVM categorizes every thread into one of six distinct lifecycle
+states. A thread dump explicitly records these states, allowing
+developers to understand application behavior at a glance.</p>
+<h3 id="1-new">1. NEW</h3>
+<p>A thread that has been instantiated using the
+<code>new Thread()</code> constructor but has not yet been started via
+its <code>start()</code> method. Threads in this state do not yet
+consume significant operating system resources and rarely appear in
+production thread dumps.</p>
+<h3 id="2-runnable">2. RUNNABLE</h3>
+<p>A thread that is actively executing in the JVM or is ready and
+waiting for its turn on the operating system's CPU processor.</p>
+<ul>
+<li><strong>Diagnostic meaning:</strong> If a high number of threads
+remain in the <code>RUNNABLE</code> state across multiple dumps and CPU
+utilization is near 100%, the application is likely suffering from
+inefficient algorithms, infinite loops, or heavy mathematical
+computation.</li>
+</ul>
+<h3 id="3-blocked">3. BLOCKED</h3>
+<p>A thread that is currently suspended, waiting to acquire an intrinsic
+monitor lock (<code>synchronized</code> block or method) that is
+currently held by another thread.</p>
+<ul>
+<li><strong>Diagnostic meaning:</strong> A single thread in the
+<code>BLOCKED</code> state is normal in concurrent environments.
+However, a large cluster of threads blocked on the same memory address
+indicates severe lock contention. If two or more threads are mutually
+waiting on locks held by one another, this signals a deadlock
+condition.</li>
+</ul>
+<h3 id="4-waiting">4. WAITING</h3>
+<p>A thread that is waiting indefinitely for another thread to perform a
+specific action before it can resume execution. A thread enters this
+state by calling:</p>
+<ul>
+<li><p><code>Object.wait()</code> without a timeout</p></li>
+<li><p><code>Thread.join()</code> without a timeout</p></li>
+<li><p><code>LockSupport.park()</code></p></li>
+<li><p><strong>Diagnostic meaning:</strong> Threads in thread pools
+often remain in the <code>WAITING</code> state when there are no
+incoming tasks in the queue. If application threads remain unexpectedly
+in this state, it may indicate a missing <code>notify()</code> call, an
+unreleased lock, or an incomplete asynchronous task.</p></li>
+</ul>
+<h3 id="5-timed_waiting">5. TIMED_WAITING</h3>
+<p>A thread that is paused for a specified duration, waiting for a
+timeout to elapse or for an explicit signal from another thread. Common
+triggers include:</p>
+<ul>
+<li><p><code>Thread.sleep(millis)</code></p></li>
+<li><p><code>Object.wait(timeout)</code></p></li>
+<li><p><code>Thread.join(timeout)</code></p></li>
+<li><p><code>LockSupport.parkNanos()</code> or
+<code>LockSupport.parkUntil()</code></p></li>
+<li><p><strong>Diagnostic meaning:</strong> Many threads (such as
+scheduler workers, background pollers, or database connection pools)
+naturally spend time in <code>TIMED_WAITING</code>. If threads
+unexpectedly pile up in this state while waiting on I/O operations or
+network calls, it points to external service latency or missing timeout
+configurations.</p></li>
+</ul>
+<h3 id="6-terminated">6. TERMINATED</h3>
+<p>A thread that has completed its execution, either by returning
+successfully from its <code>run()</code> method or by throwing an
+unhandled exception. These threads have released their allocated stack
+memory and native resources.</p>
+<h2 id="common-issues-identified-during-analysis">Common Issues
+Identified During Analysis</h2>
+<ul>
+<li><strong>Deadlocks:</strong> Multiple threads in <code>BLOCKED</code>
+or <code>WAITING</code> states holding circular dependencies on
+resources. Most modern thread dumps automatically append a "Found one
+Java-level deadlock" section at the bottom.</li>
+<li><strong>Thread Leaks:</strong> An ever-increasing thread count
+dominated by <code>TIMED_WAITING</code> or <code>RUNNABLE</code> states,
+often caused by unmanaged thread creation rather than using bounded
+thread pools.</li>
+<li><strong>Database/Network Bottlenecks:</strong> Threads stuck in
+<code>RUNNABLE</code> or <code>TIMED_WAITING</code> performing socket
+read operations (<code>java.net.SocketInputStream.socketRead0</code>),
+indicating slow downstream dependencies.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

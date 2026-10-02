@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Use Java PrintCompilation to Monitor JIT - java</title>
+    <meta name="description" content="The -XX:+PrintCompilation Java Virtual Machine (JVM) flag gives developers real-time visibility into the Just-In-Time (JIT) compilation process as an application runs. By emitting a continuous log of method compilation, tiered optimization changes, and d">
+    <link rel="canonical" href="https://salivity.github.io/java/article/how-to-use-java-print-compilation-to-monitor-jit">
+    <link rel="search" type="application/opensearchdescription+xml" title="java" href="/java/opensearch.xml">
+    <link rel="icon" href="/java/favicon.ico">
+    <link rel="stylesheet" href="/java/css/style.css">
+    <link media="print" rel="stylesheet" href="/java/css/print.css">
+    <script src="/java/js/fuse.min.js"></script>
+    <script src="/java/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Use Java PrintCompilation to Monitor JIT - java" />
+    <meta property="og:url" content="https://salivity.github.io/java/article/how-to-use-java-print-compilation-to-monitor-jit" />
+    <meta property="og:image" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/java/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The -XX:+PrintCompilation Java Virtual Machine (JVM) flag gives developers real-time visibility into the Just-In-Time (JIT) compilation process as an application runs. By emitting a continuous log of method compilation, tiered optimization changes, and d" />
+    <link rel="manifest" href="/java/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/java/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>java</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/java/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-use-java-printcompilation-to-monitor-jit">How to Use Java
+PrintCompilation to Monitor JIT</h1>
+<p>The <code>-XX:+PrintCompilation</code> Java Virtual Machine (JVM)
+flag gives developers real-time visibility into the Just-In-Time (JIT)
+compilation process as an application runs. By emitting a continuous log
+of method compilation, tiered optimization changes, and deoptimization
+events directly to standard output, this diagnostic flag allows
+engineers to observe how bytecode is converted into native machine code.
+It is an essential tool for verifying JIT warm-up, diagnosing
+performance regressions, and understanding the execution profile of Java
+applications without the overhead of heavy external profilers.</p>
+<h3 id="enabling-the-flag">Enabling the Flag</h3>
+<p>To observe JIT activity, append the flag to the <code>java</code>
+launch command:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">java</span> <span class="at">-XX:+PrintCompilation</span> <span class="at">-jar</span> application.jar</span></code></pre></div>
+<p>Because <code>-XX:+PrintCompilation</code> has negligible performance
+overhead, it can safely be used in benchmarking, staging environments,
+and even troubleshooting scenarios in production.</p>
+<h3 id="decoding-the-output-format">Decoding the Output Format</h3>
+<p>Each time the JIT compiler interacts with a method, it prints a
+single line to standard output. A typical output entry looks like
+this:</p>
+<pre class="text"><code>789   123    3       java.lang.String::hashCode (55 bytes)</code></pre>
+<p>The output is structured into standard columns:</p>
+<ol type="1">
+<li><strong>Timestamp:</strong> The first number (e.g.,
+<code>789</code>) indicates the elapsed time in milliseconds since the
+JVM started.</li>
+<li><strong>Compilation ID:</strong> The second integer (e.g.,
+<code>123</code>) is an incremental identifier assigned to each
+compilation task.</li>
+<li><strong>Attributes (Modifiers):</strong> Special characters may
+appear between the ID and the tier level, indicating specific method
+traits:
+<ul>
+<li><code>%</code>: The method is compiled using On-Stack Replacement
+(OSR), meaning a hot loop inside the method was compiled while currently
+executing.</li>
+<li><code>s</code>: The method is <code>synchronized</code>.</li>
+<li><code>!</code>: The method contains exception handling logic.</li>
+<li><code>b</code>: Compilation occurred synchronously (blocking
+compilation).</li>
+</ul></li>
+<li><strong>Compilation Tier:</strong> HotSpot uses tiered compilation,
+denoted by numbers 1 through 4:
+<ul>
+<li><strong>Tier 0:</strong> Interpreted bytecode (does not appear in
+this output).</li>
+<li><strong>Tiers 1–3:</strong> Compiled by the C1 compiler with
+progressively deeper profiling instrumentation.</li>
+<li><strong>Tier 4:</strong> Compiled by the C2 (Server) compiler,
+applying aggressive optimizations like method inlining, loop unrolling,
+and escape analysis.</li>
+</ul></li>
+<li><strong>Method Signature and Bytecode Size:</strong> Identifies the
+class, method name, and bytecode size in parentheses.</li>
+</ol>
+<h3 id="monitoring-deoptimization-events">Monitoring Deoptimization
+Events</h3>
+<p>The flag also surfaces JVM deoptimizations—scenarios where the JIT
+reverts native code back to interpreted mode or a lower tier because
+speculative assumptions were violated. These appear with explicit
+textual markers:</p>
+<ul>
+<li><strong>made not entrant:</strong> Occurs when an optimized method
+is invalidated, often because a class hierarchy changed, dynamic class
+loading invalidated an inlined call site, or a branch assumption failed.
+Execution drops back to Tier 0 or C1 until re-profiled.</li>
+<li><strong>made zombie:</strong> Indicates that dead native code has
+been swept from the CodeCache and its memory reclaimed.</li>
+</ul>
+<p>Frequent cycles of compilation, followed by "made not entrant"
+messages for the same method, indicate JIT thrashing. This thrashing
+introduces latency spikes and consumes CPU cycles, pointing to
+megamorphic call sites or unpredictable code paths that prevent stable
+C2 optimizations.</p>
+<h3 id="practical-engineering-applications">Practical Engineering
+Applications</h3>
+<p>Using <code>-XX:+PrintCompilation</code> enables developers to answer
+several critical runtime questions:</p>
+<ul>
+<li><strong>Warm-up Verification:</strong> During load testing,
+developers can observe when compilation activity subsides, signaling
+that hot paths have reached peak Tier 4 optimization and the application
+is fully warmed up.</li>
+<li><strong>Inline Evaluation:</strong> If a critical method shows up
+frequently with the <code>%</code> (OSR) flag rather than standard
+method-entry compilation, it may indicate a method that is too large to
+be inlined cleanly by the compiler.</li>
+<li><strong>CodeCache Sizing:</strong> Observing the pace and volume of
+compilations helps identify whether an application is approaching
+<code>ReservedCodeCacheSize</code> limits, which would halt further JIT
+optimizations entirely.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/java'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            utterancesScript.setAttribute('theme', localStorage.getItem('theme') === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="/java/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/java/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>
